@@ -48,7 +48,7 @@ impl Ui {
   }
 
   /// Add a widget to the `Ui`.
-  pub fn add_widget<F>(&mut self, new_widget: F) -> Id
+  fn _add_widget<F>(&mut self, new_widget: F) -> Id
   where
     F: FnOnce(Id) -> Box<Widget>,
   {
@@ -58,6 +58,22 @@ impl Ui {
     let widget = new_widget(id);
     self.widgets.push(widget);
     id
+  }
+  /// Add a root widget, i.e., the first widget, to the `Ui`.
+  pub fn add_root_widget<F>(&mut self, new_root_widget: F) -> Id
+  where
+    F: FnOnce(Id) -> Box<Widget>,
+  {
+    debug_assert!(self.widgets.is_empty(), "Only one root widget may exist in a Ui");
+    self._add_widget(new_root_widget)
+  }
+
+  /// Add a widget to the `Ui`.
+  pub fn add_widget<F>(&mut self, parent_id: Id, new_widget: F) -> Id
+  where
+    F: FnOnce(Id, Id) -> Box<Widget>,
+  {
+    self._add_widget(|id| new_widget(parent_id, id))
   }
 
   /// Lookup a widget from an `Id`.

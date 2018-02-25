@@ -26,14 +26,32 @@ mod common;
 use gui::Ui;
 
 use common::TestRootWidget;
+use common::TestWidget;
 
 
 #[test]
 fn correct_ids() {
   let mut ui = Ui::new();
-  let root = ui.add_widget(|id| {
+  let root = ui.add_root_widget(|id| {
     Box::new(TestRootWidget::new(id))
+  });
+  let w1 = ui.add_widget(root, |parent_id, id| {
+    Box::new(TestWidget::new(parent_id, id))
   });
 
   assert_eq!(ui.parent_id(root), None);
+  assert_eq!(ui.parent_id(w1).unwrap(), root);
+}
+
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "Only one root widget may exist in a Ui")]
+fn only_single_root_widget_allowed() {
+  let mut ui = Ui::new();
+  let _ = ui.add_root_widget(|id| {
+    Box::new(TestRootWidget::new(id))
+  });
+  let _ = ui.add_root_widget(|id| {
+    Box::new(TestRootWidget::new(id))
+  });
 }

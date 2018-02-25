@@ -48,3 +48,31 @@ impl Object for TestRootWidget {
 }
 
 impl Widget for TestRootWidget {}
+
+
+#[derive(Debug)]
+pub struct TestWidget {
+  id: Id,
+  parent_id: Id,
+}
+
+impl TestWidget {
+  pub fn new(parent_id: Id, id: Id) -> Self {
+    TestWidget {
+      id: id,
+      parent_id: parent_id,
+    }
+  }
+}
+
+impl Object for TestWidget {
+  fn id(&self) -> Id {
+    self.id
+  }
+
+  fn parent_id(&self) -> Option<Id> {
+    Some(self.parent_id)
+  }
+}
+
+impl Widget for TestWidget {}
