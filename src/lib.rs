@@ -1,0 +1,44 @@
+// lib.rs
+
+// *************************************************************************
+// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// *                                                                       *
+// * This program is free software: you can redistribute it and/or modify  *
+// * it under the terms of the GNU General Public License as published by  *
+// * the Free Software Foundation, either version 3 of the License, or     *
+// * (at your option) any later version.                                   *
+// *                                                                       *
+// * This program is distributed in the hope that it will be useful,       *
+// * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+// * GNU General Public License for more details.                          *
+// *                                                                       *
+// * You should have received a copy of the GNU General Public License     *
+// * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
+// *************************************************************************
+
+#![allow(
+  unknown_lints,
+  redundant_field_names,
+)]
+#![deny(
+  missing_debug_implementations,
+  missing_docs,
+  unsafe_code,
+  unstable_features,
+  unused_import_braces,
+  unused_qualifications,
+  warnings,
+)]
+
+//! A crate containing the basic infrastructure for user interfaces. It
+//! strives for being completely agnostic of the underlying system and
+//! its rendering machinery as well as event dispatching.
+
+mod object;
+mod ui;
+
+pub use self::object::Object;
+pub use self::ui::Id;
+pub use self::ui::Ui;
+pub use self::ui::Widget;
