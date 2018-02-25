@@ -73,13 +73,24 @@ impl Ui {
   where
     F: FnOnce(Id, Id) -> Box<Widget>,
   {
-    self._add_widget(|id| new_widget(parent_id, id))
+    let id = self._add_widget(|id| new_widget(parent_id, id));
+    // The widget is already linked to its parent but the parent needs to
+    // know about the child as well.
+    self.lookup_mut(parent_id).add_child(id);
+
+    id
   }
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
   fn lookup(&self, id: Id) -> &Box<Widget> {
     &self.widgets[id.idx]
+  }
+
+  /// Lookup a widget from an `Id`.
+  #[allow(borrowed_box)]
+  fn lookup_mut(&mut self, id: Id) -> &mut Box<Widget> {
+    &mut self.widgets[id.idx]
   }
 
   /// Retrieve the parent of the widget with the given `Id`.

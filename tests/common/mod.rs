@@ -19,6 +19,7 @@
 
 extern crate gui;
 
+use gui::ChildIter;
 use gui::Id;
 use gui::Object;
 use gui::Widget;
@@ -27,12 +28,14 @@ use gui::Widget;
 #[derive(Debug)]
 pub struct TestRootWidget {
   id: Id,
+  children: Vec<Id>,
 }
 
 impl TestRootWidget {
   pub fn new(id: Id) -> Self {
     TestRootWidget {
       id: id,
+      children: Vec::new(),
     }
   }
 }
@@ -44,6 +47,14 @@ impl Object for TestRootWidget {
 
   fn parent_id(&self) -> Option<Id> {
     None
+  }
+
+  fn add_child(&mut self, id: Id) {
+    self.children.push(id)
+  }
+
+  fn iter(&self) -> ChildIter {
+    ChildIter::with_iter(self.children.iter())
   }
 }
 
@@ -76,3 +87,41 @@ impl Object for TestWidget {
 }
 
 impl Widget for TestWidget {}
+
+
+#[derive(Debug)]
+pub struct TestContainer {
+  id: Id,
+  parent_id: Id,
+  children: Vec<Id>,
+}
+
+impl TestContainer {
+  pub fn new(parent_id: Id, id: Id) -> Self {
+    TestContainer {
+      id: id,
+      parent_id: parent_id,
+      children: Vec::new(),
+    }
+  }
+}
+
+impl Object for TestContainer {
+  fn id(&self) -> Id {
+    self.id
+  }
+
+  fn parent_id(&self) -> Option<Id> {
+    Some(self.parent_id)
+  }
+
+  fn add_child(&mut self, id: Id) {
+    self.children.push(id)
+  }
+
+  fn iter(&self) -> ChildIter {
+    ChildIter::with_iter(self.children.iter())
+  }
+}
+
+impl Widget for TestContainer {}

@@ -38,6 +38,7 @@
 mod object;
 mod ui;
 
+pub use self::object::ChildIter;
 pub use self::object::Object;
 pub use self::ui::Id;
 pub use self::ui::Ui;
