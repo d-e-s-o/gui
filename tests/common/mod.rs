@@ -19,10 +19,13 @@
 
 extern crate gui;
 
+use std::any::Any;
+
 use gui::ChildIter;
 use gui::Id;
 use gui::Object;
 use gui::Renderable;
+use gui::Renderer;
 use gui::Widget;
 
 
@@ -59,11 +62,20 @@ impl Object for TestRootWidget {
   }
 }
 
-impl Renderable for TestRootWidget {
-  fn render(&self) {}
+impl<R> Renderable<R> for TestRootWidget
+where
+  R: Renderer,
+{
+  fn render(&self, renderer: &R) {
+    renderer.render(self)
+  }
 }
 
-impl Widget for TestRootWidget {}
+impl<R> Widget<R> for TestRootWidget
+where
+  R: Renderer,
+{
+}
 
 
 #[derive(Debug)]
@@ -91,13 +103,23 @@ impl Object for TestWidget {
   }
 }
 
-impl Renderable for TestWidget {
-  fn render(&self) {}
+impl<R> Renderable<R> for TestWidget
+where
+  R: Renderer,
+{
+  fn render(&self, renderer: &R) {
+    renderer.render(self)
+  }
 }
 
-impl Widget for TestWidget {}
+impl<R> Widget<R> for TestWidget
+where
+  R: Renderer,
+{
+}
 
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct TestContainer {
   id: Id,
@@ -106,6 +128,7 @@ pub struct TestContainer {
 }
 
 impl TestContainer {
+  #[allow(unused)]
   pub fn new(parent_id: Id, id: Id) -> Self {
     TestContainer {
       id: id,
@@ -133,8 +156,26 @@ impl Object for TestContainer {
   }
 }
 
-impl Renderable for TestContainer {
-  fn render(&self) {}
+impl<R> Renderable<R> for TestContainer
+where
+  R: Renderer,
+{
+  fn render(&self, renderer: &R) {
+    renderer.render(self)
+  }
 }
 
-impl Widget for TestContainer {}
+impl<R> Widget<R> for TestContainer
+where
+  R: Renderer,
+{
+}
+
+
+#[allow(unused)]
+#[derive(Debug)]
+pub struct TestRenderer {}
+
+impl Renderer for TestRenderer {
+  fn render(&self, _object: &Any) {}
+}

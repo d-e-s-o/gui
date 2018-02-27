@@ -1,4 +1,4 @@
-// renderable.rs
+// renderer.rs
 
 // *************************************************************************
 // * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
@@ -17,14 +17,16 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use renderer::Renderer;
+use std::any::Any;
 
 
-/// A trait representing a renderable object.
-pub trait Renderable<R>
-where
-  R: Renderer,
-{
-  /// Render the renderable object.
-  fn render(&self, renderer: &R);
+/// An abstraction for objects used for rendering widgets.
+pub trait Renderer {
+  /// Render an object.
+  ///
+  /// Objects are represented as `Any` and need to be cast into the type
+  /// to render by the `Renderer` itself.
+  // TODO: Ideally we would like to have a double dispatch mechanism for
+  //       determining the object to render.
+  fn render(&self, object: &Any);
 }

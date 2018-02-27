@@ -37,11 +37,13 @@
 
 mod object;
 mod renderable;
+mod renderer;
 mod ui;
 
 pub use self::object::ChildIter;
 pub use self::object::Object;
 pub use self::renderable::Renderable;
+pub use self::renderer::Renderer;
 pub use self::ui::Id;
 pub use self::ui::Ui;
 pub use self::ui::Widget;

@@ -26,13 +26,14 @@ mod common;
 use gui::Ui;
 
 use common::TestContainer;
+use common::TestRenderer;
 use common::TestRootWidget;
 use common::TestWidget;
 
 
 #[test]
 fn correct_ids() {
-  let mut ui = Ui::new();
+  let mut ui = Ui::<TestRenderer>::new();
   let root = ui.add_root_widget(|id| {
     Box::new(TestRootWidget::new(id))
   });
@@ -71,7 +72,7 @@ fn correct_ids() {
 #[cfg(debug_assertions)]
 #[should_panic(expected = "Only one root widget may exist in a Ui")]
 fn only_single_root_widget_allowed() {
-  let mut ui = Ui::new();
+  let mut ui = Ui::<TestRenderer>::new();
   let _ = ui.add_root_widget(|id| {
     Box::new(TestRootWidget::new(id))
   });
@@ -83,7 +84,7 @@ fn only_single_root_widget_allowed() {
 #[test]
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn only_containers_can_have_children() {
-  let mut ui = Ui::new();
+  let mut ui = Ui::<TestRenderer>::new();
   let root = ui.add_root_widget(|id| {
     Box::new(TestRootWidget::new(id))
   });
