@@ -20,6 +20,7 @@
 use std::fmt::Debug;
 
 use object::Object;
+use renderable::Renderable;
 
 
 /// An `Id` uniquely representing a widget.
@@ -29,8 +30,13 @@ pub struct Id {
 }
 
 
-/// A first-class entity managed by the `Ui`.
-pub trait Widget: Object + Debug {}
+/// A widget as used by a `Ui`.
+///
+/// In addition to taking care of `Id` management and parent-child
+/// relationships, the `Ui` is responsible for dispatching events to
+/// widgets and rendering them. Hence, a widget usable for the `Ui`
+/// needs to implement `Handleable`, `Renderable`, and `Widget`.
+pub trait Widget: Renderable + Object + Debug {}
 
 
 /// A `Ui` is a container for related widgets.
@@ -91,6 +97,30 @@ impl Ui {
   #[allow(borrowed_box)]
   fn lookup_mut(&mut self, id: Id) -> &mut Box<Widget> {
     &mut self.widgets[id.idx]
+  }
+
+  /// Render the `Ui` with the given `Renderer`.
+  pub fn render(&self) {
+    // We cannot simply iterate through all widgets in `self.widgets`
+    // when rendering, because we need to take parent-child
+    // relationships into account in case widgets cover each other.
+    if let Some(root) = self.widgets.first() {
+      self.render_all(root)
+    }
+  }
+
+  /// Recursively render the given widget and its children.
+  #[allow(borrowed_box)]
+  fn render_all(&self, widget: &Box<Widget>) {
+    // TODO: Ideally we would want to go without the recursion stuff we
+    //       have. This may not be possible (efficiently) with safe
+    //       Rust, though. Not sure.
+    widget.render();
+
+    for child_id in widget.iter().rev() {
+      let child = self.lookup(*child_id);
+      self.render_all(child)
+    }
   }
 
   /// Retrieve the parent of the widget with the given `Id`.

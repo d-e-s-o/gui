@@ -22,6 +22,7 @@ extern crate gui;
 use gui::ChildIter;
 use gui::Id;
 use gui::Object;
+use gui::Renderable;
 use gui::Widget;
 
 
@@ -58,6 +59,10 @@ impl Object for TestRootWidget {
   }
 }
 
+impl Renderable for TestRootWidget {
+  fn render(&self) {}
+}
+
 impl Widget for TestRootWidget {}
 
 
@@ -84,6 +89,10 @@ impl Object for TestWidget {
   fn parent_id(&self) -> Option<Id> {
     Some(self.parent_id)
   }
+}
+
+impl Renderable for TestWidget {
+  fn render(&self) {}
 }
 
 impl Widget for TestWidget {}
@@ -122,6 +131,10 @@ impl Object for TestContainer {
   fn iter(&self) -> ChildIter {
     ChildIter::with_iter(self.children.iter())
   }
+}
+
+impl Renderable for TestContainer {
+  fn render(&self) {}
 }
 
 impl Widget for TestContainer {}

@@ -1,4 +1,4 @@
-// lib.rs
+// renderable.rs
 
 // *************************************************************************
 // * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
@@ -17,31 +17,9 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-#![allow(
-  unknown_lints,
-  redundant_field_names,
-)]
-#![deny(
-  missing_debug_implementations,
-  missing_docs,
-  unsafe_code,
-  unstable_features,
-  unused_import_braces,
-  unused_qualifications,
-  warnings,
-)]
 
-//! A crate containing the basic infrastructure for user interfaces. It
-//! strives for being completely agnostic of the underlying system and
-//! its rendering machinery as well as event dispatching.
-
-mod object;
-mod renderable;
-mod ui;
-
-pub use self::object::ChildIter;
-pub use self::object::Object;
-pub use self::renderable::Renderable;
-pub use self::ui::Id;
-pub use self::ui::Ui;
-pub use self::ui::Widget;
+/// A trait representing a renderable object.
+pub trait Renderable {
+  /// Render the renderable object.
+  fn render(&self) {}
+}
