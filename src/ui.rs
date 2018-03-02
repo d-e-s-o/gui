@@ -48,6 +48,7 @@ where
 #[derive(Debug, Default)]
 pub struct Ui<R> {
   widgets: Vec<Box<Widget<R>>>,
+  focused: Option<Id>,
 }
 
 // Clippy raises a false alert due to the generic type used but not
@@ -62,6 +63,7 @@ where
   pub fn new() -> Self {
     Ui {
       widgets: Default::default(),
+      focused: None,
     }
   }
 
@@ -73,6 +75,13 @@ where
     let id = Id {
       idx: self.widgets.len(),
     };
+
+    // If no widget has the focus we focus the newly created widget but
+    // then the focus stays unless explicitly changed.
+    if self.focused.is_none() {
+      self.focus(id);
+    }
+
     let widget = new_widget(id);
     self.widgets.push(widget);
     id
@@ -138,5 +147,19 @@ where
   /// Retrieve the parent of the widget with the given `Id`.
   pub fn parent_id(&self, id: Id) -> Option<Id> {
     self.lookup(id).parent_id()
+  }
+
+  /// Focus a widget.
+  ///
+  /// The focused widget is the one receiving certain types of events
+  /// (such as key events) first but may also be rendered in a different
+  /// color or be otherwise highlighted.
+  pub fn focus(&mut self, id: Id) {
+    self.focused = Some(id)
+  }
+
+  /// Check whether the widget with the given `Id` is focused.
+  pub fn is_focused(&self, id: Id) -> bool {
+    self.focused == Some(id)
   }
 }

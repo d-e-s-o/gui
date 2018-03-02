@@ -95,3 +95,33 @@ fn only_containers_can_have_children() {
     Box::new(TestWidget::new(parent_id, id))
   });
 }
+
+#[test]
+fn initial_focus() {
+  let mut ui = Ui::<TestRenderer>::new();
+  let root = ui.add_root_widget(|id| {
+    Box::new(TestRootWidget::new(id))
+  });
+  // The widget created first should receive the focus and stay
+  // focused until directed otherwise.
+  assert!(ui.is_focused(root));
+
+  let _ = ui.add_widget(root, |parent_id, id| {
+    Box::new(TestWidget::new(parent_id, id))
+  });
+  assert!(ui.is_focused(root));
+}
+
+#[test]
+fn focus_widget() {
+  let mut ui = Ui::<TestRenderer>::new();
+  let root = ui.add_root_widget(|id| {
+    Box::new(TestRootWidget::new(id))
+  });
+  let widget = ui.add_widget(root, |parent_id, id| {
+    Box::new(TestWidget::new(parent_id, id))
+  });
+
+  ui.focus(widget);
+  assert!(ui.is_focused(widget));
+}
