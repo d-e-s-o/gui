@@ -17,8 +17,13 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use std::cell::Ref;
+use std::cell::RefCell;
+use std::cell::RefMut;
 use std::fmt::Debug;
 
+use event::Event;
+use handleable::Handleable;
 use object::Object;
 use renderable::Renderable;
 use renderer::Renderer;
@@ -36,8 +41,8 @@ pub struct Id {
 /// In addition to taking care of `Id` management and parent-child
 /// relationships, the `Ui` is responsible for dispatching events to
 /// widgets and rendering them. Hence, a widget usable for the `Ui`
-/// needs to implement `Renderable` and `Object`.
-pub trait Widget<R>: Renderable<R> + Object + Debug
+/// needs to implement `Handleable`, `Renderable`, and `Object`.
+pub trait Widget<R>: Handleable + Renderable<R> + Object + Debug
 where
   R: Renderer,
 {
@@ -47,7 +52,7 @@ where
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
 pub struct Ui<R> {
-  widgets: Vec<Box<Widget<R>>>,
+  widgets: Vec<RefCell<Box<Widget<R>>>>,
   focused: Option<Id>,
 }
 
@@ -83,9 +88,10 @@ where
     }
 
     let widget = new_widget(id);
-    self.widgets.push(widget);
+    self.widgets.push(RefCell::new(widget));
     id
   }
+
   /// Add a root widget, i.e., the first widget, to the `Ui`.
   pub fn add_root_widget<F>(&mut self, new_root_widget: F) -> Id
   where
@@ -110,14 +116,14 @@ where
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
-  fn lookup(&self, id: Id) -> &Box<Widget<R>> {
-    &self.widgets[id.idx]
+  fn lookup(&self, id: Id) -> Ref<Box<Widget<R>>> {
+    self.widgets[id.idx].borrow()
   }
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
-  fn lookup_mut(&mut self, id: Id) -> &mut Box<Widget<R>> {
-    &mut self.widgets[id.idx]
+  fn lookup_mut(&self, id: Id) -> RefMut<Box<Widget<R>>> {
+    self.widgets[id.idx].borrow_mut()
   }
 
   /// Render the `Ui` with the given `Renderer`.
@@ -126,7 +132,7 @@ where
     // when rendering, because we need to take parent-child
     // relationships into account in case widgets cover each other.
     if let Some(root) = self.widgets.first() {
-      self.render_all(root, renderer)
+      self.render_all(&root.borrow(), renderer)
     }
   }
 
@@ -140,7 +146,53 @@ where
 
     for child_id in widget.iter().rev() {
       let child = self.lookup(*child_id);
-      self.render_all(child, renderer)
+      self.render_all(&child, renderer)
+    }
+  }
+
+  /// Handle an event.
+  // Note that although self could be immutable here, we declare it
+  // mutable for reasons of safety around the `RefCell` functionality we
+  // have in use internally.
+  pub fn handle<E>(&mut self, event: E) -> Option<Event>
+  where
+    E: Into<Event>,
+  {
+    let event = event.into();
+    match event {
+      Event::KeyUp(_) |
+      Event::KeyDown(_) => self.handle_key_event(event),
+    }
+  }
+
+  /// Send a key event to the focused widget.
+  fn handle_key_event(&self, event: Event) -> Option<Event> {
+    // All key events go to the focused widget.
+    if let Some(id) = self.focused {
+      let mut widget = self.lookup_mut(id);
+      self.handle_event(&mut widget, event)
+    } else {
+      None
+    }
+  }
+
+  /// Bubble up an event until it is handled by some `Widget`.
+  #[allow(borrowed_box)]
+  fn handle_event(&self, widget: &mut Box<Widget<R>>, event: Event) -> Option<Event> {
+    let event = widget.handle(event);
+    if let Some(event) = event {
+      let id = widget.parent_id();
+
+      if let Some(id) = id {
+        let mut widget = self.lookup_mut(id);
+        self.handle_event(&mut widget, event)
+      } else {
+        // The event has not been handled.
+        Some(event)
+      }
+    } else {
+      // The event got handled.
+      None
     }
   }
 

@@ -1,4 +1,4 @@
-// lib.rs
+// event.rs
 
 // *************************************************************************
 // * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
@@ -17,36 +17,30 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-#![allow(
-  unknown_lints,
-  redundant_field_names,
-)]
-#![deny(
-  missing_debug_implementations,
-  missing_docs,
-  unsafe_code,
-  unstable_features,
-  unused_import_braces,
-  unused_qualifications,
-  warnings,
-)]
 
-//! A crate containing the basic infrastructure for user interfaces. It
-//! strives for being completely agnostic of the underlying system and
-//! its rendering machinery as well as event dispatching.
+/// An object representing a key on the key board.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Key {
+  /// The character representing the key.
+  Char(char),
+  /// The Escape key.
+  Esc,
+}
 
-mod event;
-mod handleable;
-mod object;
-mod renderable;
-mod renderer;
-mod ui;
 
-pub use self::handleable::Handleable;
-pub use self::object::ChildIter;
-pub use self::object::Object;
-pub use self::renderable::Renderable;
-pub use self::renderer::Renderer;
-pub use self::ui::Id;
-pub use self::ui::Ui;
-pub use self::ui::Widget;
+/// An event that can be handled by a `Handleable`.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Event {
+  /// A key was pressed.
+  ///
+  /// A key down event is delivered to the focused widget and it is up
+  /// to this widget to decide whether the event gets propagated further
+  /// up.
+  KeyDown(Key),
+  /// A key was released.
+  ///
+  /// A key up event is delivered to the focused widget and it is up to
+  /// this widget to decide whether the event gets propagated further
+  /// up.
+  KeyUp(Key),
+}

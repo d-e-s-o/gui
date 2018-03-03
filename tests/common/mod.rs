@@ -22,6 +22,7 @@ extern crate gui;
 use std::any::Any;
 
 use gui::ChildIter;
+use gui::Handleable;
 use gui::Id;
 use gui::Object;
 use gui::Renderable;
@@ -71,6 +72,8 @@ where
   }
 }
 
+impl Handleable for TestRootWidget {}
+
 impl<R> Widget<R> for TestRootWidget
 where
   R: Renderer,
@@ -111,6 +114,8 @@ where
     renderer.render(self)
   }
 }
+
+impl Handleable for TestWidget {}
 
 impl<R> Widget<R> for TestWidget
 where
@@ -164,6 +169,8 @@ where
     renderer.render(self)
   }
 }
+
+impl Handleable for TestContainer {}
 
 impl<R> Widget<R> for TestContainer
 where
