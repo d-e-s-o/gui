@@ -42,6 +42,9 @@ mod renderable;
 mod renderer;
 mod ui;
 
+pub use self::event::Event;
+pub use self::event::Key;
+pub use self::event::UiEvent;
 pub use self::handleable::Handleable;
 pub use self::object::ChildIter;
 pub use self::object::Object;

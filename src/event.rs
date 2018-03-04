@@ -17,6 +17,8 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use ui::Id;
+
 
 /// An object representing a key on the key board.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -43,4 +45,37 @@ pub enum Event {
   /// this widget to decide whether the event gets propagated further
   /// up.
   KeyUp(Key),
+}
+
+
+/// An event that the `Ui` can process.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum UiEvent {
+  /// An `Event` that can be handled by a `Handleable`.
+  Event(Event),
+  /// The widget with the given `Id` should be focused.
+  Focus(Id),
+}
+
+/// A convenience conversion from `Event` to `UiEvent`.
+impl From<Event> for UiEvent {
+  fn from(event: Event) -> Self {
+    UiEvent::Event(event)
+  }
+}
+
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+
+  #[test]
+  fn convert_event_into() {
+    let event = Event::KeyDown(Key::Char(' '));
+    let orig_event = event.clone();
+    let ui_event = UiEvent::from(event);
+
+    assert_eq!(ui_event, UiEvent::Event(orig_event));
+  }
 }

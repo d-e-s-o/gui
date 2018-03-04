@@ -18,14 +18,15 @@
 // *************************************************************************
 
 use event::Event;
+use event::UiEvent;
 
 
 /// A trait representing an object capable of handling events.
 pub trait Handleable {
   /// Handle an `Event`.
-  fn handle(&mut self, event: Event) -> Option<Event> {
+  fn handle(&mut self, event: Event) -> Option<UiEvent> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
-    Some(event)
+    Some(event.into())
   }
 }

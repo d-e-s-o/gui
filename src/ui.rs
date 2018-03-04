@@ -17,12 +17,14 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use std::cell::Cell;
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::cell::RefMut;
 use std::fmt::Debug;
 
 use event::Event;
+use event::UiEvent;
 use handleable::Handleable;
 use object::Object;
 use renderable::Renderable;
@@ -53,7 +55,7 @@ where
 #[derive(Debug, Default)]
 pub struct Ui<R> {
   widgets: Vec<RefCell<Box<Widget<R>>>>,
-  focused: Option<Id>,
+  focused: Cell<Option<Id>>,
 }
 
 // Clippy raises a false alert due to the generic type used but not
@@ -68,7 +70,7 @@ where
   pub fn new() -> Self {
     Ui {
       widgets: Default::default(),
-      focused: None,
+      focused: Cell::new(None),
     }
   }
 
@@ -83,7 +85,7 @@ where
 
     // If no widget has the focus we focus the newly created widget but
     // then the focus stays unless explicitly changed.
-    if self.focused.is_none() {
+    if self.focused.get().is_none() {
       self.focus(id);
     }
 
@@ -154,41 +156,61 @@ where
   // Note that although self could be immutable here, we declare it
   // mutable for reasons of safety around the `RefCell` functionality we
   // have in use internally.
-  pub fn handle<E>(&mut self, event: E) -> Option<Event>
+  pub fn handle<E>(&mut self, event: E) -> Option<UiEvent>
   where
-    E: Into<Event>,
+    E: Into<UiEvent>,
   {
     let event = event.into();
     match event {
-      Event::KeyUp(_) |
-      Event::KeyDown(_) => self.handle_key_event(event),
+      UiEvent::Event(event) => {
+        match event {
+          Event::KeyUp(_) |
+          Event::KeyDown(_) => self.handle_key_event(event),
+        }
+      },
+      UiEvent::Focus(id) => self.handle_focus_event(id),
     }
   }
 
   /// Send a key event to the focused widget.
-  fn handle_key_event(&self, event: Event) -> Option<Event> {
+  fn handle_key_event(&self, event: Event) -> Option<UiEvent> {
     // All key events go to the focused widget.
-    if let Some(id) = self.focused {
+    if let Some(id) = self.focused.get() {
       let mut widget = self.lookup_mut(id);
-      self.handle_event(&mut widget, event)
+      self.handle_event(widget, event)
     } else {
       None
     }
   }
 
-  /// Bubble up an event until it is handled by some `Widget`.
-  #[allow(borrowed_box)]
-  fn handle_event(&self, widget: &mut Box<Widget<R>>, event: Event) -> Option<Event> {
-    let event = widget.handle(event);
-    if let Some(event) = event {
-      let id = widget.parent_id();
+  /// Handle a focus event for the widget with the given `Id`.
+  fn handle_focus_event(&self, id: Id) -> Option<UiEvent> {
+    self.focus(id);
+    None
+  }
 
-      if let Some(id) = id {
-        let mut widget = self.lookup_mut(id);
-        self.handle_event(&mut widget, event)
-      } else {
-        // The event has not been handled.
-        Some(event)
+  /// Bubble up an event until it is handled by some `Widget`.
+  fn handle_event(&self, mut widget: RefMut<Box<Widget<R>>>, event: Event) -> Option<UiEvent> {
+    let ui_event = widget.handle(event);
+    if let Some(ui_event) = ui_event {
+      match ui_event {
+        UiEvent::Event(event) => {
+          let id = widget.parent_id();
+          // Make sure to drop the mutable reference to the given widget
+          // here, otherwise we may run into a borrow conflict should the
+          // handling of the event somehow cause a borrow of the same
+          // widget.
+          drop(widget);
+
+          if let Some(id) = id {
+            let mut parent = self.lookup_mut(id);
+            self.handle_event(parent, event)
+          } else {
+            // The event has not been handled. Return it as-is.
+            Some(event.into())
+          }
+        },
+        UiEvent::Focus(id) => self.handle_focus_event(id),
       }
     } else {
       // The event got handled.
@@ -206,12 +228,12 @@ where
   /// The focused widget is the one receiving certain types of events
   /// (such as key events) first but may also be rendered in a different
   /// color or be otherwise highlighted.
-  pub fn focus(&mut self, id: Id) {
-    self.focused = Some(id)
+  pub fn focus(&self, id: Id) {
+    self.focused.set(Some(id))
   }
 
   /// Check whether the widget with the given `Id` is focused.
   pub fn is_focused(&self, id: Id) -> bool {
-    self.focused == Some(id)
+    self.focused.get() == Some(id)
   }
 }
