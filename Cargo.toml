@@ -11,4 +11,7 @@ description = """
 A generic UI library/framework.
 """
 
+[workspace]
+members = ["derive"]
+
 [dependencies]

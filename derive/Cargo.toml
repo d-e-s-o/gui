@@ -1,0 +1,29 @@
+[package]
+name = "gui-derive"
+version = "0.0.0"
+authors = ["Daniel Mueller <deso@posteo.net>"]
+license = "GPL-3.0+"
+homepage = "https://crates.io/crates/gui-derive"
+repository = "https://github.com/d-e-s-o/gui.git"
+readme = "README.md"
+keywords = ["derive", "gui", "ui"]
+description = """
+Custom derive macros for the gui crate.
+"""
+
+[lib]
+proc-macro = true
+
+[dependencies.gui]
+version = "0.0"
+path = ".."
+
+[dependencies.quote]
+# TODO: Upgrade to 0.4.
+version = "0.3"
+
+[dependencies.syn]
+# TODO: Upgrade to 0.12.
+version = "0.11"
+default-features = false
+features = ["parsing"]
