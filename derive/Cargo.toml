@@ -26,4 +26,4 @@ version = "0.3"
 # TODO: Upgrade to 0.12.
 version = "0.11"
 default-features = false
-features = ["parsing"]
+features = ["parsing", "printing"]

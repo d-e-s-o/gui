@@ -26,12 +26,12 @@
   unstable_features,
   unused_import_braces,
   unused_qualifications,
+  warnings,
 )]
 
 //! A crate providing custom derive functionality for the `gui` crate.
 
 extern crate proc_macro;
-#[allow(unused_imports)]
 #[macro_use]
 extern crate quote;
 extern crate syn;
@@ -40,9 +40,15 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 
+use proc_macro::LexError;
+use proc_macro::TokenStream;
+use quote::Tokens;
 use syn::Attribute;
+use syn::Body;
+use syn::DeriveInput;
 use syn::Lit;
 use syn::MetaItem;
+use syn::parse_derive_input;
 use syn::StrStyle;
 
 
@@ -59,12 +65,14 @@ enum Type {
 #[derive(Debug)]
 enum Error {
   Error(String),
+  LexError(LexError),
 }
 
 impl Display for Error {
   fn fmt(&self, f: &mut Formatter) -> FmtResult {
     match *self {
       Error::Error(ref e) => write!(f, "{}", e),
+      Error::LexError(ref e) => write!(f, "{:?}", e),
     }
   }
 }
@@ -81,8 +89,49 @@ impl From<&'static str> for Error {
   }
 }
 
+impl From<LexError> for Error {
+  fn from(error: LexError) -> Error {
+    Error::LexError(error)
+  }
+}
+
 type Result<T> = std::result::Result<T, Error>;
 
+
+/// Custom derive functionality for the `gui::Widget` trait.
+///
+/// Using this macro a default implementation of the `gui::Widget`
+/// trait can be created. Note that this trait is just a unification of
+/// the `gui::Object`, `gui::Renderer`, and `gui::Handleable` traits.
+/// Note furthermore that only implementations of the former two will be
+/// auto generated. The reason for this behavior is that
+/// `gui::Handleable` most likely needs customization to accommodate for
+/// custom event handling behavior.
+#[proc_macro_derive(GuiWidget, attributes(GuiType))]
+pub fn widget(input: TokenStream) -> TokenStream {
+  match expand_widget(input) {
+    Ok(tokens) => tokens,
+    Err(error) => panic!("{}", error),
+  }
+}
+
+fn expand_widget(input: TokenStream) -> Result<TokenStream> {
+  let string = input.to_string();
+  let input = parse_derive_input(&string)?;
+  let type_ = parse_widget_attributes(&input.attrs)?;
+  let tokens = expand_widget_input(&type_, &input)?.parse()?;
+  Ok(tokens)
+}
+
+/// Parse the macro's attributes.
+fn parse_widget_attributes(attributes: &[Attribute]) -> Result<Type> {
+  match attributes.len() {
+    // If no attribute is given we default to `Widget`.
+    0 => Ok(Type::Widget),
+    1 => parse_widget_attribute(&attributes[0]),
+    x => Err(Error::from(format!("unsupported number of arguments ({})", x))),
+  }
+}
 
 /// Parse a single attribute, e.g., #[GuiType = "Widget"].
 fn parse_widget_attribute(attribute: &Attribute) -> Result<Type> {
@@ -107,13 +156,103 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<Type> {
   }
 }
 
-/// Parse the macro's attributes.
-fn parse_widget_attributes(attributes: &[Attribute]) -> Result<Type> {
-  match attributes.len() {
-    // If no attribute is given we default to `Widget`.
-    0 => Ok(Type::Widget),
-    1 => parse_widget_attribute(&attributes[0]),
-    x => Err(Error::from(format!("unsupported number of arguments ({})", x))),
+/// Expand the input with the implementation of the required traits.
+fn expand_widget_input(type_: &Type, input: &DeriveInput) -> Result<Tokens> {
+  match input.body {
+    Body::Struct(_) => Ok(expand_widget_traits(type_, input)),
+    _ => Err(Error::from("#[derive(GuiWidget)] is only defined for structs")),
+  }
+}
+
+/// Expand the struct input with the implementation of the required traits.
+// TODO: If possible we should detect whether the client struct contains
+//       an `id` and `parent_id` field as we require and provide a
+//       detailed problem report otherwise.
+// TODO: We could provide a default implementation for #name::new, if
+//       the client does not define it currently.
+// TODO: We could provide a default implementation for gui::Handleable, if
+//       the client does not define it currently.
+fn expand_widget_traits(type_: &Type, input: &DeriveInput) -> Tokens {
+  let renderer = expand_renderer_trait(input);
+  let object = expand_object_trait(type_, input);
+  let widget = expand_widget_trait(input);
+
+  quote! {
+    #renderer
+    #object
+    #widget
+  }
+}
+
+/// Expand an implementation for the `gui::Renderer` trait.
+fn expand_renderer_trait(input: &DeriveInput) -> Tokens {
+  let name = &input.ident;
+  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+  quote! {
+    impl<__R> #impl_generics ::gui::Renderable<__R> for #name #ty_generics #where_clause
+    where
+      __R: ::gui::Renderer,
+    {
+      fn render(&self, renderer: &__R) {
+        renderer.render(self)
+      }
+    }
+  }
+}
+
+
+/// Expand an implementation for the `gui::Object` trait.
+fn expand_object_trait(type_: &Type, input: &DeriveInput) -> Tokens {
+  let name = &input.ident;
+  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+  let parent_id = match *type_ {
+    Type::Widget | Type::Container => quote!{ Some(self.parent_id) },
+    Type::RootWidget => quote!{ None },
+  };
+
+  let children = match *type_ {
+    Type::Widget => quote!{},
+    Type::Container | Type::RootWidget => {
+      quote!{
+        fn add_child(&mut self, id: ::gui::Id) {
+          self.children.push(id)
+        }
+
+        fn iter(&self) -> ::gui::ChildIter {
+          ::gui::ChildIter::with_iter(self.children.iter())
+        }
+      }
+    },
+  };
+
+  quote! {
+    impl #impl_generics ::gui::Object for #name #ty_generics #where_clause {
+      fn id(&self) -> ::gui::Id {
+        self.id
+      }
+
+      fn parent_id(&self) -> ::std::option::Option<::gui::Id> {
+        #parent_id
+      }
+
+      #children
+    }
+  }
+}
+
+/// Expand an implementation for the `gui::Widget` trait.
+fn expand_widget_trait(input: &DeriveInput) -> Tokens {
+  let name = &input.ident;
+  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+  quote! {
+    impl<__R> #impl_generics ::gui::Widget<__R> for #name #ty_generics #where_clause
+    where
+      __R: ::gui::Renderer,
+    {
+    }
   }
 }
 
@@ -121,9 +260,6 @@ fn parse_widget_attributes(attributes: &[Attribute]) -> Result<Type> {
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  use syn::parse_derive_input;
-
 
   fn get_type_attribute(string: &str) -> Result<Type> {
     let string = quote!{
