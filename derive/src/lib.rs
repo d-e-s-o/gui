@@ -46,6 +46,7 @@ use quote::Tokens;
 use syn::Attribute;
 use syn::Body;
 use syn::DeriveInput;
+use syn::Field;
 use syn::Lit;
 use syn::MetaItem;
 use syn::parse_derive_input;
@@ -159,15 +160,46 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<Type> {
 /// Expand the input with the implementation of the required traits.
 fn expand_widget_input(type_: &Type, input: &DeriveInput) -> Result<Tokens> {
   match input.body {
-    Body::Struct(_) => Ok(expand_widget_traits(type_, input)),
+    Body::Struct(ref body) => {
+      check_struct_fields(type_, body.fields())?;
+      Ok(expand_widget_traits(type_, input))
+    },
     _ => Err(Error::from("#[derive(GuiWidget)] is only defined for structs")),
   }
 }
 
+/// Check the fields of the user's struct for required attributes.
+// Note that we only check for the names of the required fields, not for
+// the types. Checking types is cumbersome and best-effort anyway as we
+// are working on tokens without context (a user could have a field of
+// type Id but that could map to ::foo::Id and not ::gui::Id).
+fn check_struct_fields(type_: &Type, fields: &[Field]) -> Result<()> {
+  let id = ("id", "::gui::Id");
+  let par_id = ("parent_id", "::gui::Id");
+  let childs = ("children", "::std::vec::Vec<::gui::Id>");
+
+  let req_fields = match *type_ {
+    Type::Widget => vec![id, par_id],
+    Type::Container => vec![id, par_id, childs],
+    Type::RootWidget => vec![id, childs],
+  };
+
+  for (req_field, req_type) in req_fields {
+    fields
+      .iter()
+      .find(|field| {
+        if let Some(ref ident) = field.ident {
+          ident == req_field
+        } else {
+          false
+        }
+      })
+      .ok_or_else(|| Error::from(format!("struct field {}: {} not found", req_field, req_type)))?;
+  }
+  Ok(())
+}
+
 /// Expand the struct input with the implementation of the required traits.
-// TODO: If possible we should detect whether the client struct contains
-//       an `id` and `parent_id` field as we require and provide a
-//       detailed problem report otherwise.
 // TODO: We could provide a default implementation for #name::new, if
 //       the client does not define it currently.
 // TODO: We could provide a default implementation for gui::Handleable, if
