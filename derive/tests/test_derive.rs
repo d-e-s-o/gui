@@ -52,18 +52,10 @@ impl Handleable for TestDefaultWidget {}
 
 #[derive(Debug, GuiWidget)]
 #[GuiType = "Widget"]
+#[GuiDefaultNew]
 struct TestWidget {
   id: Id,
   parent_id: Id,
-}
-
-impl TestWidget {
-  pub fn new(parent_id: Id, id: Id) -> Self {
-    TestWidget {
-      id: id,
-      parent_id: parent_id,
-    }
-  }
 }
 
 impl Handleable for TestWidget {}
@@ -92,18 +84,10 @@ impl Handleable for TestContainer {}
 
 #[derive(Debug, GuiWidget)]
 #[GuiType = "RootWidget"]
+#[GuiDefaultNew]
 struct TestRootWidget {
   id: Id,
   children: Vec<Id>,
-}
-
-impl TestRootWidget {
-  pub fn new(id: Id) -> Self {
-    TestRootWidget {
-      id: id,
-      children: Vec::new(),
-    }
-  }
 }
 
 impl Handleable for TestRootWidget {}

@@ -61,6 +61,12 @@ enum Type {
   Widget,
 }
 
+/// An enum to decide whether or not to create a default implementation of type::new().
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum New {
+  Default,
+  None,
+}
 
 /// The error type used internally by this module.
 #[derive(Debug)]
@@ -108,7 +114,7 @@ type Result<T> = std::result::Result<T, Error>;
 /// auto generated. The reason for this behavior is that
 /// `gui::Handleable` most likely needs customization to accommodate for
 /// custom event handling behavior.
-#[proc_macro_derive(GuiWidget, attributes(GuiType))]
+#[proc_macro_derive(GuiWidget, attributes(GuiType, GuiDefaultNew))]
 pub fn widget(input: TokenStream) -> TokenStream {
   match expand_widget(input) {
     Ok(tokens) => tokens,
@@ -119,23 +125,32 @@ pub fn widget(input: TokenStream) -> TokenStream {
 fn expand_widget(input: TokenStream) -> Result<TokenStream> {
   let string = input.to_string();
   let input = parse_derive_input(&string)?;
-  let type_ = parse_widget_attributes(&input.attrs)?;
-  let tokens = expand_widget_input(&type_, &input)?.parse()?;
+  let (type_, new) = parse_widget_attributes(&input.attrs)?;
+  let tokens = expand_widget_input(&type_, &new, &input)?.parse()?;
   Ok(tokens)
 }
 
 /// Parse the macro's attributes.
-fn parse_widget_attributes(attributes: &[Attribute]) -> Result<Type> {
-  match attributes.len() {
-    // If no attribute is given we default to `Widget`.
-    0 => Ok(Type::Widget),
-    1 => parse_widget_attribute(&attributes[0]),
-    x => Err(Error::from(format!("unsupported number of arguments ({})", x))),
-  }
+fn parse_widget_attributes(attributes: &[Attribute]) -> Result<(Type, New)> {
+  let (opt1, opt2) = attributes
+    .iter()
+    .map(|attr| parse_widget_attribute(attr))
+    .fold(Ok((None, None)), |result1, result2| {
+      debug_assert!(result1.is_ok());
+      match (result1, result2) {
+        (Ok((type1, new1)), Ok((type2, new2))) => Ok((type2.or(type1), new2.or(new1))),
+        (_, Err(x)) => Err(x),
+        _ => unreachable!(),
+      }
+    })?;
+
+  // If no attribute is given we default to emitting code for the type
+  // `Widget` and we do not create a default implementation of new().
+  Ok((opt1.map_or(Type::Widget, |x| x), opt2.map_or(New::None, |x| x)))
 }
 
 /// Parse a single attribute, e.g., #[GuiType = "Widget"].
-fn parse_widget_attribute(attribute: &Attribute) -> Result<Type> {
+fn parse_widget_attribute(attribute: &Attribute) -> Result<(Option<Type>, Option<New>)> {
   // We don't care about the other meta data elements, inner/outer,
   // doc/non-doc, it's all fine by us.
 
@@ -144,25 +159,26 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<Type> {
       match *literal {
         Lit::Str(ref string, style) if style == StrStyle::Cooked => {
           match string.as_ref() {
-            "Container" => Ok(Type::Container),
-            "RootWidget" => Ok(Type::RootWidget),
-            "Widget" => Ok(Type::Widget),
+            "Container" => Ok((Some(Type::Container), None)),
+            "RootWidget" => Ok((Some(Type::RootWidget), None)),
+            "Widget" => Ok((Some(Type::Widget), None)),
             _ => Err(Error::from(format!("unsupported type: {}", string))),
           }
         },
         _ => Err(Error::from(format!("unsupported literal type: {:?}", literal))),
       }
     },
+    MetaItem::Word(ref ident) if ident == "GuiDefaultNew" => Ok((None, Some(New::Default))),
     _ => Err(Error::from(format!("unsupported attribute: {}", attribute.value.name()))),
   }
 }
 
 /// Expand the input with the implementation of the required traits.
-fn expand_widget_input(type_: &Type, input: &DeriveInput) -> Result<Tokens> {
+fn expand_widget_input(type_: &Type, new: &New, input: &DeriveInput) -> Result<Tokens> {
   match input.body {
     Body::Struct(ref body) => {
       check_struct_fields(type_, body.fields())?;
-      Ok(expand_widget_traits(type_, input))
+      Ok(expand_widget_traits(type_, new, input))
     },
     _ => Err(Error::from("#[derive(GuiWidget)] is only defined for structs")),
   }
@@ -200,19 +216,74 @@ fn check_struct_fields(type_: &Type, fields: &[Field]) -> Result<()> {
 }
 
 /// Expand the struct input with the implementation of the required traits.
-// TODO: We could provide a default implementation for #name::new, if
-//       the client does not define it currently.
 // TODO: We could provide a default implementation for gui::Handleable, if
 //       the client does not define it currently.
-fn expand_widget_traits(type_: &Type, input: &DeriveInput) -> Tokens {
+fn expand_widget_traits(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
+  let new_impl = expand_new_impl(type_, new, input);
   let renderer = expand_renderer_trait(input);
   let object = expand_object_trait(type_, input);
   let widget = expand_widget_trait(input);
 
   quote! {
+    #new_impl
     #renderer
     #object
     #widget
+  }
+}
+
+
+/// Expand an implementation of Type::new() for the struct.
+fn expand_new_impl(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
+  let name = &input.ident;
+  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+  match *new {
+    New::Default => {
+      let (args, fields) = match *type_ {
+        Type::Widget => {(
+          quote! {
+            parent_id: ::gui::Id,
+            id: ::gui::Id,
+          },
+          quote! {
+            id: id,
+            parent_id: parent_id
+          }
+        )},
+        Type::Container => {(
+          quote! {
+            parent_id: ::gui::Id,
+            id: ::gui::Id,
+          },
+          quote! {
+            id: id,
+            parent_id: parent_id,
+            children: Vec::new(),
+          }
+        )},
+        Type::RootWidget => {(
+          quote! {
+            id: ::gui::Id,
+          },
+          quote! {
+            id: id,
+            children: Vec::new(),
+          }
+        )},
+      };
+      quote! {
+        #[allow(dead_code)]
+        impl #impl_generics #name #ty_generics #where_clause {
+          pub fn new(#args) -> Self {
+            #name {
+              #fields
+            }
+          }
+        }
+      }
+    },
+    New::None => quote! {},
   }
 }
 
@@ -300,17 +371,19 @@ mod tests {
     }.to_string();
 
     let input = parse_derive_input(&string).unwrap();
-    parse_widget_attributes(&input.attrs)
+    Ok(parse_widget_attributes(&input.attrs)?.0)
   }
 
   #[test]
-  fn default_widget_type_attribute() {
-    let string = quote!{
+  fn default_widget_attributes() {
+    let string = quote! {
       struct Bar { }
     }.to_string();
 
     let input = parse_derive_input(&string).unwrap();
-    assert_eq!(parse_widget_attributes(&input.attrs).unwrap(), Type::Widget);
+    let (type_, new) = parse_widget_attributes(&input.attrs).unwrap();
+    assert_eq!(type_, Type::Widget);
+    assert_eq!(new, New::None);
   }
 
   #[test]
@@ -330,5 +403,29 @@ mod tests {
   #[should_panic(expected = "unsupported type: Cont")]
   fn unsupported_widget_type_attribute() {
     get_type_attribute("Cont").unwrap();
+  }
+
+  #[test]
+  fn default_new() {
+    let string = quote! {
+      #[GuiDefaultNew]
+      struct Bar { }
+    }.to_string();
+
+    let input = parse_derive_input(&string).unwrap();
+    assert_eq!(parse_widget_attributes(&input.attrs).unwrap().1, New::Default);
+  }
+
+  #[test]
+  fn last_attribute_takes_precedence() {
+    let string = quote!{
+      #[GuiType = "Container"]
+      #[GuiType = "Widget"]
+      #[GuiType = "RootWidget"]
+      struct Foo { }
+    }.to_string();
+
+    let input = parse_derive_input(&string).unwrap();
+    assert_eq!(parse_widget_attributes(&input.attrs).unwrap().0, Type::RootWidget);
   }
 }
