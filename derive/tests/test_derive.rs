@@ -50,7 +50,7 @@ impl TestDefaultWidget {
 
 #[derive(Debug, GuiWidget, GuiHandleable)]
 #[GuiType = "Widget"]
-#[GuiDefaultNew]
+#[gui(default_new)]
 struct TestWidget {
   id: Id,
   parent_id: Id,
@@ -83,7 +83,7 @@ impl Handleable for TestContainer {}
 
 #[derive(Debug, GuiWidget, GuiHandleable)]
 #[GuiType = "RootWidget"]
-#[GuiDefaultNew]
+#[gui(default_new)]
 struct TestRootWidget {
   id: Id,
   children: Vec<Id>,

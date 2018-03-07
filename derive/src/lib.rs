@@ -49,6 +49,7 @@ use syn::DeriveInput;
 use syn::Field;
 use syn::Lit;
 use syn::MetaItem;
+use syn::NestedMetaItem;
 use syn::parse_derive_input;
 use syn::StrStyle;
 
@@ -114,7 +115,7 @@ type Result<T> = std::result::Result<T, Error>;
 /// auto generated. The reason for this behavior is that
 /// `gui::Handleable` most likely needs customization to accommodate for
 /// custom event handling behavior.
-#[proc_macro_derive(GuiWidget, attributes(GuiType, GuiDefaultNew))]
+#[proc_macro_derive(GuiWidget, attributes(GuiType, gui))]
 pub fn widget(input: TokenStream) -> TokenStream {
   match expand_widget(input) {
     Ok(tokens) => tokens,
@@ -147,6 +148,38 @@ fn parse_widget_attributes(attributes: &[Attribute]) -> Result<(Type, New)> {
   Ok((opt1.map_or(Type::Widget, |x| x), opt2.map_or(New::None, |x| x)))
 }
 
+/// Parse a single item in a #[gui(list...)] attribute list.
+fn parse_gui_attribute(item: &NestedMetaItem) -> Result<New> {
+  match *item {
+    NestedMetaItem::MetaItem(ref meta_item) => {
+      match *meta_item {
+        MetaItem::Word(ref ident) if ident == "default_new" => Ok(New::Default),
+        _ => Err(Error::from(format!("unsupported attribute: {}", meta_item.name()))),
+      }
+    },
+    NestedMetaItem::Literal(ref literal) => {
+      Err(Error::from(format!("unsupported literal: {:?}", literal)))
+    },
+  }
+}
+
+/// Parse a #[gui(list...)] attribute list.
+fn parse_gui_attributes(list: &[NestedMetaItem]) -> Result<New> {
+  // Right now we only support a single attribute at all (default_new).
+  // So strictly speaking if the first item is a match we are good,
+  // otherwise we error out. However, we do not simply want to silently
+  // ignore other (faulty) attributes, so as to inform the user about
+  // any errors early on.
+  for item in list {
+    parse_gui_attribute(item)?;
+  }
+  if !list.is_empty() {
+    Ok(New::Default)
+  } else {
+    Ok(New::None)
+  }
+}
+
 /// Parse a single attribute, e.g., #[GuiType = "Widget"].
 fn parse_widget_attribute(attribute: &Attribute) -> Result<(Option<Type>, Option<New>)> {
   // We don't care about the other meta data elements, inner/outer,
@@ -166,7 +199,11 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<(Option<Type>, Option
         _ => Ok((None, None)),
       }
     },
-    MetaItem::Word(ref ident) if ident == "GuiDefaultNew" => Ok((None, Some(New::Default))),
+    MetaItem::List(ref ident, ref list) if ident == "gui" => {
+      // Here we have found an attribute of the form #[gui(xxx, yyy,
+      // ...)]. Parse the inner list.
+      Ok((None, Some(parse_gui_attributes(list)?)))
+    },
     _ => Ok((None, None)),
   }
 }
@@ -435,7 +472,7 @@ mod tests {
   #[test]
   fn default_new() {
     let string = quote! {
-      #[GuiDefaultNew]
+      #[gui(default_new)]
       struct Bar { }
     }.to_string();
 
