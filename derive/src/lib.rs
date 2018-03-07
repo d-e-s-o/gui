@@ -216,8 +216,6 @@ fn check_struct_fields(type_: &Type, fields: &[Field]) -> Result<()> {
 }
 
 /// Expand the struct input with the implementation of the required traits.
-// TODO: We could provide a default implementation for gui::Handleable, if
-//       the client does not define it currently.
 fn expand_widget_traits(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
   let new_impl = expand_new_impl(type_, new, input);
   let renderer = expand_renderer_trait(input);
@@ -356,6 +354,37 @@ fn expand_widget_trait(input: &DeriveInput) -> Tokens {
       __R: ::gui::Renderer,
     {
     }
+  }
+}
+
+/// Custom derive functionality for the `gui::Handleable` trait.
+#[proc_macro_derive(GuiHandleable)]
+pub fn handleable(input: TokenStream) -> TokenStream {
+  match expand_handleable(input) {
+    Ok(tokens) => tokens,
+    Err(error) => panic!("{}", error),
+  }
+}
+
+fn expand_handleable(input: TokenStream) -> Result<TokenStream> {
+  let string = input.to_string();
+  let input = parse_derive_input(&string)?;
+  let tokens = expand_handleable_input(&input)?.parse()?;
+  Ok(tokens)
+}
+
+/// Expand the input with the implementation of the required traits.
+fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
+  match input.body {
+    Body::Struct(_) => {
+      let name = &input.ident;
+      let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+      Ok(quote! {
+        impl #impl_generics ::gui::Handleable for #name #ty_generics #where_clause {}
+      })
+    },
+    _ => Err(Error::from("#[derive(GuiHandleable)] is only defined for structs")),
   }
 }
 

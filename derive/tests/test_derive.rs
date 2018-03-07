@@ -32,7 +32,7 @@ use gui::Ui;
 use common::TestRenderer;
 
 
-#[derive(Debug, GuiWidget)]
+#[derive(Debug, GuiWidget, GuiHandleable)]
 struct TestDefaultWidget {
   id: Id,
   parent_id: Id,
@@ -47,18 +47,14 @@ impl TestDefaultWidget {
   }
 }
 
-impl Handleable for TestDefaultWidget {}
 
-
-#[derive(Debug, GuiWidget)]
+#[derive(Debug, GuiWidget, GuiHandleable)]
 #[GuiType = "Widget"]
 #[GuiDefaultNew]
 struct TestWidget {
   id: Id,
   parent_id: Id,
 }
-
-impl Handleable for TestWidget {}
 
 
 #[derive(Debug, GuiWidget)]
@@ -82,15 +78,13 @@ impl TestContainer {
 impl Handleable for TestContainer {}
 
 
-#[derive(Debug, GuiWidget)]
+#[derive(Debug, GuiWidget, GuiHandleable)]
 #[GuiType = "RootWidget"]
 #[GuiDefaultNew]
 struct TestRootWidget {
   id: Id,
   children: Vec<Id>,
 }
-
-impl Handleable for TestRootWidget {}
 
 
 #[test]
