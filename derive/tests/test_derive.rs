@@ -57,6 +57,9 @@ struct TestWidget {
 }
 
 
+// Note that the deny(unused_imports) attribute exists for testing
+// purposes.
+#[deny(unused_imports)]
 #[derive(Debug, GuiWidget)]
 #[GuiType = "Container"]
 struct TestContainer {

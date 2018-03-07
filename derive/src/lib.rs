@@ -136,11 +136,9 @@ fn parse_widget_attributes(attributes: &[Attribute]) -> Result<(Type, New)> {
     .iter()
     .map(|attr| parse_widget_attribute(attr))
     .fold(Ok((None, None)), |result1, result2| {
-      debug_assert!(result1.is_ok());
       match (result1, result2) {
         (Ok((type1, new1)), Ok((type2, new2))) => Ok((type2.or(type1), new2.or(new1))),
-        (_, Err(x)) => Err(x),
-        _ => unreachable!(),
+        (Err(x), _) | (_, Err(x)) => Err(x),
       }
     })?;
 
@@ -165,11 +163,11 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<(Option<Type>, Option
             _ => Err(Error::from(format!("unsupported type: {}", string))),
           }
         },
-        _ => Err(Error::from(format!("unsupported literal type: {:?}", literal))),
+        _ => Ok((None, None)),
       }
     },
     MetaItem::Word(ref ident) if ident == "GuiDefaultNew" => Ok((None, Some(New::Default))),
-    _ => Err(Error::from(format!("unsupported attribute: {}", attribute.value.name()))),
+    _ => Ok((None, None)),
   }
 }
 
