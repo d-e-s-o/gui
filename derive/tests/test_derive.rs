@@ -33,23 +33,6 @@ use common::TestRenderer;
 
 
 #[derive(Debug, GuiWidget, GuiHandleable)]
-struct TestDefaultWidget {
-  id: Id,
-  parent_id: Id,
-}
-
-impl TestDefaultWidget {
-  pub fn new(parent_id: Id, id: Id) -> Self {
-    TestDefaultWidget {
-      id: id,
-      parent_id: parent_id,
-    }
-  }
-}
-
-
-#[derive(Debug, GuiWidget, GuiHandleable)]
-#[GuiType = "Widget"]
 #[gui(default_new)]
 struct TestWidget {
   id: Id,
@@ -60,8 +43,7 @@ struct TestWidget {
 // Note that the deny(unused_imports) attribute exists for testing
 // purposes.
 #[deny(unused_imports)]
-#[derive(Debug, GuiWidget)]
-#[GuiType = "Container"]
+#[derive(Debug, GuiContainer)]
 struct TestContainer {
   id: Id,
   parent_id: Id,
@@ -81,30 +63,13 @@ impl TestContainer {
 impl Handleable for TestContainer {}
 
 
-#[derive(Debug, GuiWidget, GuiHandleable)]
-#[GuiType = "RootWidget"]
+#[derive(Debug, GuiRootWidget, GuiHandleable)]
 #[gui(default_new)]
 struct TestRootWidget {
   id: Id,
   children: Vec<Id>,
 }
 
-
-#[test]
-#[should_panic(expected = "Cannot add an object to a non-container")]
-fn default_type_is_widget() {
-  let mut ui = Ui::<TestRenderer>::new();
-  let r = ui.add_root_widget(|id| {
-    Box::new(TestRootWidget::new(id))
-  });
-  let w = ui.add_widget(r, |parent_id, id| {
-    Box::new(TestDefaultWidget::new(parent_id, id))
-  });
-  // We assume we got a widget. A widget cannot have a child.
-  let _ = ui.add_widget(w, |parent_id, id| {
-    Box::new(TestDefaultWidget::new(parent_id, id))
-  });
-}
 
 #[test]
 #[should_panic(expected = "Cannot add an object to a non-container")]

@@ -47,11 +47,9 @@ use syn::Attribute;
 use syn::Body;
 use syn::DeriveInput;
 use syn::Field;
-use syn::Lit;
 use syn::MetaItem;
 use syn::NestedMetaItem;
 use syn::parse_derive_input;
-use syn::StrStyle;
 
 
 /// An enum representing the various widget types we support to derive from.
@@ -115,37 +113,172 @@ type Result<T> = std::result::Result<T, Error>;
 /// auto generated. The reason for this behavior is that
 /// `gui::Handleable` most likely needs customization to accommodate for
 /// custom event handling behavior.
-#[proc_macro_derive(GuiWidget, attributes(GuiType, gui))]
+///
+/// This macro roughly expands to the following code:
+///
+/// ```rust
+/// # extern crate gui;
+/// # #[derive(Debug)]
+/// # struct TestWidget {
+/// #   id: gui::Id,
+/// #   parent_id: gui::Id,
+/// # }
+/// impl<R> gui::Renderable<R> for TestWidget
+/// where
+///   R: gui::Renderer,
+/// {
+///   fn render(&self, renderer: &R) {
+///     renderer.render(self)
+///   }
+/// }
+///
+/// impl gui::Object for TestWidget {
+///   fn id(&self) -> gui::Id {
+///     self.id
+///   }
+///   fn parent_id(&self) -> Option<gui::Id> {
+///     Some(self.parent_id)
+///   }
+/// }
+///
+/// impl<R> gui::Widget<R> for TestWidget
+/// where
+///   R: gui::Renderer,
+/// {
+/// }
+/// # impl gui::Handleable for TestWidget {}
+/// ```
+#[proc_macro_derive(GuiWidget, attributes(gui))]
 pub fn widget(input: TokenStream) -> TokenStream {
-  match expand_widget(input) {
+  ui_object(&Type::Widget, input)
+}
+
+/// Custom derive functionality for the `gui::Widget` trait for a
+/// container variant.
+///
+/// This macro roughly expands to the following code:
+///
+/// ```rust
+/// # extern crate gui;
+/// # #[derive(Debug)]
+/// # struct TestContainer {
+/// #   id: gui::Id,
+/// #   parent_id: gui::Id,
+/// #   children: Vec<gui::Id>,
+/// # }
+/// impl<R> gui::Renderable<R> for TestContainer
+/// where
+///   R: gui::Renderer,
+/// {
+///   fn render(&self, renderer: &R) {
+///     renderer.render(self)
+///   }
+/// }
+///
+/// impl gui::Object for TestContainer {
+///   fn id(&self) -> gui::Id {
+///     self.id
+///   }
+///   fn parent_id(&self) -> Option<gui::Id> {
+///     Some(self.parent_id)
+///   }
+///   fn add_child(&mut self, id: gui::Id) {
+///     self.children.push(id)
+///   }
+///   fn iter(&self) -> gui::ChildIter {
+///     gui::ChildIter::with_iter(self.children.iter())
+///   }
+/// }
+///
+/// impl<R> gui::Widget<R> for TestContainer
+/// where
+///   R: gui::Renderer,
+/// {
+/// }
+/// # impl gui::Handleable for TestContainer {}
+#[proc_macro_derive(GuiContainer, attributes(gui))]
+pub fn container(input: TokenStream) -> TokenStream {
+  ui_object(&Type::Container, input)
+}
+
+/// Custom derive functionality for the `gui::Widget` trait for a root
+/// widget variant.
+///
+/// This macro roughly expands to the following code:
+///
+/// ```rust
+/// # extern crate gui;
+/// # #[derive(Debug)]
+/// # struct TestRootWidget {
+/// #   id: gui::Id,
+/// #   children: Vec<gui::Id>,
+/// # }
+/// impl<R> gui::Renderable<R> for TestRootWidget
+/// where
+///   R: gui::Renderer,
+/// {
+///   fn render(&self, renderer: &R) {
+///     renderer.render(self)
+///   }
+/// }
+///
+/// impl gui::Object for TestRootWidget {
+///   fn id(&self) -> gui::Id {
+///     self.id
+///   }
+///   fn parent_id(&self) -> Option<gui::Id> {
+///     None
+///   }
+///   fn add_child(&mut self, id: gui::Id) {
+///     self.children.push(id)
+///   }
+///   fn iter(&self) -> gui::ChildIter {
+///     gui::ChildIter::with_iter(self.children.iter())
+///   }
+/// }
+///
+/// impl<R> gui::Widget<R> for TestRootWidget
+/// where
+///   R: gui::Renderer,
+/// {
+/// }
+/// # impl gui::Handleable for TestRootWidget {}
+/// ```
+#[proc_macro_derive(GuiRootWidget, attributes(gui))]
+pub fn root_widget(input: TokenStream) -> TokenStream {
+  ui_object(&Type::RootWidget, input)
+}
+
+fn ui_object(type_: &Type, input: TokenStream) -> TokenStream {
+  match expand_ui_object(type_, input) {
     Ok(tokens) => tokens,
     Err(error) => panic!("{}", error),
   }
 }
 
-fn expand_widget(input: TokenStream) -> Result<TokenStream> {
+fn expand_ui_object(type_: &Type, input: TokenStream) -> Result<TokenStream> {
   let string = input.to_string();
   let input = parse_derive_input(&string)?;
-  let (type_, new) = parse_widget_attributes(&input.attrs)?;
+  let new = parse_ui_object_attributes(&input.attrs)?;
   let tokens = expand_widget_input(&type_, &new, &input)?.parse()?;
   Ok(tokens)
 }
 
 /// Parse the macro's attributes.
-fn parse_widget_attributes(attributes: &[Attribute]) -> Result<(Type, New)> {
-  let (opt1, opt2) = attributes
+fn parse_ui_object_attributes(attributes: &[Attribute]) -> Result<New> {
+  let new = attributes
     .iter()
     .map(|attr| parse_widget_attribute(attr))
-    .fold(Ok((None, None)), |result1, result2| {
+    .fold(Ok(None), |result1, result2| {
       match (result1, result2) {
-        (Ok((type1, new1)), Ok((type2, new2))) => Ok((type2.or(type1), new2.or(new1))),
+        (Ok(new1), Ok(new2)) => Ok(new2.or(new1)),
         (Err(x), _) | (_, Err(x)) => Err(x),
       }
     })?;
 
-  // If no attribute is given we default to emitting code for the type
-  // `Widget` and we do not create a default implementation of new().
-  Ok((opt1.map_or(Type::Widget, |x| x), opt2.map_or(New::None, |x| x)))
+  // If no attribute is given we do not create a default implementation
+  // of new().
+  Ok(new.map_or(New::None, |x| x))
 }
 
 /// Parse a single item in a #[gui(list...)] attribute list.
@@ -181,30 +314,17 @@ fn parse_gui_attributes(list: &[NestedMetaItem]) -> Result<New> {
 }
 
 /// Parse a single attribute, e.g., #[GuiType = "Widget"].
-fn parse_widget_attribute(attribute: &Attribute) -> Result<(Option<Type>, Option<New>)> {
+fn parse_widget_attribute(attribute: &Attribute) -> Result<Option<New>> {
   // We don't care about the other meta data elements, inner/outer,
   // doc/non-doc, it's all fine by us.
 
   match attribute.value {
-    MetaItem::NameValue(ref ident, ref literal) if ident == "GuiType" => {
-      match *literal {
-        Lit::Str(ref string, style) if style == StrStyle::Cooked => {
-          match string.as_ref() {
-            "Container" => Ok((Some(Type::Container), None)),
-            "RootWidget" => Ok((Some(Type::RootWidget), None)),
-            "Widget" => Ok((Some(Type::Widget), None)),
-            _ => Err(Error::from(format!("unsupported type: {}", string))),
-          }
-        },
-        _ => Ok((None, None)),
-      }
-    },
     MetaItem::List(ref ident, ref list) if ident == "gui" => {
       // Here we have found an attribute of the form #[gui(xxx, yyy,
       // ...)]. Parse the inner list.
-      Ok((None, Some(parse_gui_attributes(list)?)))
+      Ok(Some(parse_gui_attributes(list)?))
     },
-    _ => Ok((None, None)),
+    _ => Ok(None),
   }
 }
 
@@ -393,6 +513,26 @@ fn expand_widget_trait(input: &DeriveInput) -> Tokens {
 }
 
 /// Custom derive functionality for the `gui::Handleable` trait.
+///
+/// Using this macro a default implementation of the `gui::Handleable`
+/// trait can be created. This functionality is mostly used in quick
+/// prototyping/testing scenarios, because most custom widgets will also
+/// need a custom event handler.
+///
+/// This macro roughly expands to the following code:
+///
+/// ```rust
+/// # extern crate gui;
+/// # #[macro_use]
+/// # extern crate gui_derive;
+/// # #[derive(Debug, GuiWidget)]
+/// # struct TestWidget {
+/// #   id: gui::Id,
+/// #   parent_id: gui::Id,
+/// # }
+/// impl gui::Handleable for TestWidget {}
+/// # fn main() {}
+/// ```
 #[proc_macro_derive(GuiHandleable)]
 pub fn handleable(input: TokenStream) -> TokenStream {
   match expand_handleable(input) {
@@ -428,16 +568,6 @@ fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
 mod tests {
   use super::*;
 
-  fn get_type_attribute(string: &str) -> Result<Type> {
-    let string = quote!{
-      #[GuiType = #string]
-      struct Foo { }
-    }.to_string();
-
-    let input = parse_derive_input(&string).unwrap();
-    Ok(parse_widget_attributes(&input.attrs)?.0)
-  }
-
   #[test]
   fn default_widget_attributes() {
     let string = quote! {
@@ -445,28 +575,8 @@ mod tests {
     }.to_string();
 
     let input = parse_derive_input(&string).unwrap();
-    let (type_, new) = parse_widget_attributes(&input.attrs).unwrap();
-    assert_eq!(type_, Type::Widget);
+    let new = parse_ui_object_attributes(&input.attrs).unwrap();
     assert_eq!(new, New::None);
-  }
-
-  #[test]
-  fn widget_type_attribute() {
-    let types = vec![
-      ("Container", Type::Container),
-      ("RootWidget", Type::RootWidget),
-      ("Widget", Type::Widget),
-    ];
-    for (string, expected_type) in types {
-      let type_ = get_type_attribute(string).unwrap();
-      assert_eq!(type_, expected_type);
-    }
-  }
-
-  #[test]
-  #[should_panic(expected = "unsupported type: Cont")]
-  fn unsupported_widget_type_attribute() {
-    get_type_attribute("Cont").unwrap();
   }
 
   #[test]
@@ -477,19 +587,6 @@ mod tests {
     }.to_string();
 
     let input = parse_derive_input(&string).unwrap();
-    assert_eq!(parse_widget_attributes(&input.attrs).unwrap().1, New::Default);
-  }
-
-  #[test]
-  fn last_attribute_takes_precedence() {
-    let string = quote!{
-      #[GuiType = "Container"]
-      #[GuiType = "Widget"]
-      #[GuiType = "RootWidget"]
-      struct Foo { }
-    }.to_string();
-
-    let input = parse_derive_input(&string).unwrap();
-    assert_eq!(parse_widget_attributes(&input.attrs).unwrap().0, Type::RootWidget);
+    assert_eq!(parse_ui_object_attributes(&input.attrs).unwrap(), New::Default);
   }
 }
