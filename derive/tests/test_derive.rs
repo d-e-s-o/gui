@@ -25,6 +25,9 @@ extern crate gui_derive;
 
 mod common;
 
+use std::fmt::Debug;
+use std::marker::PhantomData;
+
 use gui::Handleable;
 use gui::Id;
 use gui::Ui;
@@ -44,20 +47,11 @@ struct TestWidget {
 // purposes.
 #[deny(unused_imports)]
 #[derive(Debug, GuiContainer)]
+#[gui(default_new)]
 struct TestContainer {
   id: Id,
   parent_id: Id,
   children: Vec<Id>,
-}
-
-impl TestContainer {
-  pub fn new(parent_id: Id, id: Id) -> Self {
-    TestContainer {
-      id: id,
-      parent_id: parent_id,
-      children: Vec::new(),
-    }
-  }
 }
 
 impl Handleable for TestContainer {}
@@ -68,6 +62,32 @@ impl Handleable for TestContainer {}
 struct TestRootWidget {
   id: Id,
   children: Vec<Id>,
+}
+
+
+#[derive(Debug, GuiContainer, GuiHandleable)]
+struct TestContainerT<T>
+where
+  T: 'static + Debug,
+{
+  id: Id,
+  parent_id: Id,
+  children: Vec<Id>,
+  _data: PhantomData<T>,
+}
+
+impl<T> TestContainerT<T>
+where
+  T: 'static + Debug,
+{
+  pub fn new(parent_id: Id, id: Id) -> Self {
+    TestContainerT {
+      id: id,
+      parent_id: parent_id,
+      children: Vec::new(),
+      _data: PhantomData,
+    }
+  }
 }
 
 
@@ -94,6 +114,20 @@ fn container_type_yields_container() {
   });
   let c = ui.add_widget(r, |parent_id, id| {
     Box::new(TestContainer::new(parent_id, id))
+  });
+  let _ = ui.add_widget(c, |parent_id, id| {
+    Box::new(TestWidget::new(parent_id, id))
+  });
+}
+
+#[test]
+fn generic_container() {
+  let mut ui = Ui::<TestRenderer>::new();
+  let r = ui.add_root_widget(|id| {
+    Box::new(TestRootWidget::new(id))
+  });
+  let c = ui.add_widget(r, |parent_id, id| {
+    Box::new(TestContainerT::<u32>::new(parent_id, id))
   });
   let _ = ui.add_widget(c, |parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))

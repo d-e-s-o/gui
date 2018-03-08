@@ -47,8 +47,21 @@ use syn::Attribute;
 use syn::Body;
 use syn::DeriveInput;
 use syn::Field;
+use syn::Generics;
+use syn::Ident;
 use syn::MetaItem;
 use syn::NestedMetaItem;
+use syn::Path;
+use syn::PathParameters;
+use syn::PathSegment;
+use syn::PolyTraitRef;
+use syn::TraitBoundModifier;
+use syn::Ty;
+use syn::TyParam;
+use syn::TyParamBound;
+use syn::WhereBoundPredicate;
+use syn::WhereClause;
+use syn::WherePredicate::BoundPredicate;
 use syn::parse_derive_input;
 
 
@@ -443,13 +456,12 @@ fn expand_new_impl(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
 /// Expand an implementation for the `gui::Renderer` trait.
 fn expand_renderer_trait(input: &DeriveInput) -> Tokens {
   let name = &input.ident;
-  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+  let (_, ty_generics, _) = input.generics.split_for_impl();
+  let impl_generics = extend_generic_impl(&input.generics, Ident::new("__R"));
+  let where_clause = extend_where_clause(&input.generics, Ident::new("__R"));
 
   quote! {
-    impl<__R> #impl_generics ::gui::Renderable<__R> for #name #ty_generics #where_clause
-    where
-      __R: ::gui::Renderer,
-    {
+    impl #impl_generics ::gui::Renderable<__R> for #name #ty_generics #where_clause {
       fn render(&self, renderer: &__R) {
         renderer.render(self)
       }
@@ -501,15 +513,71 @@ fn expand_object_trait(type_: &Type, input: &DeriveInput) -> Tokens {
 /// Expand an implementation for the `gui::Widget` trait.
 fn expand_widget_trait(input: &DeriveInput) -> Tokens {
   let name = &input.ident;
-  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+  let (_, ty_generics, _) = input.generics.split_for_impl();
+  let impl_generics = extend_generic_impl(&input.generics, Ident::new("__R"));
+  let where_clause = extend_where_clause(&input.generics, Ident::new("__R"));
 
   quote! {
-    impl<__R> #impl_generics ::gui::Widget<__R> for #name #ty_generics #where_clause
-    where
-      __R: ::gui::Renderer,
-    {
-    }
+    impl #impl_generics ::gui::Widget<__R> for #name #ty_generics #where_clause {}
   }
+}
+
+/// Extract an extended generic impl of the given Generics object.
+fn extend_generic_impl(generics: &Generics, ident: Ident) -> Generics {
+  let ty_param = TyParam {
+    attrs: Vec::new(),
+    ident: ident,
+    bounds: Vec::new(),
+    default: None,
+  };
+
+  let mut impl_generics = generics.clone();
+  impl_generics.ty_params.push(ty_param);
+  impl_generics
+}
+
+/// Extract an extended where clause of the given Generics object.
+fn extend_where_clause(generics: &Generics, ident: Ident) -> WhereClause {
+  let predicate = BoundPredicate(WhereBoundPredicate {
+    bound_lifetimes: Vec::new(),
+    bounded_ty: Ty::Path(
+      None,
+      Path {
+        global: false,
+        segments: vec![
+          PathSegment {
+            ident: ident,
+            parameters: PathParameters::AngleBracketed(Default::default()),
+          },
+        ],
+      },
+    ),
+    bounds: vec![
+      TyParamBound::Trait(
+        PolyTraitRef {
+          bound_lifetimes: Vec::new(),
+          trait_ref: Path {
+            global: true,
+            segments: vec![
+              PathSegment {
+                ident: Ident::new("gui"),
+                parameters: PathParameters::AngleBracketed(Default::default()),
+              },
+              PathSegment {
+                ident: Ident::new("Renderer"),
+                parameters: PathParameters::AngleBracketed(Default::default()),
+              },
+            ],
+          },
+        },
+        TraitBoundModifier::None,
+      ),
+    ],
+  });
+
+  let mut where_clause = generics.where_clause.clone();
+  where_clause.predicates.push(predicate);
+  where_clause
 }
 
 /// Custom derive functionality for the `gui::Handleable` trait.
@@ -567,6 +635,62 @@ fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn impl_extension_no_generics() {
+    let string = quote!{
+      struct Bar { }
+    }.to_string();
+
+    let input = parse_derive_input(&string).unwrap();
+    let impl_generics = extend_generic_impl(&input.generics, Ident::new("Foo"));
+    let tokens = quote!{ #impl_generics };
+
+    assert_eq!(tokens.to_string(), "< Foo >");
+  }
+
+  #[test]
+  fn generic_impl_extension() {
+    let string = quote!{
+      struct Bar<__T> { }
+    }.to_string();
+
+    let input = parse_derive_input(&string).unwrap();
+    let impl_generics = extend_generic_impl(&input.generics, Ident::new("Y"));
+    let tokens = quote!{ #impl_generics };
+
+    assert_eq!(tokens.to_string(), "< __T , Y >");
+  }
+
+  #[test]
+  fn where_clause_extension_no_generics() {
+    let string = quote!{
+      struct Bar { }
+    }.to_string();
+
+    let input = parse_derive_input(&string).unwrap();
+    let where_clause = extend_where_clause(&input.generics, Ident::new("__X"));
+    let tokens = quote!{ #where_clause };
+
+    assert_eq!(tokens.to_string(), "where __X : :: gui :: Renderer");
+  }
+
+  #[test]
+  fn where_clause_extension() {
+    let string = quote!{
+      struct Bar<'a, T>
+      where
+        T: Debug,
+      {
+      }
+    }.to_string();
+
+    let input = parse_derive_input(&string).unwrap();
+    let where_clause = extend_where_clause(&input.generics, Ident::new("Test"));
+    let tokens = quote!{ #where_clause };
+
+    assert_eq!(tokens.to_string(), "where T : Debug , Test : :: gui :: Renderer");
+  }
 
   #[test]
   fn default_widget_attributes() {
