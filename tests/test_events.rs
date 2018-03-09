@@ -21,6 +21,8 @@
 #![deny(warnings)]
 
 extern crate gui;
+#[macro_use]
+extern crate gui_derive;
 
 mod common;
 

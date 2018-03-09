@@ -14,4 +14,6 @@ A generic UI library/framework.
 [workspace]
 members = ["derive"]
 
-[dependencies]
+[dev-dependencies.gui-derive]
+version = "0.0"
+path = "derive"

@@ -21,161 +21,32 @@ extern crate gui;
 
 use std::any::Any;
 
-use gui::ChildIter;
-use gui::Handleable;
 use gui::Id;
-use gui::Object;
-use gui::Renderable;
 use gui::Renderer;
-use gui::Widget;
 
 
-#[derive(Debug)]
+#[derive(Debug, GuiRootWidget, GuiHandleable)]
+#[gui(default_new)]
 pub struct TestRootWidget {
   id: Id,
   children: Vec<Id>,
 }
 
-impl TestRootWidget {
-  pub fn new(id: Id) -> Self {
-    TestRootWidget {
-      id: id,
-      children: Vec::new(),
-    }
-  }
-}
 
-impl Object for TestRootWidget {
-  fn id(&self) -> Id {
-    self.id
-  }
-
-  fn parent_id(&self) -> Option<Id> {
-    None
-  }
-
-  fn add_child(&mut self, id: Id) {
-    self.children.push(id)
-  }
-
-  fn iter(&self) -> ChildIter {
-    ChildIter::with_iter(self.children.iter())
-  }
-}
-
-impl<R> Renderable<R> for TestRootWidget
-where
-  R: Renderer,
-{
-  fn render(&self, renderer: &R) {
-    renderer.render(self)
-  }
-}
-
-impl Handleable for TestRootWidget {}
-
-impl<R> Widget<R> for TestRootWidget
-where
-  R: Renderer,
-{
-}
-
-
-#[derive(Debug)]
+#[derive(Debug, GuiWidget, GuiHandleable)]
+#[gui(default_new)]
 pub struct TestWidget {
   id: Id,
   parent_id: Id,
 }
 
-impl TestWidget {
-  pub fn new(parent_id: Id, id: Id) -> Self {
-    TestWidget {
-      id: id,
-      parent_id: parent_id,
-    }
-  }
-}
 
-impl Object for TestWidget {
-  fn id(&self) -> Id {
-    self.id
-  }
-
-  fn parent_id(&self) -> Option<Id> {
-    Some(self.parent_id)
-  }
-}
-
-impl<R> Renderable<R> for TestWidget
-where
-  R: Renderer,
-{
-  fn render(&self, renderer: &R) {
-    renderer.render(self)
-  }
-}
-
-impl Handleable for TestWidget {}
-
-impl<R> Widget<R> for TestWidget
-where
-  R: Renderer,
-{
-}
-
-
-#[allow(unused)]
-#[derive(Debug)]
+#[derive(Debug, GuiContainer, GuiHandleable)]
+#[gui(default_new)]
 pub struct TestContainer {
   id: Id,
   parent_id: Id,
   children: Vec<Id>,
-}
-
-impl TestContainer {
-  #[allow(unused)]
-  pub fn new(parent_id: Id, id: Id) -> Self {
-    TestContainer {
-      id: id,
-      parent_id: parent_id,
-      children: Vec::new(),
-    }
-  }
-}
-
-impl Object for TestContainer {
-  fn id(&self) -> Id {
-    self.id
-  }
-
-  fn parent_id(&self) -> Option<Id> {
-    Some(self.parent_id)
-  }
-
-  fn add_child(&mut self, id: Id) {
-    self.children.push(id)
-  }
-
-  fn iter(&self) -> ChildIter {
-    ChildIter::with_iter(self.children.iter())
-  }
-}
-
-impl<R> Renderable<R> for TestContainer
-where
-  R: Renderer,
-{
-  fn render(&self, renderer: &R) {
-    renderer.render(self)
-  }
-}
-
-impl Handleable for TestContainer {}
-
-impl<R> Widget<R> for TestContainer
-where
-  R: Renderer,
-{
 }
 
 
