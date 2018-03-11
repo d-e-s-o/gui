@@ -154,3 +154,20 @@ fn event_handling_with_focus() {
 
   assert!(ui.is_focused(w1));
 }
+
+#[test]
+fn quit_event() {
+  let mut ui = Ui::<TestRenderer>::new();
+  let r = ui.add_root_widget(|id| {
+    Box::new(TestRootWidget::new(id))
+  });
+  let c1 = ui.add_widget(r, |parent_id, id| {
+    Box::new(TestContainer::new(parent_id, id))
+  });
+  let _ = ui.add_widget(c1, |parent_id, id| {
+    Box::new(TestWidget::new(parent_id, id))
+  });
+
+  let result = ui.handle(UiEvent::Quit);
+  assert_eq!(result.unwrap(), UiEvent::Quit);
+}

@@ -169,6 +169,7 @@ where
         }
       },
       UiEvent::Focus(id) => self.handle_focus_event(id),
+      UiEvent::Quit => self.handle_quit_event(),
     }
   }
 
@@ -187,6 +188,11 @@ where
   fn handle_focus_event(&self, id: Id) -> Option<UiEvent> {
     self.focus(id);
     None
+  }
+
+  /// Handle a quit event, i.e., one requesting the application to exit.
+  fn handle_quit_event(&self) -> Option<UiEvent> {
+    Some(UiEvent::Quit)
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
@@ -211,6 +217,7 @@ where
           }
         },
         UiEvent::Focus(id) => self.handle_focus_event(id),
+        UiEvent::Quit => self.handle_quit_event(),
       }
     } else {
       // The event got handled.

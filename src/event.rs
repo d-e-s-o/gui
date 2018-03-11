@@ -55,6 +55,8 @@ pub enum UiEvent {
   Event(Event),
   /// The widget with the given `Id` should be focused.
   Focus(Id),
+  /// A request to quit the application has been made.
+  Quit,
 }
 
 /// A convenience conversion from `Event` to `UiEvent`.
