@@ -22,6 +22,9 @@ use std::any::Any;
 
 /// An abstraction for objects used for rendering widgets.
 pub trait Renderer {
+  /// Perform some pre-render step.
+  fn pre_render(&self) {}
+
   /// Render an object.
   ///
   /// Objects are represented as `Any` and need to be cast into the type
@@ -29,4 +32,7 @@ pub trait Renderer {
   // TODO: Ideally we would like to have a double dispatch mechanism for
   //       determining the object to render.
   fn render(&self, object: &Any);
+
+  /// Perform some post-render step.
+  fn post_render(&self) {}
 }

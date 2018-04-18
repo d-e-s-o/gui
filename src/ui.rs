@@ -134,7 +134,9 @@ where
     // when rendering, because we need to take parent-child
     // relationships into account in case widgets cover each other.
     if let Some(root) = self.widgets.first() {
-      self.render_all(&root.borrow(), renderer)
+      renderer.pre_render();
+      self.render_all(&root.borrow(), renderer);
+      renderer.post_render();
     }
   }
 

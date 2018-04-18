@@ -37,6 +37,8 @@ use common::TestWidget;
 
 #[derive(Debug)]
 struct CountingRenderer {
+  pre_render_count: Cell<u64>,
+  post_render_count: Cell<u64>,
   widget_render_count: Cell<u64>,
   root_widget_render_count: Cell<u64>,
   total_render_count: Cell<u64>,
@@ -45,6 +47,8 @@ struct CountingRenderer {
 impl CountingRenderer {
   fn new() -> Self {
     CountingRenderer {
+      pre_render_count: Cell::new(0),
+      post_render_count: Cell::new(0),
       widget_render_count: Cell::new(0),
       root_widget_render_count: Cell::new(0),
       total_render_count: Cell::new(0),
@@ -53,6 +57,10 @@ impl CountingRenderer {
 }
 
 impl Renderer for CountingRenderer {
+  fn pre_render(&self) {
+    self.pre_render_count.set(self.pre_render_count.get() + 1);
+  }
+
   fn render(&self, object: &Any) {
     if object.downcast_ref::<TestRootWidget>().is_some() {
       self.root_widget_render_count.set(
@@ -67,6 +75,10 @@ impl Renderer for CountingRenderer {
     self.total_render_count.set(
       self.total_render_count.get() + 1,
     );
+  }
+
+  fn post_render(&self) {
+    self.post_render_count.set(self.post_render_count.get() + 1);
   }
 }
 
@@ -87,6 +99,8 @@ fn render_is_called_for_each_widget() {
 
   ui.render(&renderer);
 
+  assert_eq!(renderer.pre_render_count.get(), 1);
+  assert_eq!(renderer.post_render_count.get(), 1);
   assert_eq!(renderer.root_widget_render_count.get(), 1);
   assert_eq!(renderer.widget_render_count.get(), 2);
   assert_eq!(renderer.total_render_count.get(), 3);
