@@ -162,16 +162,15 @@ where
   where
     E: Into<UiEvent>,
   {
-    let event = event.into();
-    match event {
+    let ui_event = event.into();
+    match ui_event {
       UiEvent::Event(event) => {
         match event {
           Event::KeyUp(_) |
           Event::KeyDown(_) => self.handle_key_event(event),
         }
       },
-      UiEvent::Focus(id) => self.handle_focus_event(id),
-      UiEvent::Quit => self.handle_quit_event(),
+      _ => self.handle_ui_specific_event(ui_event),
     }
   }
 
@@ -218,12 +217,20 @@ where
             Some(event.into())
           }
         },
-        UiEvent::Focus(id) => self.handle_focus_event(id),
-        UiEvent::Quit => self.handle_quit_event(),
+        _ => self.handle_ui_specific_event(ui_event),
       }
     } else {
       // The event got handled.
       None
+    }
+  }
+
+  /// Handle a UI specific event.
+  fn handle_ui_specific_event(&self, event: UiEvent) -> Option<UiEvent> {
+    match event {
+      UiEvent::Focus(id) => self.handle_focus_event(id),
+      UiEvent::Quit => self.handle_quit_event(),
+      UiEvent::Event(_) => unreachable!(),
     }
   }
 
