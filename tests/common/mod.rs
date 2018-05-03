@@ -20,33 +20,155 @@
 extern crate gui;
 
 use std::any::Any;
+use std::fmt::Debug;
+use std::fmt::Formatter;
+use std::fmt::Result;
+use std::ops::Deref;
 
+use gui::Event;
+use gui::Handleable;
 use gui::Id;
 use gui::Renderer;
+use gui::UiEvent;
 
 
-#[derive(Debug, GuiRootWidget, GuiHandleable)]
-#[gui(default_new)]
+type HandlerBox = Box<Fn(Event) -> Option<UiEvent>>;
+
+struct Handler(HandlerBox);
+
+impl Debug for Handler {
+  fn fmt(&self, f: &mut Formatter) -> Result {
+    write!(f, "common::Handler")
+  }
+}
+
+impl Deref for Handler {
+  type Target = HandlerBox;
+
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+
+#[derive(Debug, GuiRootWidget)]
 pub struct TestRootWidget {
   id: Id,
   children: Vec<Id>,
+  handler: Option<Handler>,
+}
+
+impl TestRootWidget {
+  pub fn new(id: Id) -> Self {
+    TestRootWidget {
+      id: id,
+      children: Vec::new(),
+      handler: None,
+    }
+  }
+
+  #[allow(unused)]
+  pub fn with_handler<F>(id: Id, handler: F) -> Self
+  where
+    F: 'static + Fn(Event) -> Option<UiEvent>,
+  {
+    TestRootWidget {
+      id: id,
+      children: Vec::new(),
+      handler: Some(Handler(Box::new(handler))),
+    }
+  }
+}
+
+impl Handleable for TestRootWidget {
+  fn handle(&mut self, event: Event) -> Option<UiEvent> {
+    match self.handler {
+      Some(ref handler) => handler(event),
+      None => Some(event.into()),
+    }
+  }
 }
 
 
-#[derive(Debug, GuiWidget, GuiHandleable)]
-#[gui(default_new)]
+#[derive(Debug, GuiWidget)]
 pub struct TestWidget {
   id: Id,
   parent_id: Id,
+  handler: Option<Handler>,
+}
+
+impl TestWidget {
+  pub fn new(parent_id: Id, id: Id) -> Self {
+    TestWidget {
+      id: id,
+      parent_id: parent_id,
+      handler: None,
+    }
+  }
+
+  #[allow(unused)]
+  pub fn with_handler<F>(parent_id: Id, id: Id, handler: F) -> Self
+  where
+    F: 'static + Fn(Event) -> Option<UiEvent>,
+  {
+    TestWidget {
+      id: id,
+      parent_id: parent_id,
+      handler: Some(Handler(Box::new(handler))),
+    }
+  }
+}
+
+impl Handleable for TestWidget {
+  fn handle(&mut self, event: Event) -> Option<UiEvent> {
+    match self.handler {
+      Some(ref handler) => handler(event),
+      None => Some(event.into()),
+    }
+  }
 }
 
 
-#[derive(Debug, GuiContainer, GuiHandleable)]
-#[gui(default_new)]
+#[derive(Debug, GuiContainer)]
 pub struct TestContainer {
   id: Id,
   parent_id: Id,
   children: Vec<Id>,
+  handler: Option<Handler>,
+}
+
+impl TestContainer {
+  #[allow(unused)]
+  pub fn new(parent_id: Id, id: Id) -> Self {
+    TestContainer {
+      id: id,
+      parent_id: parent_id,
+      children: Vec::new(),
+      handler: None,
+    }
+  }
+
+  #[allow(unused)]
+  pub fn with_handler<F>(parent_id: Id, id: Id, handler: F) -> Self
+  where
+    F: 'static + Fn(Event) -> Option<UiEvent>,
+  {
+    TestContainer {
+      id: id,
+      parent_id: parent_id,
+      children: Vec::new(),
+      handler: Some(Handler(Box::new(handler))),
+    }
+  }
+}
+
+impl Handleable for TestContainer {
+  fn handle(&mut self, event: Event) -> Option<UiEvent> {
+    match self.handler {
+      Some(ref handler) => handler(event),
+      None => Some(event.into()),
+    }
+  }
 }
 
 

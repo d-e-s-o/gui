@@ -27,83 +27,15 @@ extern crate gui_derive;
 mod common;
 
 use gui::Event;
-use gui::Handleable;
 use gui::Id;
 use gui::Key;
-use gui::Object;
-use gui::Renderable;
-use gui::Renderer;
 use gui::Ui;
 use gui::UiEvent;
-use gui::Widget;
 
 use common::TestContainer;
 use common::TestRenderer;
 use common::TestRootWidget;
 use common::TestWidget;
-
-
-#[derive(Debug)]
-struct TestEventWidget {
-  id: Id,
-  parent_id: Id,
-  to_focus: Option<Id>,
-}
-
-impl TestEventWidget {
-  fn new(parent_id: Id, id: Id, to_focus: Option<Id>) -> Self {
-    TestEventWidget {
-      id: id,
-      parent_id: parent_id,
-      to_focus: to_focus,
-    }
-  }
-}
-
-impl<R> Renderable<R> for TestEventWidget
-where
-  R: Renderer,
-{
-  fn render(&self, renderer: &R) {
-    renderer.render(self)
-  }
-}
-
-impl Handleable for TestEventWidget {
-  fn handle(&mut self, event: Event) -> Option<UiEvent> {
-    Some(match event {
-      Event::KeyDown(key) => {
-        match key {
-          Key::Char('a') => {
-            if let Some(id) = self.to_focus {
-              UiEvent::Focus(id)
-            } else {
-              event.into()
-            }
-          },
-          _ => event.into(),
-        }
-      },
-      _ => event.into(),
-    })
-  }
-}
-
-impl Object for TestEventWidget {
-  fn id(&self) -> Id {
-    self.id
-  }
-
-  fn parent_id(&self) -> Option<Id> {
-    Some(self.parent_id)
-  }
-}
-
-impl<R> Widget<R> for TestEventWidget
-where
-  R: Renderer,
-{
-}
 
 
 #[test]
@@ -131,6 +63,24 @@ fn events_bubble_up_when_unhandled() {
   assert_eq!(result.unwrap(), event.into());
 }
 
+fn key_handler(event: Event, to_focus: Option<Id>) -> Option<UiEvent> {
+  Some(match event {
+    Event::KeyDown(key) => {
+      match key {
+        Key::Char('a') => {
+          if let Some(id) = to_focus {
+            UiEvent::Focus(id)
+          } else {
+            event.into()
+          }
+        },
+        _ => event.into(),
+      }
+    },
+    _ => event.into(),
+  })
+}
+
 #[test]
 fn event_handling_with_focus() {
   let mut ui = Ui::<TestRenderer>::new();
@@ -138,10 +88,14 @@ fn event_handling_with_focus() {
     Box::new(TestRootWidget::new(id))
   });
   let w1 = ui.add_widget(r, |parent_id, id| {
-    Box::new(TestEventWidget::new(parent_id, id, None))
+    Box::new(TestWidget::with_handler(parent_id, id, |e| {
+      key_handler(e, None)
+    }))
   });
   let w2 = ui.add_widget(r, |parent_id, id| {
-    Box::new(TestEventWidget::new(parent_id, id, Some(w1)))
+    Box::new(TestWidget::with_handler(parent_id, id, move |e| {
+      key_handler(e, Some(w1))
+    }))
   });
 
   ui.focus(w2);
