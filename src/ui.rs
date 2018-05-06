@@ -168,6 +168,7 @@ where
         match event {
           Event::KeyUp(_) |
           Event::KeyDown(_) => self.handle_key_event(event),
+          Event::Custom(_) => self.handle_custom_event(event),
         }
       },
       _ => self.handle_ui_specific_event(ui_event),
@@ -183,6 +184,22 @@ where
     } else {
       None
     }
+  }
+
+  /// Handle a custom event.
+  fn handle_custom_event(&self, event: Event) -> Option<UiEvent> {
+    if let Some(id) = self.focused.get() {
+      let mut widget = self.lookup_mut(id);
+      self.handle_event(widget, event)
+    } else {
+      None
+    }
+  }
+
+  /// Handle a custom event directed at a particular widget.
+  fn handle_directed_custom_event(&self, id: Id, event: Event) -> Option<UiEvent> {
+    let widget = self.lookup_mut(id);
+    self.handle_event(widget, event)
   }
 
   /// Handle a focus event for the widget with the given `Id`.
@@ -229,6 +246,10 @@ where
   fn handle_ui_specific_event(&self, event: UiEvent) -> Option<UiEvent> {
     match event {
       UiEvent::Focus(id) => self.handle_focus_event(id),
+      UiEvent::Custom(id, any) => {
+        let event = Event::Custom(any);
+        self.handle_directed_custom_event(id, event)
+      },
       UiEvent::Quit => self.handle_quit_event(),
       UiEvent::Event(_) => unreachable!(),
     }

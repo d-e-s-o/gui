@@ -17,6 +17,8 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use std::any::Any;
+
 use ui::Id;
 
 
@@ -31,7 +33,7 @@ pub enum Key {
 
 
 /// An event that can be handled by a `Handleable`.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum Event {
   /// A key was pressed.
   ///
@@ -45,16 +47,24 @@ pub enum Event {
   /// this widget to decide whether the event gets propagated further
   /// up.
   KeyUp(Key),
+  /// A custom event that can contain arbitrary data.
+  Custom(Box<Any>),
 }
 
 
 /// An event that the `Ui` can process.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum UiEvent {
   /// An `Event` that can be handled by a `Handleable`.
   Event(Event),
   /// The widget with the given `Id` should be focused.
   Focus(Id),
+  /// A custom event that can contain arbitrary data.
+  ///
+  /// Custom events are destined for a particular widget, described by
+  /// the given `Id`. That is the only widget that will receive the
+  /// event.
+  Custom(Id, Box<Any>),
   /// A request to quit the application has been made.
   Quit,
 }
@@ -63,21 +73,5 @@ pub enum UiEvent {
 impl From<Event> for UiEvent {
   fn from(event: Event) -> Self {
     UiEvent::Event(event)
-  }
-}
-
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-
-  #[test]
-  fn convert_event_into() {
-    let event = Event::KeyDown(Key::Char(' '));
-    let orig_event = event.clone();
-    let ui_event = UiEvent::from(event);
-
-    assert_eq!(ui_event, UiEvent::Event(orig_event));
   }
 }

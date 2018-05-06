@@ -179,3 +179,84 @@ pub struct TestRenderer {}
 impl Renderer for TestRenderer {
   fn render(&self, _object: &Any) {}
 }
+
+
+#[allow(unused)]
+pub fn clone_event(event: &Event) -> Event {
+  match *event {
+    Event::KeyUp(key) => Event::KeyUp(key),
+    Event::KeyDown(key) => Event::KeyDown(key),
+    Event::Custom(_) => panic!("Cannot clone custom event"),
+  }
+}
+
+#[allow(unused)]
+pub fn compare_events(event1: &Event, event2: &Event) -> bool {
+  match *event1 {
+    Event::KeyUp(key1) => {
+      match *event2 {
+        Event::KeyUp(key2) => key1 == key2,
+        _ => false,
+      }
+    },
+    Event::KeyDown(key1) => {
+      match *event2 {
+        Event::KeyDown(key2) => key1 == key2,
+        _ => false,
+      }
+    },
+    Event::Custom(_) => panic!("Cannot compare custom events"),
+  }
+}
+
+
+#[allow(unused)]
+pub fn clone_ui_event(event: &UiEvent) -> UiEvent {
+  match *event {
+    UiEvent::Event(ref event) => UiEvent::Event(clone_event(event)),
+    UiEvent::Focus(id) => UiEvent::Focus(id),
+    UiEvent::Quit => UiEvent::Quit,
+    UiEvent::Custom(_, _) => panic!("Cannot clone custom event"),
+  }
+}
+
+#[allow(unused)]
+pub fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
+  match *event1 {
+    UiEvent::Event(ref event1) => {
+      match *event2 {
+        UiEvent::Event(ref event2) => compare_events(event1, event2),
+        _ => false,
+      }
+    },
+    UiEvent::Focus(id1) => {
+      match *event2 {
+        UiEvent::Focus(id2) => id1 == id2,
+        _ => false,
+      }
+    },
+    UiEvent::Quit => {
+      match *event2 {
+        UiEvent::Quit => true,
+        _ => false,
+      }
+    },
+    UiEvent::Custom(_, _) => panic!("Cannot compare custom events"),
+  }
+}
+
+#[allow(unused)]
+pub fn unwrap_custom<T>(event: UiEvent) -> Box<T>
+where
+  T: 'static,
+{
+  match event {
+    UiEvent::Event(event) => {
+      match event {
+        Event::Custom(data) => data.downcast::<T>().unwrap(),
+        _ => panic!("Unexpected event: {:?}", event),
+      }
+    },
+    _ => panic!("Unexpected event: {:?}", event),
+  }
+}
