@@ -36,29 +36,29 @@ use common::TestWidget;
 #[test]
 fn correct_ids() {
   let mut ui = Ui::<TestRenderer>::new();
-  let root = ui.add_root_widget(|id| {
+  let root = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
-  let w1 = ui.add_widget(root, |parent_id, id| {
+  let w1 = ui.add_widget(root, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
-  let w2 = ui.add_widget(root, |parent_id, id| {
+  let w2 = ui.add_widget(root, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
   // And a container.
-  let c1 = ui.add_widget(root, |parent_id, id| {
+  let c1 = ui.add_widget(root, &|parent_id, id| {
     Box::new(TestContainer::new(parent_id, id))
   });
   // And a widget to the container.
-  let w3 = ui.add_widget(c1, |parent_id, id| {
+  let w3 = ui.add_widget(c1, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
   // And another container for deeper nesting.
-  let c2 = ui.add_widget(c1, |parent_id, id| {
+  let c2 = ui.add_widget(c1, &|parent_id, id| {
     Box::new(TestContainer::new(parent_id, id))
   });
   // And the last widget.
-  let w4 = ui.add_widget(c2, |parent_id, id| {
+  let w4 = ui.add_widget(c2, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
 
@@ -75,10 +75,10 @@ fn correct_ids() {
 #[should_panic(expected = "Only one root widget may exist in a Ui")]
 fn only_single_root_widget_allowed() {
   let mut ui = Ui::<TestRenderer>::new();
-  let _ = ui.add_root_widget(|id| {
+  let _ = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
-  let _ = ui.add_root_widget(|id| {
+  let _ = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
 }
@@ -87,13 +87,13 @@ fn only_single_root_widget_allowed() {
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn only_containers_can_have_children() {
   let mut ui = Ui::<TestRenderer>::new();
-  let root = ui.add_root_widget(|id| {
+  let root = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
-  let widget = ui.add_widget(root, |parent_id, id| {
+  let widget = ui.add_widget(root, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
-  let _ = ui.add_widget(widget, |parent_id, id| {
+  let _ = ui.add_widget(widget, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
 }
@@ -101,14 +101,14 @@ fn only_containers_can_have_children() {
 #[test]
 fn initial_focus() {
   let mut ui = Ui::<TestRenderer>::new();
-  let root = ui.add_root_widget(|id| {
+  let root = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
   // The widget created first should receive the focus and stay
   // focused until directed otherwise.
   assert!(ui.is_focused(root));
 
-  let _ = ui.add_widget(root, |parent_id, id| {
+  let _ = ui.add_widget(root, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
   assert!(ui.is_focused(root));
@@ -117,10 +117,10 @@ fn initial_focus() {
 #[test]
 fn focus_widget() {
   let mut ui = Ui::<TestRenderer>::new();
-  let root = ui.add_root_widget(|id| {
+  let root = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
-  let widget = ui.add_widget(root, |parent_id, id| {
+  let widget = ui.add_widget(root, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
 

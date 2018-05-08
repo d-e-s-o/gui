@@ -51,6 +51,10 @@ where
 }
 
 
+type NewRootWidgetFn<'f, R> = &'f Fn(Id) -> Box<Widget<R>>;
+type NewWidgetFn<'f, R> = &'f Fn(Id, Id) -> Box<Widget<R>>;
+
+
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
 pub struct Ui<R> {
@@ -75,10 +79,11 @@ where
   }
 
   /// Add a widget to the `Ui`.
-  fn _add_widget<F>(&mut self, new_widget: F) -> Id
-  where
-    F: FnOnce(Id) -> Box<Widget<R>>,
-  {
+  // TODO: Usage of NewRootWidgetFn here gives the wrong impression of
+  //       intention as we are not necessarily adding a root widget. It
+  //       could just be a normal widget. The type just happens to have
+  //       the right signature.
+  fn _add_widget(&mut self, new_widget: NewRootWidgetFn<R>) -> Id {
     let id = Id {
       idx: self.widgets.len(),
     };
@@ -95,20 +100,14 @@ where
   }
 
   /// Add a root widget, i.e., the first widget, to the `Ui`.
-  pub fn add_root_widget<F>(&mut self, new_root_widget: F) -> Id
-  where
-    F: FnOnce(Id) -> Box<Widget<R>>,
-  {
+  pub fn add_root_widget(&mut self, new_root_widget: NewRootWidgetFn<R>) -> Id {
     debug_assert!(self.widgets.is_empty(), "Only one root widget may exist in a Ui");
     self._add_widget(new_root_widget)
   }
 
   /// Add a widget to the `Ui`.
-  pub fn add_widget<F>(&mut self, parent_id: Id, new_widget: F) -> Id
-  where
-    F: FnOnce(Id, Id) -> Box<Widget<R>>,
-  {
-    let id = self._add_widget(|id| new_widget(parent_id, id));
+  pub fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn<R>) -> Id {
+    let id = self._add_widget(&|id| new_widget(parent_id, id));
     // The widget is already linked to its parent but the parent needs to
     // know about the child as well.
     self.lookup_mut(parent_id).add_child(id);

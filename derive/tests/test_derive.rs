@@ -95,13 +95,13 @@ where
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn widget_type_yields_widget() {
   let mut ui = Ui::<TestRenderer>::new();
-  let r = ui.add_root_widget(|id| {
+  let r = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
-  let w = ui.add_widget(r, |parent_id, id| {
+  let w = ui.add_widget(r, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
-  let _ = ui.add_widget(w, |parent_id, id| {
+  let _ = ui.add_widget(w, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
 }
@@ -109,13 +109,13 @@ fn widget_type_yields_widget() {
 #[test]
 fn container_type_yields_container() {
   let mut ui = Ui::<TestRenderer>::new();
-  let r = ui.add_root_widget(|id| {
+  let r = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
-  let c = ui.add_widget(r, |parent_id, id| {
+  let c = ui.add_widget(r, &|parent_id, id| {
     Box::new(TestContainer::new(parent_id, id))
   });
-  let _ = ui.add_widget(c, |parent_id, id| {
+  let _ = ui.add_widget(c, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
 }
@@ -123,13 +123,13 @@ fn container_type_yields_container() {
 #[test]
 fn generic_container() {
   let mut ui = Ui::<TestRenderer>::new();
-  let r = ui.add_root_widget(|id| {
+  let r = ui.add_root_widget(&|id| {
     Box::new(TestRootWidget::new(id))
   });
-  let c = ui.add_widget(r, |parent_id, id| {
+  let c = ui.add_widget(r, &|parent_id, id| {
     Box::new(TestContainerT::<u32>::new(parent_id, id))
   });
-  let _ = ui.add_widget(c, |parent_id, id| {
+  let _ = ui.add_widget(c, &|parent_id, id| {
     Box::new(TestWidget::new(parent_id, id))
   });
 }
