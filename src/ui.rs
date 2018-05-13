@@ -27,6 +27,7 @@ use event::Event;
 use event::UiEvent;
 use handleable::Handleable;
 use object::Object;
+use placeholder::Placeholder;
 use renderable::Renderable;
 use renderer::Renderer;
 
@@ -51,8 +52,35 @@ where
 }
 
 
-type NewRootWidgetFn<'f, R> = &'f Fn(Id) -> Box<Widget<R>>;
-type NewWidgetFn<'f, R> = &'f Fn(Id, Id) -> Box<Widget<R>>;
+type NewRootWidgetFn<'f, R> = &'f Fn(Id, &mut Cap<R>) -> Box<Widget<R>>;
+type NewWidgetFn<'f, R> = &'f Fn(Id, Id, &mut Cap<R>) -> Box<Widget<R>>;
+
+
+/// A capability allowing for various widget related operations.
+pub trait Cap<R>
+where
+  R: Renderer,
+{
+  /// Add a widget to the `Ui` represented by the capability.
+  ///
+  /// Note that there is no need for an `add_root_widget` method as
+  /// exposed by the `Ui` struct: A root widget is always the first
+  /// widget being added to a UI and there will only ever be one in it.
+  fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn<R>) -> Id;
+
+  /// Retrieve the parent of the widget with the given `Id`.
+  fn parent_id(&self, id: Id) -> Option<Id>;
+
+  /// Focus a widget.
+  ///
+  /// The focused widget is the one receiving certain types of events
+  /// (such as key events) first but may also be rendered in a different
+  /// color or be otherwise highlighted.
+  fn focus(&self, id: Id);
+
+  /// Check whether the widget with the given `Id` is focused.
+  fn is_focused(&self, id: Id) -> bool;
+}
 
 
 /// A `Ui` is a container for related widgets.
@@ -94,8 +122,22 @@ where
       self.focus(id);
     }
 
-    let widget = new_widget(id);
-    self.widgets.push(RefCell::new(widget));
+    // We require some trickery here to allow for dynamic widget
+    // creation from within the constructor of another widget. In
+    // particular, we install a "dummy" widget that acts as a container
+    // to which newly created child widgets can be registered. After the
+    // widget of interest got created we transfer all those children
+    // over.
+    let dummy = Placeholder::new();
+    self.widgets.push(RefCell::new(Box::new(dummy)));
+
+    let mut widget = new_widget(id, self);
+
+    for child in self.widgets[id.idx].borrow().iter().cloned() {
+      widget.add_child(child)
+    }
+
+    self.widgets[id.idx] = RefCell::new(widget);
     id
   }
 
@@ -103,16 +145,6 @@ where
   pub fn add_root_widget(&mut self, new_root_widget: NewRootWidgetFn<R>) -> Id {
     debug_assert!(self.widgets.is_empty(), "Only one root widget may exist in a Ui");
     self._add_widget(new_root_widget)
-  }
-
-  /// Add a widget to the `Ui`.
-  pub fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn<R>) -> Id {
-    let id = self._add_widget(&|id| new_widget(parent_id, id));
-    // The widget is already linked to its parent but the parent needs to
-    // know about the child as well.
-    self.lookup_mut(parent_id).add_child(id);
-
-    id
   }
 
   /// Lookup a widget from an `Id`.
@@ -253,23 +285,34 @@ where
       UiEvent::Event(_) => unreachable!(),
     }
   }
+}
+
+impl<R> Cap<R> for Ui<R>
+where
+  R: Renderer,
+{
+  /// Add a widget to the `Ui`.
+  fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn<R>) -> Id {
+    let id = self._add_widget(&|id, cap| new_widget(parent_id, id, cap));
+    // The widget is already linked to its parent but the parent needs to
+    // know about the child as well.
+    self.lookup_mut(parent_id).add_child(id);
+
+    id
+  }
 
   /// Retrieve the parent of the widget with the given `Id`.
-  pub fn parent_id(&self, id: Id) -> Option<Id> {
+  fn parent_id(&self, id: Id) -> Option<Id> {
     self.lookup(id).parent_id()
   }
 
   /// Focus a widget.
-  ///
-  /// The focused widget is the one receiving certain types of events
-  /// (such as key events) first but may also be rendered in a different
-  /// color or be otherwise highlighted.
-  pub fn focus(&self, id: Id) {
+  fn focus(&self, id: Id) {
     self.focused.set(Some(id))
   }
 
   /// Check whether the widget with the given `Id` is focused.
-  pub fn is_focused(&self, id: Id) -> bool {
+  fn is_focused(&self, id: Id) -> bool {
     self.focused.get() == Some(id)
   }
 }

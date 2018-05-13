@@ -1,4 +1,4 @@
-// lib.rs
+// placeholder.rs
 
 // *************************************************************************
 // * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
@@ -17,41 +17,65 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-#![allow(
-  unknown_lints,
-  redundant_field_names,
-)]
-#![deny(
-  missing_debug_implementations,
-  missing_docs,
-  unsafe_code,
-  unstable_features,
-  unused_import_braces,
-  unused_qualifications,
-  warnings,
-)]
+use event::Event;
+use event::UiEvent;
+use handleable::Handleable;
+use object::ChildIter;
+use object::Object;
+use renderable::Renderable;
+use renderer::Renderer;
+use ui::Id;
+use ui::Widget;
 
-//! A crate containing the basic infrastructure for user interfaces. It
-//! strives for being completely agnostic of the underlying system and
-//! its rendering machinery as well as event dispatching.
 
-mod event;
-mod handleable;
-mod object;
-mod placeholder;
-mod renderable;
-mod renderer;
-mod ui;
+/// This class is a dummy implementation of a container style `Widget`.
+/// Objects of it are used internally in the `Ui` class to allow for
+/// dynamic widget creation.
+#[derive(Debug)]
+pub struct Placeholder {
+  children: Vec<Id>,
+}
 
-pub use self::event::Event;
-pub use self::event::Key;
-pub use self::event::UiEvent;
-pub use self::handleable::Handleable;
-pub use self::object::ChildIter;
-pub use self::object::Object;
-pub use self::renderable::Renderable;
-pub use self::renderer::Renderer;
-pub use self::ui::Cap;
-pub use self::ui::Id;
-pub use self::ui::Ui;
-pub use self::ui::Widget;
+impl Placeholder {
+  pub fn new() -> Self {
+    Placeholder {
+      children: Vec::new(),
+    }
+  }
+}
+
+impl<R> Renderable<R> for Placeholder
+where
+  R: Renderer,
+{
+  fn render(&self, _renderer: &R) {
+    unreachable!()
+  }
+}
+
+impl Object for Placeholder {
+  fn id(&self) -> Id {
+    unreachable!()
+  }
+  fn parent_id(&self) -> Option<Id> {
+    unreachable!()
+  }
+  fn add_child(&mut self, id: Id) {
+    self.children.push(id)
+  }
+  fn iter(&self) -> ChildIter {
+    ChildIter::with_iter(self.children.iter())
+  }
+}
+
+impl Handleable for Placeholder {
+  fn handle(&mut self, _event: Event) -> Option<UiEvent> {
+    unreachable!()
+  }
+}
+
+impl<R> Widget<R> for Placeholder
+where
+  R: Renderer,
+{
+}
