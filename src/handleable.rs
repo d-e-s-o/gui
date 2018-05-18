@@ -17,8 +17,8 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use event::Event;
-use event::UiEvent;
+use Event;
+use UiEvent;
 
 
 /// A trait representing an object capable of handling events.

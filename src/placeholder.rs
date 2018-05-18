@@ -17,15 +17,15 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use event::Event;
-use event::UiEvent;
-use handleable::Handleable;
-use object::ChildIter;
-use object::Object;
-use renderable::Renderable;
-use renderer::Renderer;
-use ui::Id;
-use ui::Widget;
+use ChildIter;
+use Event;
+use Handleable;
+use Id;
+use Object;
+use Renderable;
+use Renderer;
+use UiEvent;
+use Widget;
 
 
 /// This class is a dummy implementation of a container style `Widget`.

@@ -23,13 +23,13 @@ use std::cell::RefCell;
 use std::cell::RefMut;
 use std::fmt::Debug;
 
-use event::Event;
-use event::UiEvent;
-use handleable::Handleable;
-use object::Object;
-use placeholder::Placeholder;
-use renderable::Renderable;
-use renderer::Renderer;
+use Event;
+use Handleable;
+use Object;
+use Placeholder;
+use Renderable;
+use Renderer;
+use UiEvent;
 
 
 /// An `Id` uniquely representing a widget.

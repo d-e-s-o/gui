@@ -17,7 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use renderer::Renderer;
+use Renderer;
 
 
 /// A trait representing a renderable object.

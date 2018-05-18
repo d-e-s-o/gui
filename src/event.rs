@@ -19,7 +19,7 @@
 
 use std::any::Any;
 
-use ui::Id;
+use Id;
 
 
 /// An object representing a key on the key board.

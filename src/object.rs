@@ -19,7 +19,7 @@
 
 use std::slice::Iter;
 
-use ui::Id;
+use Id;
 
 
 /// An `Object` represents a first-class entity in a UI.

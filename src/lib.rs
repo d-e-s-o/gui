@@ -43,6 +43,8 @@ mod renderable;
 mod renderer;
 mod ui;
 
+use self::placeholder::Placeholder;
+
 pub use self::event::Event;
 pub use self::event::Key;
 pub use self::event::UiEvent;
