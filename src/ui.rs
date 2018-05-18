@@ -45,28 +45,21 @@ pub struct Id {
 /// relationships, the `Ui` is responsible for dispatching events to
 /// widgets and rendering them. Hence, a widget usable for the `Ui`
 /// needs to implement `Handleable`, `Renderable`, and `Object`.
-pub trait Widget<R>: Handleable + Renderable<R> + Object + Debug
-where
-  R: Renderer,
-{
-}
+pub trait Widget: Handleable + Renderable + Object + Debug {}
 
 
-type NewRootWidgetFn<'f, R> = &'f Fn(Id, &mut Cap<R>) -> Box<Widget<R>>;
-type NewWidgetFn<'f, R> = &'f Fn(Id, Id, &mut Cap<R>) -> Box<Widget<R>>;
+type NewRootWidgetFn<'f> = &'f Fn(Id, &mut Cap) -> Box<Widget>;
+type NewWidgetFn<'f> = &'f Fn(Id, Id, &mut Cap) -> Box<Widget>;
 
 
 /// A capability allowing for various widget related operations.
-pub trait Cap<R>
-where
-  R: Renderer,
-{
+pub trait Cap {
   /// Add a widget to the `Ui` represented by the capability.
   ///
   /// Note that there is no need for an `add_root_widget` method as
   /// exposed by the `Ui` struct: A root widget is always the first
   /// widget being added to a UI and there will only ever be one in it.
-  fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn<R>) -> Id;
+  fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn) -> Id;
 
   /// Retrieve the parent of the widget with the given `Id`.
   fn parent_id(&self, id: Id) -> Option<Id>;
@@ -85,8 +78,8 @@ where
 
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
-pub struct Ui<R> {
-  widgets: Vec<RefCell<Box<Widget<R>>>>,
+pub struct Ui {
+  widgets: Vec<RefCell<Box<Widget>>>,
   focused: Cell<Option<Id>>,
 }
 
@@ -94,10 +87,7 @@ pub struct Ui<R> {
 // implementing Default.
 // See https://github.com/rust-lang-nursery/rust-clippy/issues/2226
 #[allow(new_without_default_derive)]
-impl<R> Ui<R>
-where
-  R: Renderer,
-{
+impl Ui {
   /// Create a new `Ui` instance without any widgets.
   pub fn new() -> Self {
     Ui {
@@ -111,7 +101,7 @@ where
   //       intention as we are not necessarily adding a root widget. It
   //       could just be a normal widget. The type just happens to have
   //       the right signature.
-  fn _add_widget(&mut self, new_widget: NewRootWidgetFn<R>) -> Id {
+  fn _add_widget(&mut self, new_widget: NewRootWidgetFn) -> Id {
     let id = Id {
       idx: self.widgets.len(),
     };
@@ -142,25 +132,25 @@ where
   }
 
   /// Add a root widget, i.e., the first widget, to the `Ui`.
-  pub fn add_root_widget(&mut self, new_root_widget: NewRootWidgetFn<R>) -> Id {
+  pub fn add_root_widget(&mut self, new_root_widget: NewRootWidgetFn) -> Id {
     debug_assert!(self.widgets.is_empty(), "Only one root widget may exist in a Ui");
     self._add_widget(new_root_widget)
   }
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
-  fn lookup(&self, id: Id) -> Ref<Box<Widget<R>>> {
+  fn lookup(&self, id: Id) -> Ref<Box<Widget>> {
     self.widgets[id.idx].borrow()
   }
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
-  fn lookup_mut(&self, id: Id) -> RefMut<Box<Widget<R>>> {
+  fn lookup_mut(&self, id: Id) -> RefMut<Box<Widget>> {
     self.widgets[id.idx].borrow_mut()
   }
 
   /// Render the `Ui` with the given `Renderer`.
-  pub fn render(&self, renderer: &R) {
+  pub fn render(&self, renderer: &Renderer) {
     // We cannot simply iterate through all widgets in `self.widgets`
     // when rendering, because we need to take parent-child
     // relationships into account in case widgets cover each other.
@@ -173,7 +163,7 @@ where
 
   /// Recursively render the given widget and its children.
   #[allow(borrowed_box)]
-  fn render_all(&self, widget: &Box<Widget<R>>, renderer: &R) {
+  fn render_all(&self, widget: &Box<Widget>, renderer: &Renderer) {
     // TODO: Ideally we would want to go without the recursion stuff we
     //       have. This may not be possible (efficiently) with safe
     //       Rust, though. Not sure.
@@ -245,7 +235,7 @@ where
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
-  fn handle_event(&self, mut widget: RefMut<Box<Widget<R>>>, event: Event) -> Option<UiEvent> {
+  fn handle_event(&self, mut widget: RefMut<Box<Widget>>, event: Event) -> Option<UiEvent> {
     let ui_event = widget.handle(event);
     if let Some(ui_event) = ui_event {
       match ui_event {
@@ -287,12 +277,9 @@ where
   }
 }
 
-impl<R> Cap<R> for Ui<R>
-where
-  R: Renderer,
-{
+impl Cap for Ui {
   /// Add a widget to the `Ui`.
-  fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn<R>) -> Id {
+  fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn) -> Id {
     let id = self._add_widget(&|id, cap| new_widget(parent_id, id, cap));
     // The widget is already linked to its parent but the parent needs to
     // know about the child as well.

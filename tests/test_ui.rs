@@ -29,12 +29,10 @@ use gui::Cap;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
-use gui::Renderer;
 use gui::Ui;
 use gui::UiEvent;
 
 use common::TestContainer;
-use common::TestRenderer;
 use common::TestRootWidget;
 use common::TestWidget;
 use common::unwrap_custom;
@@ -42,7 +40,7 @@ use common::unwrap_custom;
 
 #[test]
 fn correct_ids() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   let root = ui.add_root_widget(&|id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
@@ -81,7 +79,7 @@ fn correct_ids() {
 #[cfg(debug_assertions)]
 #[should_panic(expected = "Only one root widget may exist in a Ui")]
 fn only_single_root_widget_allowed() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   let _ = ui.add_root_widget(&|id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
@@ -93,7 +91,7 @@ fn only_single_root_widget_allowed() {
 #[test]
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn only_containers_can_have_children() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   let root = ui.add_root_widget(&|id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
@@ -107,7 +105,7 @@ fn only_containers_can_have_children() {
 
 #[test]
 fn initial_focus() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   let root = ui.add_root_widget(&|id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
@@ -123,7 +121,7 @@ fn initial_focus() {
 
 #[test]
 fn focus_widget() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   let root = ui.add_root_widget(&|id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
@@ -156,10 +154,7 @@ struct CreatingRootWidget {
 }
 
 impl CreatingRootWidget {
-  pub fn new<R>(id: Id, cap: &mut Cap<R>) -> Self
-  where
-    R: Renderer,
-  {
+  pub fn new(id: Id, cap: &mut Cap) -> Self {
     let _ = cap.add_widget(id, &|parent_id, id, cap| {
       Box::new(CreatingContainer::new(parent_id, id, cap))
     });
@@ -185,10 +180,7 @@ struct CreatingContainer {
 }
 
 impl CreatingContainer {
-  pub fn new<R>(parent_id: Id, id: Id, cap: &mut Cap<R>) -> Self
-  where
-    R: Renderer,
-  {
+  pub fn new(parent_id: Id, id: Id, cap: &mut Cap) -> Self {
     let _ = cap.add_widget(id, &|parent_id, id, cap| {
       Box::new(CreatingWidget::new(parent_id, id, cap))
     });
@@ -215,10 +207,7 @@ struct CreatingWidget {
 }
 
 impl CreatingWidget {
-  pub fn new<R>(parent_id: Id, id: Id, cap: &mut Cap<R>) -> Self
-  where
-    R: Renderer,
-  {
+  pub fn new(parent_id: Id, id: Id, cap: &mut Cap) -> Self {
     // This widget is not a container and so we add the newly created
     // widget to the parent.
     let child = cap.add_widget(parent_id, &|parent_id, id, _cap| {
@@ -244,7 +233,7 @@ impl Handleable for CreatingWidget {
 
 #[test]
 fn recursive_widget_creation() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   // We only create the root widget directly but it will take care of
   // recursively creating a bunch of more widgets.
   let _ = ui.add_root_widget(&|id, cap| {

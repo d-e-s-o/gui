@@ -23,8 +23,6 @@ extern crate gui;
 #[macro_use]
 extern crate gui_derive;
 
-mod common;
-
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -32,8 +30,6 @@ use gui::Cap;
 use gui::Handleable;
 use gui::Id;
 use gui::Ui;
-
-use common::TestRenderer;
 
 
 #[derive(Debug, GuiWidget, GuiHandleable)]
@@ -95,7 +91,7 @@ where
 #[test]
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn widget_type_yields_widget() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   let r = ui.add_root_widget(&|id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
@@ -109,7 +105,7 @@ fn widget_type_yields_widget() {
 
 #[test]
 fn container_type_yields_container() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   let r = ui.add_root_widget(&|id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
@@ -123,7 +119,7 @@ fn container_type_yields_container() {
 
 #[test]
 fn generic_container() {
-  let mut ui = Ui::<TestRenderer>::new();
+  let mut ui = Ui::new();
   let r = ui.add_root_widget(&|id, _cap| {
     Box::new(TestRootWidget::new(id))
   });

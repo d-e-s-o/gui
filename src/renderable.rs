@@ -21,10 +21,7 @@ use renderer::Renderer;
 
 
 /// A trait representing a renderable object.
-pub trait Renderable<R>
-where
-  R: Renderer,
-{
+pub trait Renderable {
   /// Render the renderable object.
-  fn render(&self, renderer: &R);
+  fn render(&self, renderer: &Renderer);
 }

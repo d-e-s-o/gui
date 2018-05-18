@@ -19,7 +19,6 @@
 
 extern crate gui;
 
-use std::any::Any;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt::Result;
@@ -28,7 +27,6 @@ use std::ops::Deref;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
-use gui::Renderer;
 use gui::UiEvent;
 
 
@@ -169,15 +167,6 @@ impl Handleable for TestContainer {
       None => Some(event.into()),
     }
   }
-}
-
-
-#[allow(unused)]
-#[derive(Debug)]
-pub struct TestRenderer {}
-
-impl Renderer for TestRenderer {
-  fn render(&self, _object: &Any) {}
 }
 
 

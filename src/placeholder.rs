@@ -44,11 +44,8 @@ impl Placeholder {
   }
 }
 
-impl<R> Renderable<R> for Placeholder
-where
-  R: Renderer,
-{
-  fn render(&self, _renderer: &R) {
+impl Renderable for Placeholder {
+  fn render(&self, _renderer: &Renderer) {
     unreachable!()
   }
 }
@@ -74,8 +71,4 @@ impl Handleable for Placeholder {
   }
 }
 
-impl<R> Widget<R> for Placeholder
-where
-  R: Renderer,
-{
-}
+impl Widget for Placeholder {}
