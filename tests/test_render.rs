@@ -88,13 +88,13 @@ impl Renderer for CountingRenderer {
 fn render_is_called_for_each_widget() {
   let renderer = CountingRenderer::new();
   let mut ui = Ui::new();
-  let root = ui.add_root_widget(&|id, _cap| {
+  let root = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let _ = ui.add_widget(root, &|parent_id, id, _cap| {
+  let _ = ui.add_widget(root, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
-  let _ = ui.add_widget(root, &|parent_id, id, _cap| {
+  let _ = ui.add_widget(root, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 

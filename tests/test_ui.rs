@@ -41,29 +41,29 @@ use common::unwrap_custom;
 #[test]
 fn correct_ids() {
   let mut ui = Ui::new();
-  let root = ui.add_root_widget(&|id, _cap| {
+  let root = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let w1 = ui.add_widget(root, &|parent_id, id, _cap| {
+  let w1 = ui.add_widget(root, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
-  let w2 = ui.add_widget(root, &|parent_id, id, _cap| {
+  let w2 = ui.add_widget(root, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
   // And a container.
-  let c1 = ui.add_widget(root, &|parent_id, id, _cap| {
+  let c1 = ui.add_widget(root, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::new(parent_id, id))
   });
   // And a widget to the container.
-  let w3 = ui.add_widget(c1, &|parent_id, id, _cap| {
+  let w3 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
   // And another container for deeper nesting.
-  let c2 = ui.add_widget(c1, &|parent_id, id, _cap| {
+  let c2 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::new(parent_id, id))
   });
   // And the last widget.
-  let w4 = ui.add_widget(c2, &|parent_id, id, _cap| {
+  let w4 = ui.add_widget(c2, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 
@@ -80,10 +80,10 @@ fn correct_ids() {
 #[should_panic(expected = "Only one root widget may exist in a Ui")]
 fn only_single_root_widget_allowed() {
   let mut ui = Ui::new();
-  let _ = ui.add_root_widget(&|id, _cap| {
+  let _ = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let _ = ui.add_root_widget(&|id, _cap| {
+  let _ = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
 }
@@ -92,13 +92,13 @@ fn only_single_root_widget_allowed() {
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn only_containers_can_have_children() {
   let mut ui = Ui::new();
-  let root = ui.add_root_widget(&|id, _cap| {
+  let root = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let widget = ui.add_widget(root, &|parent_id, id, _cap| {
+  let widget = ui.add_widget(root, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
-  let _ = ui.add_widget(widget, &|parent_id, id, _cap| {
+  let _ = ui.add_widget(widget, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 }
@@ -106,14 +106,14 @@ fn only_containers_can_have_children() {
 #[test]
 fn initial_focus() {
   let mut ui = Ui::new();
-  let root = ui.add_root_widget(&|id, _cap| {
+  let root = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
   // The widget created first should receive the focus and stay
   // focused until directed otherwise.
   assert!(ui.is_focused(root));
 
-  let _ = ui.add_widget(root, &|parent_id, id, _cap| {
+  let _ = ui.add_widget(root, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
   assert!(ui.is_focused(root));
@@ -122,10 +122,10 @@ fn initial_focus() {
 #[test]
 fn focus_widget() {
   let mut ui = Ui::new();
-  let root = ui.add_root_widget(&|id, _cap| {
+  let root = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let widget = ui.add_widget(root, &|parent_id, id, _cap| {
+  let widget = ui.add_widget(root, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 
@@ -155,7 +155,7 @@ struct CreatingRootWidget {
 
 impl CreatingRootWidget {
   pub fn new(id: Id, cap: &mut Cap) -> Self {
-    let _ = cap.add_widget(id, &|parent_id, id, cap| {
+    let _ = cap.add_widget(id, &mut |parent_id, id, cap| {
       Box::new(CreatingContainer::new(parent_id, id, cap))
     });
     CreatingRootWidget {
@@ -181,7 +181,7 @@ struct CreatingContainer {
 
 impl CreatingContainer {
   pub fn new(parent_id: Id, id: Id, cap: &mut Cap) -> Self {
-    let _ = cap.add_widget(id, &|parent_id, id, cap| {
+    let _ = cap.add_widget(id, &mut |parent_id, id, cap| {
       Box::new(CreatingWidget::new(parent_id, id, cap))
     });
 
@@ -210,7 +210,7 @@ impl CreatingWidget {
   pub fn new(parent_id: Id, id: Id, cap: &mut Cap) -> Self {
     // This widget is not a container and so we add the newly created
     // widget to the parent.
-    let child = cap.add_widget(parent_id, &|parent_id, id, _cap| {
+    let child = cap.add_widget(parent_id, &mut |parent_id, id, _cap| {
       Box::new(TestWidget::with_handler(parent_id, id, counting_handler))
     });
     // Focus the "last" widget. Doing so allows us to send an event to
@@ -236,7 +236,7 @@ fn recursive_widget_creation() {
   let mut ui = Ui::new();
   // We only create the root widget directly but it will take care of
   // recursively creating a bunch of more widgets.
-  let _ = ui.add_root_widget(&|id, cap| {
+  let _ = ui.add_root_widget(&mut |id, cap| {
     Box::new(CreatingRootWidget::new(id, cap))
   });
 
@@ -246,4 +246,41 @@ fn recursive_widget_creation() {
   // total, but we cannot easily have the event reach all four of them
   // because two are peers sharing a parent.
   assert_eq!(*unwrap_custom::<u64>(result), 3);
+}
+
+
+#[derive(Debug)]
+struct Moveable {}
+
+#[derive(Debug, GuiWidget, GuiHandleable)]
+struct MovingWidget {
+  parent_id: Id,
+  id: Id,
+  object: Moveable,
+}
+
+impl MovingWidget {
+  pub fn new(parent_id: Id, id: Id, object: Moveable) -> Self {
+    MovingWidget {
+      parent_id: parent_id,
+      id: id,
+      object: object,
+    }
+  }
+}
+
+
+// This test case illustrates how to create a widget that takes
+// ownership of some data during its construction.
+#[test]
+fn moving_widget_creation() {
+  let mut object = Some(Moveable {});
+  let mut ui = Ui::new();
+  let root = ui.add_root_widget(&mut |id, _cap| {
+    Box::new(TestRootWidget::new(id))
+  });
+  let _ = ui.add_widget(root, &mut |parent_id, id, _cap| {
+    let moveable = object.take().unwrap();
+    Box::new(MovingWidget::new(parent_id, id, moveable))
+  });
 }

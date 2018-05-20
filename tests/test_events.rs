@@ -56,16 +56,16 @@ fn convert_event_into() {
 #[test]
 fn events_bubble_up_when_unhandled() {
   let mut ui = Ui::new();
-  let r = ui.add_root_widget(&|id, _cap| {
+  let r = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let c1 = ui.add_widget(r, &|parent_id, id, _cap| {
+  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::new(parent_id, id))
   });
-  let c2 = ui.add_widget(c1, &|parent_id, id, _cap| {
+  let c2 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::new(parent_id, id))
   });
-  let w1 = ui.add_widget(c2, &|parent_id, id, _cap| {
+  let w1 = ui.add_widget(c2, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 
@@ -99,15 +99,15 @@ fn key_handler(event: Event, to_focus: Option<Id>) -> Option<UiEvent> {
 #[test]
 fn event_handling_with_focus() {
   let mut ui = Ui::new();
-  let r = ui.add_root_widget(&|id, _cap| {
+  let r = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let w1 = ui.add_widget(r, &|parent_id, id, _cap| {
+  let w1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::with_handler(parent_id, id, |e| {
       key_handler(e, None)
     }))
   });
-  let w2 = ui.add_widget(r, &|parent_id, id, _cap| {
+  let w2 = ui.add_widget(r, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::with_handler(parent_id, id, move |e| {
       key_handler(e, Some(w1))
     }))
@@ -139,13 +139,13 @@ fn custom_undirected_response_handler(event: Event) -> Option<UiEvent> {
 #[test]
 fn custom_undirected_response_event() {
   let mut ui = Ui::new();
-  let r = ui.add_root_widget(&|id, _cap| {
+  let r = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
-  let c1 = ui.add_widget(r, &|parent_id, id, _cap| {
+  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::with_handler(parent_id, id, custom_undirected_response_handler))
   });
-  let w1 = ui.add_widget(c1, &|parent_id, id, _cap| {
+  let w1 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::with_handler(parent_id, id, custom_undirected_response_handler))
   });
 
@@ -174,13 +174,13 @@ fn custom_directed_response_handler(event: Event) -> Option<UiEvent> {
 #[test]
 fn custom_directed_response_event() {
   let mut ui = Ui::new();
-  let r = ui.add_root_widget(&|id, _cap| {
+  let r = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_directed_response_handler))
   });
-  let c1 = ui.add_widget(r, &|parent_id, id, _cap| {
+  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::with_handler(parent_id, id, custom_directed_response_handler))
   });
-  let w1 = ui.add_widget(c1, &|parent_id, id, _cap| {
+  let w1 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::with_handler(parent_id, id, custom_directed_response_handler))
   });
 
@@ -200,13 +200,13 @@ fn custom_directed_response_event() {
 #[test]
 fn direct_custom_event() {
   let mut ui = Ui::new();
-  let r = ui.add_root_widget(&|id, _cap| {
+  let r = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
-  let c1 = ui.add_widget(r, &|parent_id, id, _cap| {
+  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::with_handler(parent_id, id, custom_undirected_response_handler))
   });
-  let w1 = ui.add_widget(c1, &|parent_id, id, _cap| {
+  let w1 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::with_handler(parent_id, id, custom_undirected_response_handler))
   });
 
@@ -220,13 +220,13 @@ fn direct_custom_event() {
 #[test]
 fn quit_event() {
   let mut ui = Ui::new();
-  let r = ui.add_root_widget(&|id, _cap| {
+  let r = ui.add_root_widget(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let c1 = ui.add_widget(r, &|parent_id, id, _cap| {
+  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::new(parent_id, id))
   });
-  let _ = ui.add_widget(c1, &|parent_id, id, _cap| {
+  let _ = ui.add_widget(c1, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 

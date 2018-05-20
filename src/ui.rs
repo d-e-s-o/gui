@@ -48,8 +48,15 @@ pub struct Id {
 pub trait Widget: Handleable + Renderable + Object + Debug {}
 
 
-type NewRootWidgetFn<'f> = &'f Fn(Id, &mut Cap) -> Box<Widget>;
-type NewWidgetFn<'f> = &'f Fn(Id, Id, &mut Cap) -> Box<Widget>;
+// TODO: Ideally we would want to use FnOnce here, in case callers need
+//       to move data into a widget. We cannot do so with a reference
+//       and using generics is not possible because NewWidgetFn is used
+//       in the signature of a trait method. FnBox provides a possible
+//       solution but is a nightly-only API. For now, users are advised
+//       to use an Option as one of the parameters and panic if None is
+//       supplied.
+type NewRootWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
+type NewWidgetFn<'f> = &'f mut FnMut(Id, Id, &mut Cap) -> Box<Widget>;
 
 
 /// A capability allowing for various widget related operations.
@@ -280,7 +287,7 @@ impl Ui {
 impl Cap for Ui {
   /// Add a widget to the `Ui`.
   fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn) -> Id {
-    let id = self._add_widget(&|id, cap| new_widget(parent_id, id, cap));
+    let id = self._add_widget(&mut |id, cap| new_widget(parent_id, id, cap));
     // The widget is already linked to its parent but the parent needs to
     // know about the child as well.
     self.lookup_mut(parent_id).add_child(id);
