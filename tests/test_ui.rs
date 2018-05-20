@@ -40,8 +40,7 @@ use common::unwrap_custom;
 
 #[test]
 fn correct_ids() {
-  let mut ui = Ui::new();
-  let root = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
   let w1 = ui.add_widget(root, &mut |parent_id, id, _cap| {
@@ -76,23 +75,9 @@ fn correct_ids() {
 }
 
 #[test]
-#[cfg(debug_assertions)]
-#[should_panic(expected = "Only one root widget may exist in a Ui")]
-fn only_single_root_widget_allowed() {
-  let mut ui = Ui::new();
-  let _ = ui.add_root_widget(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
-  });
-  let _ = ui.add_root_widget(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
-  });
-}
-
-#[test]
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn only_containers_can_have_children() {
-  let mut ui = Ui::new();
-  let root = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
   let widget = ui.add_widget(root, &mut |parent_id, id, _cap| {
@@ -105,10 +90,10 @@ fn only_containers_can_have_children() {
 
 #[test]
 fn initial_focus() {
-  let mut ui = Ui::new();
-  let root = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
+
   // The widget created first should receive the focus and stay
   // focused until directed otherwise.
   assert!(ui.is_focused(root));
@@ -121,8 +106,7 @@ fn initial_focus() {
 
 #[test]
 fn focus_widget() {
-  let mut ui = Ui::new();
-  let root = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
   let widget = ui.add_widget(root, &mut |parent_id, id, _cap| {
@@ -233,10 +217,9 @@ impl Handleable for CreatingWidget {
 
 #[test]
 fn recursive_widget_creation() {
-  let mut ui = Ui::new();
   // We only create the root widget directly but it will take care of
   // recursively creating a bunch of more widgets.
-  let _ = ui.add_root_widget(&mut |id, cap| {
+  let (mut ui, _) = Ui::new(&mut |id, cap| {
     Box::new(CreatingRootWidget::new(id, cap))
   });
 
@@ -275,8 +258,7 @@ impl MovingWidget {
 #[test]
 fn moving_widget_creation() {
   let mut object = Some(Moveable {});
-  let mut ui = Ui::new();
-  let root = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
   let _ = ui.add_widget(root, &mut |parent_id, id, _cap| {

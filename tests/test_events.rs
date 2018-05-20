@@ -55,8 +55,7 @@ fn convert_event_into() {
 
 #[test]
 fn events_bubble_up_when_unhandled() {
-  let mut ui = Ui::new();
-  let r = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
   let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
@@ -98,8 +97,7 @@ fn key_handler(event: Event, to_focus: Option<Id>) -> Option<UiEvent> {
 
 #[test]
 fn event_handling_with_focus() {
-  let mut ui = Ui::new();
-  let r = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
   let w1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
@@ -138,8 +136,7 @@ fn custom_undirected_response_handler(event: Event) -> Option<UiEvent> {
 
 #[test]
 fn custom_undirected_response_event() {
-  let mut ui = Ui::new();
-  let r = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
   let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
@@ -173,8 +170,7 @@ fn custom_directed_response_handler(event: Event) -> Option<UiEvent> {
 
 #[test]
 fn custom_directed_response_event() {
-  let mut ui = Ui::new();
-  let r = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_directed_response_handler))
   });
   let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
@@ -199,8 +195,7 @@ fn custom_directed_response_event() {
 
 #[test]
 fn direct_custom_event() {
-  let mut ui = Ui::new();
-  let r = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
   let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
@@ -219,8 +214,7 @@ fn direct_custom_event() {
 
 #[test]
 fn quit_event() {
-  let mut ui = Ui::new();
-  let r = ui.add_root_widget(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
   let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {

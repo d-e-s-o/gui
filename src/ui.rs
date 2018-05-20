@@ -62,11 +62,10 @@ type NewWidgetFn<'f> = &'f mut FnMut(Id, Id, &mut Cap) -> Box<Widget>;
 /// A capability allowing for various widget related operations.
 pub trait Cap {
   /// Add a widget to the `Ui` represented by the capability.
-  ///
-  /// Note that there is no need for an `add_root_widget` method as
-  /// exposed by the `Ui` struct: A root widget is always the first
-  /// widget being added to a UI and there will only ever be one in it.
   fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn) -> Id;
+
+  /// Retrieve the `Id` of the root widget.
+  fn root_id(&self) -> Id;
 
   /// Retrieve the parent of the widget with the given `Id`.
   fn parent_id(&self, id: Id) -> Option<Id>;
@@ -95,12 +94,16 @@ pub struct Ui {
 // See https://github.com/rust-lang-nursery/rust-clippy/issues/2226
 #[allow(new_without_default_derive)]
 impl Ui {
-  /// Create a new `Ui` instance without any widgets.
-  pub fn new() -> Self {
-    Ui {
+  /// Create a new `Ui` instance containing one widget that acts as the
+  /// root widget.
+  pub fn new(new_root_widget: NewRootWidgetFn) -> (Self, Id) {
+    let mut ui = Ui {
       widgets: Default::default(),
       focused: Cell::new(None),
-    }
+    };
+    let id = ui._add_widget(new_root_widget);
+    debug_assert_eq!(id.idx, 0);
+    (ui, id)
   }
 
   /// Add a widget to the `Ui`.
@@ -138,12 +141,6 @@ impl Ui {
     id
   }
 
-  /// Add a root widget, i.e., the first widget, to the `Ui`.
-  pub fn add_root_widget(&mut self, new_root_widget: NewRootWidgetFn) -> Id {
-    debug_assert!(self.widgets.is_empty(), "Only one root widget may exist in a Ui");
-    self._add_widget(new_root_widget)
-  }
-
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
   fn lookup(&self, id: Id) -> Ref<Box<Widget>> {
@@ -161,11 +158,10 @@ impl Ui {
     // We cannot simply iterate through all widgets in `self.widgets`
     // when rendering, because we need to take parent-child
     // relationships into account in case widgets cover each other.
-    if let Some(root) = self.widgets.first() {
-      renderer.pre_render();
-      self.render_all(&root.borrow(), renderer);
-      renderer.post_render();
-    }
+    let root = self.lookup(self.root_id());
+    renderer.pre_render();
+    self.render_all(&root, renderer);
+    renderer.post_render();
   }
 
   /// Recursively render the given widget and its children.
@@ -293,6 +289,16 @@ impl Cap for Ui {
     self.lookup_mut(parent_id).add_child(id);
 
     id
+  }
+
+  /// Retrieve the `Id` of the root widget.
+  fn root_id(&self) -> Id {
+    debug_assert!(!self.widgets.is_empty());
+    debug_assert_eq!(self.widgets[0].borrow().id().idx, 0);
+
+    Id {
+      idx: 0,
+    }
   }
 
   /// Retrieve the parent of the widget with the given `Id`.
