@@ -18,6 +18,9 @@
 // *************************************************************************
 
 use std::fmt::Debug;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result;
 
 use Event;
 use Handleable;
@@ -50,6 +53,13 @@ pub trait WidgetRef {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Id {
   idx: usize,
+}
+
+impl Display for Id {
+  /// Format the `Id` into the given formatter.
+  fn fmt(&self, f: &mut Formatter) -> Result {
+    write!(f, "{}", self.idx)
+  }
 }
 
 impl WidgetRef for Id {
