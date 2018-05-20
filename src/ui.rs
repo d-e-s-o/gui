@@ -179,9 +179,6 @@ impl Ui {
   }
 
   /// Handle an event.
-  // Note that although self could be immutable here, we declare it
-  // mutable for reasons of safety around the `RefCell` functionality we
-  // have in use internally.
   pub fn handle<E>(&mut self, event: E) -> Option<UiEvent>
   where
     E: Into<UiEvent>,
@@ -200,30 +197,22 @@ impl Ui {
   }
 
   /// Send a key event to the focused widget.
-  fn handle_key_event(&self, event: Event) -> Option<UiEvent> {
+  fn handle_key_event(&mut self, event: Event) -> Option<UiEvent> {
     // All key events go to the focused widget.
     if let Some(id) = self.focused.get() {
-      let mut widget = self.lookup_mut(id);
-      self.handle_event(widget, event)
+      self.handle_event(id, event)
     } else {
       None
     }
   }
 
   /// Handle a custom event.
-  fn handle_custom_event(&self, event: Event) -> Option<UiEvent> {
+  fn handle_custom_event(&mut self, event: Event) -> Option<UiEvent> {
     if let Some(id) = self.focused.get() {
-      let mut widget = self.lookup_mut(id);
-      self.handle_event(widget, event)
+      self.handle_event(id, event)
     } else {
       None
     }
-  }
-
-  /// Handle a custom event directed at a particular widget.
-  fn handle_directed_custom_event(&self, id: Id, event: Event) -> Option<UiEvent> {
-    let widget = self.lookup_mut(id);
-    self.handle_event(widget, event)
   }
 
   /// Handle a focus event for the widget with the given `Id`.
@@ -238,21 +227,17 @@ impl Ui {
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
-  fn handle_event(&self, mut widget: RefMut<Box<Widget>>, event: Event) -> Option<UiEvent> {
-    let ui_event = widget.handle(event);
+  fn handle_event(&mut self, id: Id, event: Event) -> Option<UiEvent> {
+    let (ui_event, id) = {
+      let mut widget = self.lookup_mut(id);
+      (widget.handle(event), widget.parent_id())
+    };
+
     if let Some(ui_event) = ui_event {
       match ui_event {
         UiEvent::Event(event) => {
-          let id = widget.parent_id();
-          // Make sure to drop the mutable reference to the given widget
-          // here, otherwise we may run into a borrow conflict should the
-          // handling of the event somehow cause a borrow of the same
-          // widget.
-          drop(widget);
-
           if let Some(id) = id {
-            let mut parent = self.lookup_mut(id);
-            self.handle_event(parent, event)
+            self.handle_event(id, event)
           } else {
             // The event has not been handled. Return it as-is.
             Some(event.into())
@@ -267,12 +252,12 @@ impl Ui {
   }
 
   /// Handle a UI specific event.
-  fn handle_ui_specific_event(&self, event: UiEvent) -> Option<UiEvent> {
+  fn handle_ui_specific_event(&mut self, event: UiEvent) -> Option<UiEvent> {
     match event {
       UiEvent::Focus(id) => self.handle_focus_event(id),
       UiEvent::Custom(id, any) => {
         let event = Event::Custom(any);
-        self.handle_directed_custom_event(id, event)
+        self.handle_event(id, event)
       },
       UiEvent::Quit => self.handle_quit_event(),
       UiEvent::Event(_) => unreachable!(),
