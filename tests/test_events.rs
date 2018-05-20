@@ -55,21 +55,21 @@ fn convert_event_into() {
 
 #[test]
 fn events_bubble_up_when_unhandled() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
-    Box::new(TestContainer::new(parent_id, id))
+  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
+    Box::new(TestContainer::new(parent, id))
   });
-  let c2 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
-    Box::new(TestContainer::new(parent_id, id))
+  let mut c2 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
+    Box::new(TestContainer::new(parent, id))
   });
-  let w1 = ui.add_widget(c2, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::new(parent_id, id))
+  let w1 = ui.add_widget(&mut c2, &mut |parent, id, _cap| {
+    Box::new(TestWidget::new(parent, id))
   });
 
   let event = Event::KeyUp(Key::Char(' '));
-  ui.focus(w1);
+  ui.focus(&w1);
 
   let result = ui.handle(clone_event(&event));
   // An unhandled event should just be returned after every widget
@@ -97,29 +97,29 @@ fn key_handler(event: Event, to_focus: Option<Id>) -> Option<UiEvent> {
 
 #[test]
 fn event_handling_with_focus() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let w1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::with_handler(parent_id, id, |e| {
+  let w1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
+    Box::new(TestWidget::with_handler(parent, id, |e| {
       key_handler(e, None)
     }))
   });
-  let w2 = ui.add_widget(r, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::with_handler(parent_id, id, move |e| {
+  let w2 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
+    Box::new(TestWidget::with_handler(parent, id, move |e| {
       key_handler(e, Some(w1))
     }))
   });
 
-  ui.focus(w2);
-  assert!(ui.is_focused(w2));
+  ui.focus(&w2);
+  assert!(ui.is_focused(&w2));
 
   // Send a key down event, received by `w2`, which it will
   // translate into a focus event for `w1`.
   let event = Event::KeyDown(Key::Char('a'));
   ui.handle(event);
 
-  assert!(ui.is_focused(w1));
+  assert!(ui.is_focused(&w1));
 }
 
 fn custom_undirected_response_handler(event: Event) -> Option<UiEvent> {
@@ -136,19 +136,19 @@ fn custom_undirected_response_handler(event: Event) -> Option<UiEvent> {
 
 #[test]
 fn custom_undirected_response_event() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
-  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
-    Box::new(TestContainer::with_handler(parent_id, id, custom_undirected_response_handler))
+  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
+    Box::new(TestContainer::with_handler(parent, id, custom_undirected_response_handler))
   });
-  let w1 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::with_handler(parent_id, id, custom_undirected_response_handler))
+  let w1 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
+    Box::new(TestWidget::with_handler(parent, id, custom_undirected_response_handler))
   });
 
   // We focus the widget we just created, which means that the event
   // will travel through the widget and all its parents.
-  ui.focus(w1);
+  ui.focus(&w1);
 
   let event = Event::Custom(Box::new(42u64));
   let result = ui.handle(event).unwrap();
@@ -170,17 +170,17 @@ fn custom_directed_response_handler(event: Event) -> Option<UiEvent> {
 
 #[test]
 fn custom_directed_response_event() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_directed_response_handler))
   });
-  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
-    Box::new(TestContainer::with_handler(parent_id, id, custom_directed_response_handler))
+  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
+    Box::new(TestContainer::with_handler(parent, id, custom_directed_response_handler))
   });
-  let w1 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::with_handler(parent_id, id, custom_directed_response_handler))
+  let w1 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
+    Box::new(TestWidget::with_handler(parent, id, custom_directed_response_handler))
   });
 
-  ui.focus(w1);
+  ui.focus(&w1);
 
   let cell = RefCell::new(1337u64);
   let rc = Rc::new(cell);
@@ -195,17 +195,17 @@ fn custom_directed_response_event() {
 
 #[test]
 fn direct_custom_event() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
-  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
+  let mut c1 = ui.add_widget(&mut r, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::with_handler(parent_id, id, custom_undirected_response_handler))
   });
-  let w1 = ui.add_widget(c1, &mut |parent_id, id, _cap| {
+  let w1 = ui.add_widget(&mut c1, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::with_handler(parent_id, id, custom_undirected_response_handler))
   });
 
-  ui.focus(c1);
+  ui.focus(&c1);
 
   let event = UiEvent::Custom(w1, Box::new(10u64));
   let result = ui.handle(event).unwrap();
@@ -214,14 +214,14 @@ fn direct_custom_event() {
 
 #[test]
 fn quit_event() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let c1 = ui.add_widget(r, &mut |parent_id, id, _cap| {
-    Box::new(TestContainer::new(parent_id, id))
+  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
+    Box::new(TestContainer::new(parent, id))
   });
-  let _ = ui.add_widget(c1, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::new(parent_id, id))
+  let _ = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
+    Box::new(TestWidget::new(parent, id))
   });
 
   let result = ui.handle(UiEvent::Quit);

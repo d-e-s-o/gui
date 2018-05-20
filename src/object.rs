@@ -20,6 +20,7 @@
 use std::slice::Iter;
 
 use Id;
+use WidgetRef;
 
 
 /// An `Object` represents a first-class entity in a UI.
@@ -35,7 +36,7 @@ pub trait Object {
   //       method. It may be nicer to use a downcast to something like a
   //       container trait but no way has been found to make that
   //       happen.
-  fn add_child(&mut self, _id: Id) {
+  fn add_child(&mut self, _widget: &WidgetRef) {
     panic!("Cannot add an object to a non-container")
   }
 

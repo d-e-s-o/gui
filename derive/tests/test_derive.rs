@@ -30,6 +30,7 @@ use gui::Cap;
 use gui::Handleable;
 use gui::Id;
 use gui::Ui;
+use gui::WidgetRef;
 
 
 #[derive(Debug, GuiWidget, GuiHandleable)]
@@ -77,10 +78,10 @@ impl<T> TestContainerT<T>
 where
   T: 'static + Debug,
 {
-  pub fn new(parent_id: Id, id: Id) -> Self {
+  pub fn new(parent: &WidgetRef, id: Id) -> Self {
     TestContainerT {
       id: id,
-      parent_id: parent_id,
+      parent_id: parent.as_id(),
       children: Vec::new(),
       _data: PhantomData,
     }
@@ -91,39 +92,39 @@ where
 #[test]
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn widget_type_yields_widget() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let w = ui.add_widget(r, &mut |parent_id, id, _cap| {
+  let mut w = ui.add_widget(&mut r, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
-  let _ = ui.add_widget(w, &mut |parent_id, id, _cap| {
+  let _ = ui.add_widget(&mut w, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 }
 
 #[test]
 fn container_type_yields_container() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let c = ui.add_widget(r, &mut |parent_id, id, _cap| {
+  let mut c = ui.add_widget(&mut r, &mut |parent_id, id, _cap| {
     Box::new(TestContainer::new(parent_id, id))
   });
-  let _ = ui.add_widget(c, &mut |parent_id, id, _cap| {
+  let _ = ui.add_widget(&mut c, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 }
 
 #[test]
 fn generic_container() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let c = ui.add_widget(r, &mut |parent_id, id, _cap| {
+  let mut c = ui.add_widget(&mut r, &mut |parent_id, id, _cap| {
     Box::new(TestContainerT::<u32>::new(parent_id, id))
   });
-  let _ = ui.add_widget(c, &mut |parent_id, id, _cap| {
+  let _ = ui.add_widget(&mut c, &mut |parent_id, id, _cap| {
     Box::new(TestWidget::new(parent_id, id))
   });
 }

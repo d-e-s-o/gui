@@ -28,10 +28,45 @@ use Renderer;
 use UiEvent;
 
 
+/// A type representing a reference to a `Widget`.
+///
+/// A reference to a `Widget` can be represented quite literally as a
+/// reference to a `Widget` but it can also just be an `Id`. Object of
+/// this type help abstract away from the differences between the two
+/// for the purpose of the `Ui`.
+pub trait WidgetRef {
+  /// Retrieve a reference to a widget.
+  fn as_widget<'s, 'ui: 's>(&'s self, ui: &'ui Ui) -> &Widget;
+
+  /// Retrieve a mutable reference to a widget.
+  fn as_mut_widget<'s, 'ui: 's>(&'s mut self, ui: &'ui mut Ui) -> &mut Widget;
+
+  /// Retrieve an `Id`.
+  fn as_id(&self) -> Id;
+}
+
+
 /// An `Id` uniquely representing a widget.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Id {
   idx: usize,
+}
+
+impl WidgetRef for Id {
+  /// Retrieve a reference to a widget.
+  fn as_widget<'s, 'ui: 's>(&'s self, ui: &'ui Ui) -> &Widget {
+    ui.lookup(*self).as_ref()
+  }
+
+  /// Retrieve a mutable reference to a widget.
+  fn as_mut_widget<'s, 'ui: 's>(&'s mut self, ui: &'ui mut Ui) -> &mut Widget {
+    ui.lookup_mut(*self).as_mut()
+  }
+
+  /// Retrieve an `Id`.
+  fn as_id(&self) -> Id {
+    *self
+  }
 }
 
 
@@ -40,8 +75,9 @@ pub struct Id {
 /// In addition to taking care of `Id` management and parent-child
 /// relationships, the `Ui` is responsible for dispatching events to
 /// widgets and rendering them. Hence, a widget usable for the `Ui`
-/// needs to implement `Handleable`, `Renderable`, and `Object`.
-pub trait Widget: Handleable + Renderable + Object + Debug {}
+/// needs to implement `Handleable`, `Renderable`, `Object`, and
+/// `WidgetRef`.
+pub trait Widget: Handleable + Renderable + Object + Debug + WidgetRef {}
 
 
 // TODO: Ideally we would want to use FnOnce here, in case callers need
@@ -52,29 +88,29 @@ pub trait Widget: Handleable + Renderable + Object + Debug {}
 //       to use an Option as one of the parameters and panic if None is
 //       supplied.
 type NewRootWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
-type NewWidgetFn<'f> = &'f mut FnMut(Id, Id, &mut Cap) -> Box<Widget>;
+type NewWidgetFn<'f> = &'f mut FnMut(&mut WidgetRef, Id, &mut Cap) -> Box<Widget>;
 
 
 /// A capability allowing for various widget related operations.
 pub trait Cap {
   /// Add a widget to the `Ui` represented by the capability.
-  fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn) -> Id;
+  fn add_widget(&mut self, parent: &mut WidgetRef, new_widget: NewWidgetFn) -> Id;
 
   /// Retrieve the `Id` of the root widget.
   fn root_id(&self) -> Id;
 
-  /// Retrieve the parent of the widget with the given `Id`.
-  fn parent_id(&self, id: Id) -> Option<Id>;
+  /// Retrieve the parent of the given widget.
+  fn parent_id(&self, widget: &WidgetRef) -> Option<Id>;
 
   /// Focus a widget.
   ///
   /// The focused widget is the one receiving certain types of events
   /// (such as key events) first but may also be rendered in a different
   /// color or be otherwise highlighted.
-  fn focus(&mut self, id: Id);
+  fn focus(&mut self, widget: &WidgetRef);
 
-  /// Check whether the widget with the given `Id` is focused.
-  fn is_focused(&self, id: Id) -> bool;
+  /// Check whether the referenced widget is focused.
+  fn is_focused(&self, widget: &WidgetRef) -> bool;
 }
 
 
@@ -115,7 +151,7 @@ impl Ui {
     // If no widget has the focus we focus the newly created widget but
     // then the focus stays unless explicitly changed.
     if self.focused.is_none() {
-      self.focus(id);
+      self.focus(&id);
     }
 
     // We require some trickery here to allow for dynamic widget
@@ -130,7 +166,7 @@ impl Ui {
     let mut widget = new_widget(id, self);
 
     for child in self.widgets[id.idx].iter().cloned() {
-      widget.add_child(child)
+      widget.add_child(&child)
     }
 
     self.widgets[id.idx] = widget;
@@ -213,7 +249,7 @@ impl Ui {
 
   /// Handle a focus event for the widget with the given `Id`.
   fn handle_focus_event(&mut self, id: Id) -> Option<UiEvent> {
-    self.focus(id);
+    self.focus(&id);
     None
   }
 
@@ -263,11 +299,11 @@ impl Ui {
 
 impl Cap for Ui {
   /// Add a widget to the `Ui`.
-  fn add_widget(&mut self, parent_id: Id, new_widget: NewWidgetFn) -> Id {
-    let id = self._add_widget(&mut |id, cap| new_widget(parent_id, id, cap));
+  fn add_widget(&mut self, parent: &mut WidgetRef, new_widget: NewWidgetFn) -> Id {
+    let id = self._add_widget(&mut |id, cap| new_widget(parent, id, cap));
     // The widget is already linked to its parent but the parent needs to
     // know about the child as well.
-    self.lookup_mut(parent_id).add_child(id);
+    parent.as_mut_widget(self).add_child(&id);
 
     id
   }
@@ -282,18 +318,18 @@ impl Cap for Ui {
     }
   }
 
-  /// Retrieve the parent of the widget with the given `Id`.
-  fn parent_id(&self, id: Id) -> Option<Id> {
-    self.lookup(id).parent_id()
+  /// Retrieve the parent of the given widget.
+  fn parent_id(&self, widget: &WidgetRef) -> Option<Id> {
+    widget.as_widget(self).parent_id()
   }
 
   /// Focus a widget.
-  fn focus(&mut self, id: Id) {
-    self.focused = Some(id)
+  fn focus(&mut self, widget: &WidgetRef) {
+    self.focused = Some(widget.as_id())
   }
 
-  /// Check whether the widget with the given `Id` is focused.
-  fn is_focused(&self, id: Id) -> bool {
-    self.focused == Some(id)
+  /// Check whether the given widget is focused.
+  fn is_focused(&self, widget: &WidgetRef) -> bool {
+    self.focused == Some(widget.as_id())
   }
 }

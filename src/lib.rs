@@ -57,3 +57,4 @@ pub use self::ui::Cap;
 pub use self::ui::Id;
 pub use self::ui::Ui;
 pub use self::ui::Widget;
+pub use self::ui::WidgetRef;

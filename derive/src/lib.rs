@@ -28,6 +28,7 @@
   unused_qualifications,
   warnings,
 )]
+#![recursion_limit="128"]
 
 //! A crate providing custom derive functionality for the `gui` crate.
 
@@ -138,6 +139,19 @@ type Result<T> = std::result::Result<T, Error>;
 ///   }
 /// }
 ///
+/// impl gui::WidgetRef for TestWidget {
+///   fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui gui::Ui) -> &gui::Widget {
+///     self
+///   }
+///   fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut gui::Ui) -> &mut gui::Widget {
+///     self
+///   }
+///   fn as_id(&self) -> gui::Id {
+///     use gui::Object;
+///     self.id()
+///   }
+/// }
+///
 /// impl gui::Widget for TestWidget {}
 /// # impl gui::Handleable for TestWidget {}
 /// ```
@@ -172,11 +186,24 @@ pub fn widget(input: TokenStream) -> TokenStream {
 ///   fn parent_id(&self) -> Option<gui::Id> {
 ///     Some(self.parent_id)
 ///   }
-///   fn add_child(&mut self, id: gui::Id) {
-///     self.children.push(id)
+///   fn add_child(&mut self, widget: &gui::WidgetRef) {
+///     self.children.push(widget.as_id())
 ///   }
 ///   fn iter(&self) -> gui::ChildIter {
 ///     gui::ChildIter::with_iter(self.children.iter())
+///   }
+/// }
+///
+/// impl gui::WidgetRef for TestContainer {
+///   fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui gui::Ui) -> &gui::Widget {
+///     self
+///   }
+///   fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut gui::Ui) -> &mut gui::Widget {
+///     self
+///   }
+///   fn as_id(&self) -> gui::Id {
+///     use gui::Object;
+///     self.id()
 ///   }
 /// }
 ///
@@ -212,11 +239,24 @@ pub fn container(input: TokenStream) -> TokenStream {
 ///   fn parent_id(&self) -> Option<gui::Id> {
 ///     None
 ///   }
-///   fn add_child(&mut self, id: gui::Id) {
-///     self.children.push(id)
+///   fn add_child(&mut self, widget: &gui::WidgetRef) {
+///     self.children.push(widget.as_id())
 ///   }
 ///   fn iter(&self) -> gui::ChildIter {
 ///     gui::ChildIter::with_iter(self.children.iter())
+///   }
+/// }
+///
+/// impl gui::WidgetRef for TestRootWidget {
+///   fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui gui::Ui) -> &gui::Widget {
+///     self
+///   }
+///   fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut gui::Ui) -> &mut gui::Widget {
+///     self
+///   }
+///   fn as_id(&self) -> gui::Id {
+///     use gui::Object;
+///     self.id()
 ///   }
 /// }
 ///
@@ -354,12 +394,14 @@ fn expand_widget_traits(type_: &Type, new: &New, input: &DeriveInput) -> Tokens 
   let new_impl = expand_new_impl(type_, new, input);
   let renderer = expand_renderer_trait(input);
   let object = expand_object_trait(type_, input);
+  let widget_ref = expand_widget_ref_trait(input);
   let widget = expand_widget_trait(input);
 
   quote! {
     #new_impl
     #renderer
     #object
+    #widget_ref
     #widget
   }
 }
@@ -375,22 +417,22 @@ fn expand_new_impl(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
       let (args, fields) = match *type_ {
         Type::Widget => {(
           quote! {
-            parent_id: ::gui::Id,
+            parent: &::gui::WidgetRef,
             id: ::gui::Id,
           },
           quote! {
             id: id,
-            parent_id: parent_id
+            parent_id: parent.as_id(),
           }
         )},
         Type::Container => {(
           quote! {
-            parent_id: ::gui::Id,
+            parent: &::gui::WidgetRef,
             id: ::gui::Id,
           },
           quote! {
             id: id,
-            parent_id: parent_id,
+            parent_id: parent.as_id(),
             children: Vec::new(),
           }
         )},
@@ -448,8 +490,8 @@ fn expand_object_trait(type_: &Type, input: &DeriveInput) -> Tokens {
     Type::Widget => quote!{},
     Type::Container | Type::RootWidget => {
       quote!{
-        fn add_child(&mut self, id: ::gui::Id) {
-          self.children.push(id)
+        fn add_child(&mut self, widget: &::gui::WidgetRef) {
+          self.children.push(widget.as_id())
         }
 
         fn iter(&self) -> ::gui::ChildIter {
@@ -532,6 +574,30 @@ fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
       })
     },
     _ => Err(Error::from("#[derive(GuiHandleable)] is only defined for structs")),
+  }
+}
+
+
+/// Expand an implementation for the `gui::WidgetRef` trait.
+fn expand_widget_ref_trait(input: &DeriveInput) -> Tokens {
+  let name = &input.ident;
+  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+  quote!{
+    impl #impl_generics ::gui::WidgetRef for #name #ty_generics #where_clause {
+      fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui ::gui::Ui) -> &::gui::Widget {
+        self
+      }
+
+      fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut ::gui::Ui) -> &mut ::gui::Widget {
+        self
+      }
+
+      fn as_id(&self) -> ::gui::Id {
+        use ::gui::Object;
+        self.id()
+      }
+    }
   }
 }
 

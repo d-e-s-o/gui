@@ -28,6 +28,7 @@ use gui::Event;
 use gui::Handleable;
 use gui::Id;
 use gui::UiEvent;
+use gui::WidgetRef;
 
 
 type HandlerBox = Box<Fn(Event) -> Option<UiEvent>>;
@@ -96,22 +97,22 @@ pub struct TestWidget {
 }
 
 impl TestWidget {
-  pub fn new(parent_id: Id, id: Id) -> Self {
+  pub fn new(parent: &WidgetRef, id: Id) -> Self {
     TestWidget {
       id: id,
-      parent_id: parent_id,
+      parent_id: parent.as_id(),
       handler: None,
     }
   }
 
   #[allow(unused)]
-  pub fn with_handler<F>(parent_id: Id, id: Id, handler: F) -> Self
+  pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
   where
     F: 'static + Fn(Event) -> Option<UiEvent>,
   {
     TestWidget {
       id: id,
-      parent_id: parent_id,
+      parent_id: parent.as_id(),
       handler: Some(Handler(Box::new(handler))),
     }
   }
@@ -137,23 +138,23 @@ pub struct TestContainer {
 
 impl TestContainer {
   #[allow(unused)]
-  pub fn new(parent_id: Id, id: Id) -> Self {
+  pub fn new(parent: &WidgetRef, id: Id) -> Self {
     TestContainer {
       id: id,
-      parent_id: parent_id,
+      parent_id: parent.as_id(),
       children: Vec::new(),
       handler: None,
     }
   }
 
   #[allow(unused)]
-  pub fn with_handler<F>(parent_id: Id, id: Id, handler: F) -> Self
+  pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
   where
     F: 'static + Fn(Event) -> Option<UiEvent>,
   {
     TestContainer {
       id: id,
-      parent_id: parent_id,
+      parent_id: parent.as_id(),
       children: Vec::new(),
       handler: Some(Handler(Box::new(handler))),
     }

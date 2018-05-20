@@ -24,8 +24,10 @@ use Id;
 use Object;
 use Renderable;
 use Renderer;
+use Ui;
 use UiEvent;
 use Widget;
+use WidgetRef;
 
 
 /// This class is a dummy implementation of a container style `Widget`.
@@ -57,8 +59,8 @@ impl Object for Placeholder {
   fn parent_id(&self) -> Option<Id> {
     unreachable!()
   }
-  fn add_child(&mut self, id: Id) {
-    self.children.push(id)
+  fn add_child(&mut self, widget: &WidgetRef) {
+    self.children.push(widget.as_id())
   }
   fn iter(&self) -> ChildIter {
     ChildIter::with_iter(self.children.iter())
@@ -68,6 +70,23 @@ impl Object for Placeholder {
 impl Handleable for Placeholder {
   fn handle(&mut self, _event: Event) -> Option<UiEvent> {
     unreachable!()
+  }
+}
+
+impl WidgetRef for Placeholder {
+  /// Retrieve a reference to a widget.
+  fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui Ui) -> &Widget {
+    self
+  }
+
+  /// Retrieve a mutable reference to a widget.
+  fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut Ui) -> &mut Widget {
+    self
+  }
+
+  /// Retrieve an `Id`.
+  fn as_id(&self) -> Id {
+    self.id()
   }
 }
 
