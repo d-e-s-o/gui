@@ -17,10 +17,6 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use std::cell::Cell;
-use std::cell::Ref;
-use std::cell::RefCell;
-use std::cell::RefMut;
 use std::fmt::Debug;
 
 use Event;
@@ -75,7 +71,7 @@ pub trait Cap {
   /// The focused widget is the one receiving certain types of events
   /// (such as key events) first but may also be rendered in a different
   /// color or be otherwise highlighted.
-  fn focus(&self, id: Id);
+  fn focus(&mut self, id: Id);
 
   /// Check whether the widget with the given `Id` is focused.
   fn is_focused(&self, id: Id) -> bool;
@@ -85,8 +81,8 @@ pub trait Cap {
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
 pub struct Ui {
-  widgets: Vec<RefCell<Box<Widget>>>,
-  focused: Cell<Option<Id>>,
+  widgets: Vec<Box<Widget>>,
+  focused: Option<Id>,
 }
 
 // Clippy raises a false alert due to the generic type used but not
@@ -99,7 +95,7 @@ impl Ui {
   pub fn new(new_root_widget: NewRootWidgetFn) -> (Self, Id) {
     let mut ui = Ui {
       widgets: Default::default(),
-      focused: Cell::new(None),
+      focused: None,
     };
     let id = ui._add_widget(new_root_widget);
     debug_assert_eq!(id.idx, 0);
@@ -118,7 +114,7 @@ impl Ui {
 
     // If no widget has the focus we focus the newly created widget but
     // then the focus stays unless explicitly changed.
-    if self.focused.get().is_none() {
+    if self.focused.is_none() {
       self.focus(id);
     }
 
@@ -129,28 +125,28 @@ impl Ui {
     // widget of interest got created we transfer all those children
     // over.
     let dummy = Placeholder::new();
-    self.widgets.push(RefCell::new(Box::new(dummy)));
+    self.widgets.push(Box::new(dummy));
 
     let mut widget = new_widget(id, self);
 
-    for child in self.widgets[id.idx].borrow().iter().cloned() {
+    for child in self.widgets[id.idx].iter().cloned() {
       widget.add_child(child)
     }
 
-    self.widgets[id.idx] = RefCell::new(widget);
+    self.widgets[id.idx] = widget;
     id
   }
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
-  fn lookup(&self, id: Id) -> Ref<Box<Widget>> {
-    self.widgets[id.idx].borrow()
+  fn lookup(&self, id: Id) -> &Box<Widget> {
+    &self.widgets[id.idx]
   }
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
-  fn lookup_mut(&self, id: Id) -> RefMut<Box<Widget>> {
-    self.widgets[id.idx].borrow_mut()
+  fn lookup_mut(&mut self, id: Id) -> &mut Box<Widget> {
+    &mut self.widgets[id.idx]
   }
 
   /// Render the `Ui` with the given `Renderer`.
@@ -199,7 +195,7 @@ impl Ui {
   /// Send a key event to the focused widget.
   fn handle_key_event(&mut self, event: Event) -> Option<UiEvent> {
     // All key events go to the focused widget.
-    if let Some(id) = self.focused.get() {
+    if let Some(id) = self.focused {
       self.handle_event(id, event)
     } else {
       None
@@ -208,7 +204,7 @@ impl Ui {
 
   /// Handle a custom event.
   fn handle_custom_event(&mut self, event: Event) -> Option<UiEvent> {
-    if let Some(id) = self.focused.get() {
+    if let Some(id) = self.focused {
       self.handle_event(id, event)
     } else {
       None
@@ -216,7 +212,7 @@ impl Ui {
   }
 
   /// Handle a focus event for the widget with the given `Id`.
-  fn handle_focus_event(&self, id: Id) -> Option<UiEvent> {
+  fn handle_focus_event(&mut self, id: Id) -> Option<UiEvent> {
     self.focus(id);
     None
   }
@@ -279,7 +275,7 @@ impl Cap for Ui {
   /// Retrieve the `Id` of the root widget.
   fn root_id(&self) -> Id {
     debug_assert!(!self.widgets.is_empty());
-    debug_assert_eq!(self.widgets[0].borrow().id().idx, 0);
+    debug_assert_eq!(self.widgets[0].id().idx, 0);
 
     Id {
       idx: 0,
@@ -292,12 +288,12 @@ impl Cap for Ui {
   }
 
   /// Focus a widget.
-  fn focus(&self, id: Id) {
-    self.focused.set(Some(id))
+  fn focus(&mut self, id: Id) {
+    self.focused = Some(id)
   }
 
   /// Check whether the widget with the given `Id` is focused.
   fn is_focused(&self, id: Id) -> bool {
-    self.focused.get() == Some(id)
+    self.focused == Some(id)
   }
 }
