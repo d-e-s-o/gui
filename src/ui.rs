@@ -127,7 +127,7 @@ pub trait Cap {
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
 pub struct Ui {
-  widgets: Vec<Box<Widget>>,
+  widgets: Vec<Option<Box<Widget>>>,
   focused: Option<Id>,
 }
 
@@ -171,28 +171,34 @@ impl Ui {
     // widget of interest got created we transfer all those children
     // over.
     let dummy = Placeholder::new();
-    self.widgets.push(Box::new(dummy));
+    self.widgets.push(Some(Box::new(dummy)));
 
     let mut widget = new_widget(id, self);
 
-    for child in self.widgets[id.idx].iter().cloned() {
+    for child in self.lookup(id).iter().cloned() {
       widget.add_child(&child)
     }
 
-    self.widgets[id.idx] = widget;
+    self.widgets[id.idx] = Some(widget);
     id
   }
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
   fn lookup(&self, id: Id) -> &Box<Widget> {
-    &self.widgets[id.idx]
+    match self.widgets[id.idx].as_ref() {
+      Some(widget) => widget,
+      None => panic!("Widget {} is currently taken", id),
+    }
   }
 
   /// Lookup a widget from an `Id`.
   #[allow(borrowed_box)]
   fn lookup_mut(&mut self, id: Id) -> &mut Box<Widget> {
-    &mut self.widgets[id.idx]
+    match self.widgets[id.idx].as_mut() {
+      Some(widget) => widget,
+      None => panic!("Widget {} is currently taken", id),
+    }
   }
 
   /// Render the `Ui` with the given `Renderer`.
@@ -321,7 +327,7 @@ impl Cap for Ui {
   /// Retrieve the `Id` of the root widget.
   fn root_id(&self) -> Id {
     debug_assert!(!self.widgets.is_empty());
-    debug_assert_eq!(self.widgets[0].id().idx, 0);
+    debug_assert_eq!(self.widgets[0].as_ref().unwrap().id().idx, 0);
 
     Id {
       idx: 0,
