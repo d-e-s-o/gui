@@ -17,6 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use Cap;
 use ChildIter;
 use Event;
 use Handleable;
@@ -68,7 +69,7 @@ impl Object for Placeholder {
 }
 
 impl Handleable for Placeholder {
-  fn handle(&mut self, _event: Event) -> Option<UiEvent> {
+  fn handle(&mut self, _event: Event, _cap: &mut Cap) -> Option<UiEvent> {
     unreachable!()
   }
 }

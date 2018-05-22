@@ -277,8 +277,27 @@ impl Ui {
   /// Bubble up an event until it is handled by some `Widget`.
   fn handle_event(&mut self, id: Id, event: Event) -> Option<UiEvent> {
     let (ui_event, id) = {
-      let mut widget = self.lookup_mut(id);
-      (widget.handle(event), widget.parent_id())
+      // To enable a mutable borrow of the Ui as well as the widget we
+      // temporarily remove the widget from the internally used vector.
+      // This means that now we would panic if we were to access the
+      // widget recursively (because that's what we do if the Option is
+      // None). The only way this can happen is if the widget's handle
+      // method uses the provided `Cap` object. We fudge that case by
+      // requiring that the widget supply its own reference to the `Cap`
+      // object, and not its own `Id`. This way we do not have to lookup
+      // the widget and, hence, do not panic. This use case is enabled
+      // since all methods in the `Cap` trait accept a `WidgetRef`,
+      // which can be either an `Id` or an actual reference.
+      match self.widgets[id.idx].take() {
+        Some(mut widget) => {
+          let ui_event = widget.handle(event, self);
+          let parent_id = widget.parent_id();
+
+          self.widgets[id.idx] = Some(widget);
+          (ui_event, parent_id)
+        },
+        None => panic!("Widget {} is currently taken", id),
+      }
     };
 
     if let Some(ui_event) = ui_event {

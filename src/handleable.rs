@@ -17,6 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use Cap;
 use Event;
 use UiEvent;
 
@@ -24,7 +25,13 @@ use UiEvent;
 /// A trait representing an object capable of handling events.
 pub trait Handleable {
   /// Handle an `Event`.
-  fn handle(&mut self, event: Event) -> Option<UiEvent> {
+  ///
+  /// The widget has the option to either consume the event and return
+  /// nothing, in which no one else will get informed about it, forward
+  /// it directly (the default behavior), in which case the its parent
+  /// widget will receive it, or return a completely different event.
+  #[allow(unused_variables)]
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())

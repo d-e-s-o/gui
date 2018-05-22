@@ -24,6 +24,7 @@ use std::fmt::Formatter;
 use std::fmt::Result;
 use std::ops::Deref;
 
+use gui::Cap;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
@@ -31,7 +32,7 @@ use gui::UiEvent;
 use gui::WidgetRef;
 
 
-type HandlerBox = Box<Fn(Event) -> Option<UiEvent>>;
+type HandlerBox = Box<Fn(Event, &mut Cap) -> Option<UiEvent>>;
 
 struct Handler(HandlerBox);
 
@@ -69,7 +70,7 @@ impl TestRootWidget {
   #[allow(unused)]
   pub fn with_handler<F>(id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(Event) -> Option<UiEvent>,
+    F: 'static + Fn(Event, &mut Cap) -> Option<UiEvent>,
   {
     TestRootWidget {
       id: id,
@@ -80,9 +81,9 @@ impl TestRootWidget {
 }
 
 impl Handleable for TestRootWidget {
-  fn handle(&mut self, event: Event) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
     match self.handler {
-      Some(ref handler) => handler(event),
+      Some(ref handler) => handler(event, cap),
       None => Some(event.into()),
     }
   }
@@ -108,7 +109,7 @@ impl TestWidget {
   #[allow(unused)]
   pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(Event) -> Option<UiEvent>,
+    F: 'static + Fn(Event, &mut Cap) -> Option<UiEvent>,
   {
     TestWidget {
       id: id,
@@ -119,9 +120,9 @@ impl TestWidget {
 }
 
 impl Handleable for TestWidget {
-  fn handle(&mut self, event: Event) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
     match self.handler {
-      Some(ref handler) => handler(event),
+      Some(ref handler) => handler(event, cap),
       None => Some(event.into()),
     }
   }
@@ -150,7 +151,7 @@ impl TestContainer {
   #[allow(unused)]
   pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(Event) -> Option<UiEvent>,
+    F: 'static + Fn(Event, &mut Cap) -> Option<UiEvent>,
   {
     TestContainer {
       id: id,
@@ -162,9 +163,9 @@ impl TestContainer {
 }
 
 impl Handleable for TestContainer {
-  fn handle(&mut self, event: Event) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
     match self.handler {
-      Some(ref handler) => handler(event),
+      Some(ref handler) => handler(event, cap),
       None => Some(event.into()),
     }
   }

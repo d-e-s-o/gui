@@ -119,7 +119,7 @@ fn focus_widget() {
 }
 
 
-fn counting_handler(event: Event) -> Option<UiEvent> {
+fn counting_handler(event: Event, _cap: &mut Cap) -> Option<UiEvent> {
   Some(
     match event {
       Event::Custom(e) => {
@@ -151,8 +151,8 @@ impl CreatingRootWidget {
 }
 
 impl Handleable for CreatingRootWidget {
-  fn handle(&mut self, event: Event) -> Option<UiEvent> {
-    counting_handler(event)
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+    counting_handler(event, cap)
   }
 }
 
@@ -179,8 +179,8 @@ impl CreatingContainer {
 }
 
 impl Handleable for CreatingContainer {
-  fn handle(&mut self, event: Event) -> Option<UiEvent> {
-    counting_handler(event)
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+    counting_handler(event, cap)
   }
 }
 
@@ -210,8 +210,8 @@ impl CreatingWidget {
 }
 
 impl Handleable for CreatingWidget {
-  fn handle(&mut self, event: Event) -> Option<UiEvent> {
-    counting_handler(event)
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+    counting_handler(event, cap)
   }
 }
 
