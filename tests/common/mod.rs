@@ -32,7 +32,7 @@ use gui::UiEvent;
 use gui::WidgetRef;
 
 
-type HandlerBox = Box<Fn(Event, &mut Cap) -> Option<UiEvent>>;
+type HandlerBox = Box<Fn(&mut WidgetRef, Event, &mut Cap) -> Option<UiEvent>>;
 
 struct Handler(HandlerBox);
 
@@ -70,7 +70,7 @@ impl TestRootWidget {
   #[allow(unused)]
   pub fn with_handler<F>(id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(Event, &mut Cap) -> Option<UiEvent>,
+    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<UiEvent>,
   {
     TestRootWidget {
       id: id,
@@ -82,8 +82,12 @@ impl TestRootWidget {
 
 impl Handleable for TestRootWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
-    match self.handler {
-      Some(ref handler) => handler(event, cap),
+    match self.handler.take() {
+      Some(handler) => {
+        let event = handler(self, event, cap);
+        self.handler = Some(handler);
+        event
+      },
       None => Some(event.into()),
     }
   }
@@ -109,7 +113,7 @@ impl TestWidget {
   #[allow(unused)]
   pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(Event, &mut Cap) -> Option<UiEvent>,
+    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<UiEvent>,
   {
     TestWidget {
       id: id,
@@ -121,8 +125,12 @@ impl TestWidget {
 
 impl Handleable for TestWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
-    match self.handler {
-      Some(ref handler) => handler(event, cap),
+    match self.handler.take() {
+      Some(handler) => {
+        let event = handler(self, event, cap);
+        self.handler = Some(handler);
+        event
+      },
       None => Some(event.into()),
     }
   }
@@ -151,7 +159,7 @@ impl TestContainer {
   #[allow(unused)]
   pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(Event, &mut Cap) -> Option<UiEvent>,
+    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<UiEvent>,
   {
     TestContainer {
       id: id,
@@ -164,8 +172,12 @@ impl TestContainer {
 
 impl Handleable for TestContainer {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
-    match self.handler {
-      Some(ref handler) => handler(event, cap),
+    match self.handler.take() {
+      Some(handler) => {
+        let event = handler(self, event, cap);
+        self.handler = Some(handler);
+        event
+      },
       None => Some(event.into()),
     }
   }

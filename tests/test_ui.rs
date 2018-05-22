@@ -29,6 +29,7 @@ use gui::Cap;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
+use gui::Key;
 use gui::Ui;
 use gui::UiEvent;
 use gui::WidgetRef;
@@ -119,7 +120,7 @@ fn focus_widget() {
 }
 
 
-fn counting_handler(event: Event, _cap: &mut Cap) -> Option<UiEvent> {
+fn counting_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<UiEvent> {
   Some(
     match event {
       Event::Custom(e) => {
@@ -152,7 +153,7 @@ impl CreatingRootWidget {
 
 impl Handleable for CreatingRootWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
-    counting_handler(event, cap)
+    counting_handler(self, event, cap)
   }
 }
 
@@ -180,7 +181,7 @@ impl CreatingContainer {
 
 impl Handleable for CreatingContainer {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
-    counting_handler(event, cap)
+    counting_handler(self, event, cap)
   }
 }
 
@@ -211,7 +212,7 @@ impl CreatingWidget {
 
 impl Handleable for CreatingWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
-    counting_handler(event, cap)
+    counting_handler(self, event, cap)
   }
 }
 
@@ -266,4 +267,60 @@ fn moving_widget_creation() {
     let moveable = object.take().unwrap();
     Box::new(MovingWidget::new(parent, id, moveable))
   });
+}
+
+
+fn create_handler(widget: &mut WidgetRef, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  match event {
+    Event::KeyDown(key) => {
+      match key {
+        Key::Char('z') => {
+          cap.add_widget(widget, &mut |parent, id, _cap| {
+            Box::new(TestWidget::new(parent, id))
+          });
+          None
+        },
+        _ => Some(event.into()),
+      }
+    },
+    _ => Some(event.into()),
+  }
+}
+
+
+#[test]
+fn event_based_widget_creation() {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestRootWidget::with_handler(id, create_handler))
+  });
+
+  assert_eq!(root.as_widget(&ui).iter().count(), 0);
+
+  let event = Event::KeyDown(Key::Char('z'));
+  let result = ui.handle(event);
+  assert!(result.is_none());
+
+  // We must have created a widget.
+  assert_eq!(root.as_widget(&ui).iter().count(), 1)
+}
+
+
+fn panicing_handler(widget: &mut WidgetRef, _event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  // Because of the usage of an `Id` that represents the same widget
+  // from which the call originates we will panic when attempting to
+  // retrieve the parent `Id`. Correct usage would be to use the
+  // `WidgetRef` (which is an actual reference in this case)
+  // instead.
+  cap.parent_id(&widget.as_id());
+  None
+}
+
+#[test]
+#[should_panic(expected = "Widget 0 is currently taken")]
+fn recursive_widget_acquisition() {
+  let (mut ui, _) = Ui::new(&mut |id, _cap| {
+    Box::new(TestRootWidget::with_handler(id, panicing_handler))
+  });
+
+  ui.handle(Event::Custom(Box::new(())));
 }

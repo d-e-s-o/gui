@@ -35,6 +35,7 @@ use gui::Id;
 use gui::Key;
 use gui::Ui;
 use gui::UiEvent;
+use gui::WidgetRef;
 
 use common::clone_event;
 use common::compare_ui_events;
@@ -101,12 +102,12 @@ fn event_handling_with_focus() {
     Box::new(TestRootWidget::new(id))
   });
   let w1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, |e, _| {
+    Box::new(TestWidget::with_handler(parent, id, |_s, e, _| {
       key_handler(e, None)
     }))
   });
   let w2 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, move |e, _| {
+    Box::new(TestWidget::with_handler(parent, id, move |_s, e, _| {
       key_handler(e, Some(w1))
     }))
   });
@@ -122,7 +123,7 @@ fn event_handling_with_focus() {
   assert!(ui.is_focused(&w1));
 }
 
-fn custom_undirected_response_handler(event: Event, _cap: &mut Cap) -> Option<UiEvent> {
+fn custom_undirected_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<UiEvent> {
   Some(
     match event {
       Event::Custom(e) => {
@@ -156,7 +157,7 @@ fn custom_undirected_response_event() {
   assert_eq!(*unwrap_custom::<u64>(result), 45);
 }
 
-fn custom_directed_response_handler(event: Event, _cap: &mut Cap) -> Option<UiEvent> {
+fn custom_directed_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<UiEvent> {
   match event {
     Event::Custom(data) => {
       let cell = *data.downcast::<Rc<RefCell<u64>>>().unwrap();

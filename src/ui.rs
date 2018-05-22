@@ -346,7 +346,10 @@ impl Cap for Ui {
   /// Retrieve the `Id` of the root widget.
   fn root_id(&self) -> Id {
     debug_assert!(!self.widgets.is_empty());
-    debug_assert_eq!(self.widgets[0].as_ref().unwrap().id().idx, 0);
+    // We do not unconditionally unwrap the Option returned by as_ref()
+    // here as it is possible that it is empty and we do not want to
+    // panic here. This is mostly important for unit testing.
+    debug_assert_eq!(self.widgets[0].as_ref().map_or(0, |x| x.id().idx), 0);
 
     Id {
       idx: 0,
