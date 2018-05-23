@@ -217,7 +217,6 @@ pub fn compare_events(event1: &Event, event2: &Event) -> bool {
 pub fn clone_ui_event(event: &UiEvent) -> UiEvent {
   match *event {
     UiEvent::Event(ref event) => UiEvent::Event(clone_event(event)),
-    UiEvent::Focus(id) => UiEvent::Focus(id),
     UiEvent::Quit => UiEvent::Quit,
     UiEvent::Custom(_, _) => panic!("Cannot clone custom event"),
   }
@@ -229,12 +228,6 @@ pub fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
     UiEvent::Event(ref event1) => {
       match *event2 {
         UiEvent::Event(ref event2) => compare_events(event1, event2),
-        _ => false,
-      }
-    },
-    UiEvent::Focus(id1) => {
-      match *event2 {
-        UiEvent::Focus(id2) => id1 == id2,
         _ => false,
       }
     },

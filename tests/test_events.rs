@@ -78,22 +78,23 @@ fn events_bubble_up_when_unhandled() {
   assert!(compare_ui_events(&result.unwrap(), &event.into()));
 }
 
-fn key_handler(event: Event, to_focus: Option<Id>) -> Option<UiEvent> {
-  Some(match event {
+fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<UiEvent> {
+  match event {
     Event::KeyDown(key) => {
       match key {
         Key::Char('a') => {
           if let Some(id) = to_focus {
-            UiEvent::Focus(id)
+            cap.focus(&id);
+            None
           } else {
-            event.into()
+            Some(event.into())
           }
         },
-        _ => event.into(),
+        _ => Some(event.into()),
       }
     },
-    _ => event.into(),
-  })
+    _ => Some(event.into()),
+  }
 }
 
 #[test]
@@ -102,13 +103,13 @@ fn event_handling_with_focus() {
     Box::new(TestRootWidget::new(id))
   });
   let w1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, |_s, e, _| {
-      key_handler(e, None)
+    Box::new(TestWidget::with_handler(parent, id, |_s, e, c| {
+      key_handler(e, c, None)
     }))
   });
   let w2 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, move |_s, e, _| {
-      key_handler(e, Some(w1))
+    Box::new(TestWidget::with_handler(parent, id, move |_s, e, c| {
+      key_handler(e, c, Some(w1))
     }))
   });
 

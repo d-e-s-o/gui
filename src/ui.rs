@@ -263,12 +263,6 @@ impl Ui {
     }
   }
 
-  /// Handle a focus event for the widget with the given `Id`.
-  fn handle_focus_event(&mut self, id: Id) -> Option<UiEvent> {
-    self.focus(&id);
-    None
-  }
-
   /// Handle a quit event, i.e., one requesting the application to exit.
   fn handle_quit_event(&self) -> Option<UiEvent> {
     Some(UiEvent::Quit)
@@ -321,7 +315,6 @@ impl Ui {
   /// Handle a UI specific event.
   fn handle_ui_specific_event(&mut self, event: UiEvent) -> Option<UiEvent> {
     match event {
-      UiEvent::Focus(id) => self.handle_focus_event(id),
       UiEvent::Custom(id, any) => {
         let event = Event::Custom(any);
         self.handle_event(id, event)

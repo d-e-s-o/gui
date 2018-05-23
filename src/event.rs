@@ -57,8 +57,6 @@ pub enum Event {
 pub enum UiEvent {
   /// An `Event` that can be handled by a `Handleable`.
   Event(Event),
-  /// The widget with the given `Id` should be focused.
-  Focus(Id),
   /// A custom event that can contain arbitrary data.
   ///
   /// Custom events are destined for a particular widget, described by
