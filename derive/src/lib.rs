@@ -45,12 +45,14 @@ use proc_macro::LexError;
 use proc_macro::TokenStream;
 use quote::Tokens;
 use syn::Attribute;
-use syn::Body;
+use syn::Data;
 use syn::DeriveInput;
-use syn::Field;
-use syn::MetaItem;
-use syn::NestedMetaItem;
-use syn::parse_derive_input;
+use syn::Fields;
+use syn::Meta;
+use syn::NestedMeta;
+use syn::parse;
+use syn::punctuated::Punctuated;
+use syn::token::Comma;
 
 
 /// An enum representing the various widget types we support to derive from.
@@ -276,11 +278,12 @@ fn ui_object(type_: &Type, input: TokenStream) -> TokenStream {
 }
 
 fn expand_ui_object(type_: &Type, input: TokenStream) -> Result<TokenStream> {
-  let string = input.to_string();
-  let input = parse_derive_input(&string)?;
+  let input = parse::<DeriveInput>(input).or_else(
+    |_| Err("unable to parse input"),
+  )?;
   let new = parse_ui_object_attributes(&input.attrs)?;
-  let tokens = expand_widget_input(&type_, &new, &input)?.parse()?;
-  Ok(tokens)
+  let tokens = expand_widget_input(&type_, &new, &input)?;
+  Ok(tokens.into())
 }
 
 /// Parse the macro's attributes.
@@ -301,22 +304,20 @@ fn parse_ui_object_attributes(attributes: &[Attribute]) -> Result<New> {
 }
 
 /// Parse a single item in a #[gui(list...)] attribute list.
-fn parse_gui_attribute(item: &NestedMetaItem) -> Result<New> {
+fn parse_gui_attribute(item: &NestedMeta) -> Result<New> {
   match *item {
-    NestedMetaItem::MetaItem(ref meta_item) => {
+    NestedMeta::Meta(ref meta_item) => {
       match *meta_item {
-        MetaItem::Word(ref ident) if ident == "default_new" => Ok(New::Default),
+        Meta::Word(ref ident) if ident == "default_new" => Ok(New::Default),
         _ => Err(Error::from(format!("unsupported attribute: {}", meta_item.name()))),
       }
     },
-    NestedMetaItem::Literal(ref literal) => {
-      Err(Error::from(format!("unsupported literal: {:?}", literal)))
-    },
+    NestedMeta::Literal(_) => Err(Error::from("unsupported literal")),
   }
 }
 
 /// Parse a #[gui(list...)] attribute list.
-fn parse_gui_attributes(list: &[NestedMetaItem]) -> Result<New> {
+fn parse_gui_attributes(list: &Punctuated<NestedMeta, Comma>) -> Result<New> {
   // Right now we only support a single attribute at all (default_new).
   // So strictly speaking if the first item is a match we are good,
   // otherwise we error out. However, we do not simply want to silently
@@ -337,21 +338,26 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<Option<New>> {
   // We don't care about the other meta data elements, inner/outer,
   // doc/non-doc, it's all fine by us.
 
-  match attribute.value {
-    MetaItem::List(ref ident, ref list) if ident == "gui" => {
-      // Here we have found an attribute of the form #[gui(xxx, yyy,
-      // ...)]. Parse the inner list.
-      Ok(Some(parse_gui_attributes(list)?))
+  match attribute.interpret_meta() {
+    Some(x) => {
+      match x {
+        Meta::List(ref list) if list.ident == "gui" => {
+          // Here we have found an attribute of the form #[gui(xxx, yyy,
+          // ...)]. Parse the inner list.
+          Ok(Some(parse_gui_attributes(&list.nested)?))
+        },
+        _ => Ok(None),
+      }
     },
-    _ => Ok(None),
+    None => Ok(None),
   }
 }
 
 /// Expand the input with the implementation of the required traits.
 fn expand_widget_input(type_: &Type, new: &New, input: &DeriveInput) -> Result<Tokens> {
-  match input.body {
-    Body::Struct(ref body) => {
-      check_struct_fields(type_, body.fields())?;
+  match input.data {
+    Data::Struct(ref data) => {
+      check_struct_fields(type_, &data.fields)?;
       Ok(expand_widget_traits(type_, new, input))
     },
     _ => Err(Error::from("#[derive(GuiWidget)] is only defined for structs")),
@@ -363,7 +369,7 @@ fn expand_widget_input(type_: &Type, new: &New, input: &DeriveInput) -> Result<T
 // the types. Checking types is cumbersome and best-effort anyway as we
 // are working on tokens without context (a user could have a field of
 // type Id but that could map to ::foo::Id and not ::gui::Id).
-fn check_struct_fields(type_: &Type, fields: &[Field]) -> Result<()> {
+fn check_struct_fields(type_: &Type, fields: &Fields) -> Result<()> {
   let id = ("id", "::gui::Id");
   let par_id = ("parent_id", "::gui::Id");
   let childs = ("children", "::std::vec::Vec<::gui::Id>");
@@ -556,16 +562,17 @@ pub fn handleable(input: TokenStream) -> TokenStream {
 }
 
 fn expand_handleable(input: TokenStream) -> Result<TokenStream> {
-  let string = input.to_string();
-  let input = parse_derive_input(&string)?;
-  let tokens = expand_handleable_input(&input)?.parse()?;
-  Ok(tokens)
+  let input = parse::<DeriveInput>(input).or_else(
+    |_| Err("unable to parse input"),
+  )?;
+  let tokens = expand_handleable_input(&input)?;
+  Ok(tokens.into())
 }
 
 /// Expand the input with the implementation of the required traits.
 fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
-  match input.body {
-    Body::Struct(_) => {
+  match input.data {
+    Data::Struct(_) => {
       let name = &input.ident;
       let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -606,13 +613,20 @@ fn expand_widget_ref_trait(input: &DeriveInput) -> Tokens {
 mod tests {
   use super::*;
 
+  use syn::parse_str;
+
   #[test]
   fn default_widget_attributes() {
+    // Note that we use `parse_str` here and not `parse`, despite the
+    // latter making much more sense (we do not convert into a string
+    // just to parse it again). The reason is that when converting the
+    // Tokens into a TokenStream we get a panic:
+    // panicked at 'proc_macro::__internal::with_sess() called before set_parse_sess()!'
     let string = quote! {
       struct Bar { }
     }.to_string();
 
-    let input = parse_derive_input(&string).unwrap();
+    let input = parse_str::<DeriveInput>(&string).unwrap();
     let new = parse_ui_object_attributes(&input.attrs).unwrap();
     assert_eq!(new, New::None);
   }
@@ -624,7 +638,7 @@ mod tests {
       struct Bar { }
     }.to_string();
 
-    let input = parse_derive_input(&string).unwrap();
+    let input = parse_str::<DeriveInput>(&string).unwrap();
     assert_eq!(parse_ui_object_attributes(&input.attrs).unwrap(), New::Default);
   }
 }
