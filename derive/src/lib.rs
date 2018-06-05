@@ -43,14 +43,14 @@ use std::fmt::Result as FmtResult;
 
 use proc_macro::LexError;
 use proc_macro::TokenStream;
-use quote::Tokens;
+use quote::__rt::TokenStream as Tokens;
 use syn::Attribute;
 use syn::Data;
 use syn::DeriveInput;
 use syn::Fields;
 use syn::Meta;
 use syn::NestedMeta;
-use syn::parse;
+use syn::parse2;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 
@@ -278,9 +278,9 @@ fn ui_object(type_: &Type, input: TokenStream) -> TokenStream {
 }
 
 fn expand_ui_object(type_: &Type, input: TokenStream) -> Result<TokenStream> {
-  let input = parse::<DeriveInput>(input).or_else(
-    |_| Err("unable to parse input"),
-  )?;
+  let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
+    Err("unable to parse input")
+  })?;
   let new = parse_ui_object_attributes(&input.attrs)?;
   let tokens = expand_widget_input(&type_, &new, &input)?;
   Ok(tokens.into())
@@ -562,9 +562,9 @@ pub fn handleable(input: TokenStream) -> TokenStream {
 }
 
 fn expand_handleable(input: TokenStream) -> Result<TokenStream> {
-  let input = parse::<DeriveInput>(input).or_else(
-    |_| Err("unable to parse input"),
-  )?;
+  let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
+    Err("unable to parse input")
+  })?;
   let tokens = expand_handleable_input(&input)?;
   Ok(tokens.into())
 }
@@ -613,32 +613,25 @@ fn expand_widget_ref_trait(input: &DeriveInput) -> Tokens {
 mod tests {
   use super::*;
 
-  use syn::parse_str;
-
   #[test]
   fn default_widget_attributes() {
-    // Note that we use `parse_str` here and not `parse`, despite the
-    // latter making much more sense (we do not convert into a string
-    // just to parse it again). The reason is that when converting the
-    // Tokens into a TokenStream we get a panic:
-    // panicked at 'proc_macro::__internal::with_sess() called before set_parse_sess()!'
-    let string = quote! {
+    let tokens = quote! {
       struct Bar { }
-    }.to_string();
+    };
 
-    let input = parse_str::<DeriveInput>(&string).unwrap();
+    let input = parse2::<DeriveInput>(tokens).unwrap();
     let new = parse_ui_object_attributes(&input.attrs).unwrap();
     assert_eq!(new, New::None);
   }
 
   #[test]
   fn default_new() {
-    let string = quote! {
+    let tokens = quote! {
       #[gui(default_new)]
       struct Bar { }
-    }.to_string();
+    };
 
-    let input = parse_str::<DeriveInput>(&string).unwrap();
+    let input = parse2::<DeriveInput>(tokens).unwrap();
     assert_eq!(parse_ui_object_attributes(&input.attrs).unwrap(), New::Default);
   }
 }
