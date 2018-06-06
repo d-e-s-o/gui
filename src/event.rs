@@ -25,10 +25,34 @@ use Id;
 /// An object representing a key on the key board.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Key {
+  /// The backspace key.
+  Backspace,
   /// The character representing the key.
   Char(char),
+  /// The delete key.
+  Delete,
+  /// The down arrow key.
+  Down,
+  /// The end key.
+  End,
   /// The Escape key.
   Esc,
+  /// The home key.
+  Home,
+  /// The insert key.
+  Insert,
+  /// The left arrow key.
+  Left,
+  /// The page down key.
+  PageDown,
+  /// The page up key.
+  PageUp,
+  /// The return key.
+  Return,
+  /// The right arrow key.
+  Right,
+  /// The up arrow key.
+  Up,
 }
 
 
