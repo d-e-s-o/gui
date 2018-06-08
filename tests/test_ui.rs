@@ -77,6 +77,27 @@ fn correct_ids() {
 }
 
 #[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "The given Id belongs to a different Ui")]
+fn share_ids_between_ui_objects() {
+  let (mut ui1, mut root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestRootWidget::new(id))
+  });
+  let widget = ui1.add_widget(&mut root, &mut |parent, id, _cap| {
+    Box::new(TestWidget::new(parent, id))
+  });
+
+  let (mut ui2, _) = Ui::new(&mut |id, _cap| {
+    Box::new(TestRootWidget::new(id))
+  });
+
+  // `widget` is registered to `ui1` and so using it in the context of
+  // `ui2` is not as intended. On debug builds we have special detection
+  // in place to provide a meaningful error, that should trigger here.
+  ui2.handle(UiEvent::Custom(widget, Box::new(())));
+}
+
+#[test]
 #[should_panic(expected = "Cannot add an object to a non-container")]
 fn only_containers_can_have_children() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {

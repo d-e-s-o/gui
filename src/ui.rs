@@ -21,6 +21,10 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
+#[cfg(debug_assertions)]
+use std::sync::atomic::AtomicUsize;
+#[cfg(debug_assertions)]
+use std::sync::atomic::Ordering;
 
 use Event;
 use Handleable;
@@ -49,10 +53,47 @@ pub trait WidgetRef {
 }
 
 
+/// An `Index` is our internal representation of an `Id`. `Id`s can
+/// belong to different `Ui` objects and a validation step converts them
+/// into an `Index`.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct Index {
+  idx: usize,
+}
+
+impl Index {
+  fn new(idx: usize) -> Self {
+    Index {
+      idx: idx,
+    }
+  }
+}
+
+impl Display for Index {
+  /// Format the `Index` into the given formatter.
+  fn fmt(&self, f: &mut Formatter) -> Result {
+    write!(f, "{}", self.idx)
+  }
+}
+
+
 /// An `Id` uniquely representing a widget.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Id {
-  idx: usize,
+  #[cfg(debug_assertions)]
+  ui_id: usize,
+  idx: Index,
+}
+
+impl Id {
+  #[allow(unused_variables)]
+  fn new(idx: usize, ui: &Ui) -> Id {
+    Id {
+      #[cfg(debug_assertions)]
+      ui_id: ui.id,
+      idx: Index::new(idx),
+    }
+  }
 }
 
 impl Display for Id {
@@ -65,12 +106,14 @@ impl Display for Id {
 impl WidgetRef for Id {
   /// Retrieve a reference to a widget.
   fn as_widget<'s, 'ui: 's>(&'s self, ui: &'ui Ui) -> &Widget {
-    ui.lookup(*self).as_ref()
+    let idx = ui.validate(*self);
+    ui.lookup(idx).as_ref()
   }
 
   /// Retrieve a mutable reference to a widget.
   fn as_mut_widget<'s, 'ui: 's>(&'s mut self, ui: &'ui mut Ui) -> &mut Widget {
-    ui.lookup_mut(*self).as_mut()
+    let idx = ui.validate(*self);
+    ui.lookup_mut(idx).as_mut()
   }
 
   /// Retrieve an `Id`.
@@ -124,11 +167,21 @@ pub trait Cap {
 }
 
 
+#[cfg(debug_assertions)]
+fn get_next_ui_id() -> usize {
+  static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+
+  NEXT_ID.fetch_add(1, Ordering::Relaxed)
+}
+
+
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
 pub struct Ui {
+  #[cfg(debug_assertions)]
+  id: usize,
   widgets: Vec<Option<Box<Widget>>>,
-  focused: Option<Id>,
+  focused: Option<Index>,
 }
 
 // Clippy raises a false alert due to the generic type used but not
@@ -140,11 +193,14 @@ impl Ui {
   /// root widget.
   pub fn new(new_root_widget: NewRootWidgetFn) -> (Self, Id) {
     let mut ui = Ui {
+      #[cfg(debug_assertions)]
+      id: get_next_ui_id(),
       widgets: Default::default(),
       focused: None,
     };
+
     let id = ui._add_widget(new_root_widget);
-    debug_assert_eq!(id.idx, 0);
+    debug_assert_eq!(id.idx.idx, 0);
     (ui, id)
   }
 
@@ -154,9 +210,8 @@ impl Ui {
   //       could just be a normal widget. The type just happens to have
   //       the right signature.
   fn _add_widget(&mut self, new_widget: NewRootWidgetFn) -> Id {
-    let id = Id {
-      idx: self.widgets.len(),
-    };
+    let idx = Index::new(self.widgets.len());
+    let id = Id::new(idx.idx, self);
 
     // If no widget has the focus we focus the newly created widget but
     // then the focus stays unless explicitly changed.
@@ -175,29 +230,37 @@ impl Ui {
 
     let mut widget = new_widget(id, self);
 
-    for child in self.lookup(id).iter().cloned() {
+    for child in self.lookup(idx).iter().cloned() {
       widget.add_child(&child)
     }
 
-    self.widgets[id.idx] = Some(widget);
+    self.widgets[idx.idx] = Some(widget);
     id
   }
 
-  /// Lookup a widget from an `Id`.
+  /// Validate an `Id`, converting it into the internally used `Index`.
+  #[inline]
+  fn validate(&self, id: Id) -> Index {
+    #[cfg(debug_assertions)]
+    debug_assert_eq!(id.ui_id, self.id, "The given Id belongs to a different Ui");
+    id.idx
+  }
+
+  /// Lookup a widget from an `Index`.
   #[allow(borrowed_box)]
-  fn lookup(&self, id: Id) -> &Box<Widget> {
-    match self.widgets[id.idx].as_ref() {
+  fn lookup(&self, idx: Index) -> &Box<Widget> {
+    match self.widgets[idx.idx].as_ref() {
       Some(widget) => widget,
-      None => panic!("Widget {} is currently taken", id),
+      None => panic!("Widget {} is currently taken", idx),
     }
   }
 
-  /// Lookup a widget from an `Id`.
+  /// Lookup a widget from an `Index`.
   #[allow(borrowed_box)]
-  fn lookup_mut(&mut self, id: Id) -> &mut Box<Widget> {
-    match self.widgets[id.idx].as_mut() {
+  fn lookup_mut(&mut self, idx: Index) -> &mut Box<Widget> {
+    match self.widgets[idx.idx].as_mut() {
       Some(widget) => widget,
-      None => panic!("Widget {} is currently taken", id),
+      None => panic!("Widget {} is currently taken", idx),
     }
   }
 
@@ -206,7 +269,8 @@ impl Ui {
     // We cannot simply iterate through all widgets in `self.widgets`
     // when rendering, because we need to take parent-child
     // relationships into account in case widgets cover each other.
-    let root = self.lookup(self.root_id());
+    let idx = self.validate(self.root_id());
+    let root = self.lookup(idx);
     renderer.pre_render();
     self.render_all(&root, renderer);
     renderer.post_render();
@@ -221,7 +285,8 @@ impl Ui {
     widget.render(renderer);
 
     for child_id in widget.iter().rev() {
-      let child = self.lookup(*child_id);
+      let idx = self.validate(*child_id);
+      let child = self.lookup(idx);
       self.render_all(&child, renderer)
     }
   }
@@ -247,8 +312,8 @@ impl Ui {
   /// Send a key event to the focused widget.
   fn handle_key_event(&mut self, event: Event) -> Option<UiEvent> {
     // All key events go to the focused widget.
-    if let Some(id) = self.focused {
-      self.handle_event(id, event)
+    if let Some(idx) = self.focused {
+      self.handle_event(idx, event)
     } else {
       None
     }
@@ -256,8 +321,8 @@ impl Ui {
 
   /// Handle a custom event.
   fn handle_custom_event(&mut self, event: Event) -> Option<UiEvent> {
-    if let Some(id) = self.focused {
-      self.handle_event(id, event)
+    if let Some(idx) = self.focused {
+      self.handle_event(idx, event)
     } else {
       None
     }
@@ -269,7 +334,7 @@ impl Ui {
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
-  fn handle_event(&mut self, id: Id, event: Event) -> Option<UiEvent> {
+  fn handle_event(&mut self, idx: Index, event: Event) -> Option<UiEvent> {
     let (ui_event, id) = {
       // To enable a mutable borrow of the Ui as well as the widget we
       // temporarily remove the widget from the internally used vector.
@@ -282,15 +347,15 @@ impl Ui {
       // the widget and, hence, do not panic. This use case is enabled
       // since all methods in the `Cap` trait accept a `WidgetRef`,
       // which can be either an `Id` or an actual reference.
-      match self.widgets[id.idx].take() {
+      match self.widgets[idx.idx].take() {
         Some(mut widget) => {
           let ui_event = widget.handle(event, self);
           let parent_id = widget.parent_id();
 
-          self.widgets[id.idx] = Some(widget);
+          self.widgets[idx.idx] = Some(widget);
           (ui_event, parent_id)
         },
-        None => panic!("Widget {} is currently taken", id),
+        None => panic!("Widget {} is currently taken", idx),
       }
     };
 
@@ -298,7 +363,8 @@ impl Ui {
       match ui_event {
         UiEvent::Event(event) => {
           if let Some(id) = id {
-            self.handle_event(id, event)
+            let idx = self.validate(id);
+            self.handle_event(idx, event)
           } else {
             // The event has not been handled. Return it as-is.
             Some(event.into())
@@ -317,7 +383,8 @@ impl Ui {
     match event {
       UiEvent::Custom(id, any) => {
         let event = Event::Custom(any);
-        self.handle_event(id, event)
+        let idx = self.validate(id);
+        self.handle_event(idx, event)
       },
       UiEvent::Quit => self.handle_quit_event(),
       UiEvent::Event(_) => unreachable!(),
@@ -342,11 +409,9 @@ impl Cap for Ui {
     // We do not unconditionally unwrap the Option returned by as_ref()
     // here as it is possible that it is empty and we do not want to
     // panic here. This is mostly important for unit testing.
-    debug_assert_eq!(self.widgets[0].as_ref().map_or(0, |x| x.id().idx), 0);
+    debug_assert_eq!(self.widgets[0].as_ref().map_or(0, |x| self.validate(x.id()).idx), 0);
 
-    Id {
-      idx: 0,
-    }
+    Id::new(0, self)
   }
 
   /// Retrieve the parent of the given widget.
@@ -356,11 +421,13 @@ impl Cap for Ui {
 
   /// Focus a widget.
   fn focus(&mut self, widget: &WidgetRef) {
-    self.focused = Some(widget.as_id())
+    let idx = self.validate(widget.as_id());
+    self.focused = Some(idx)
   }
 
   /// Check whether the given widget is focused.
   fn is_focused(&self, widget: &WidgetRef) -> bool {
-    self.focused == Some(widget.as_id())
+    let idx = self.validate(widget.as_id());
+    self.focused == Some(idx)
   }
 }
