@@ -28,11 +28,12 @@ use gui::Cap;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
+use gui::MetaEvent;
 use gui::UiEvent;
 use gui::WidgetRef;
 
 
-type HandlerBox = Box<Fn(&mut WidgetRef, Event, &mut Cap) -> Option<UiEvent>>;
+type HandlerBox = Box<Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>>;
 
 struct Handler(HandlerBox);
 
@@ -70,7 +71,7 @@ impl TestRootWidget {
   #[allow(unused)]
   pub fn with_handler<F>(id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<UiEvent>,
+    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>,
   {
     TestRootWidget {
       id: id,
@@ -81,7 +82,7 @@ impl TestRootWidget {
 }
 
 impl Handleable for TestRootWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     match self.handler.take() {
       Some(handler) => {
         let event = handler(self, event, cap);
@@ -113,7 +114,7 @@ impl TestWidget {
   #[allow(unused)]
   pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<UiEvent>,
+    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>,
   {
     TestWidget {
       id: id,
@@ -124,7 +125,7 @@ impl TestWidget {
 }
 
 impl Handleable for TestWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     match self.handler.take() {
       Some(handler) => {
         let event = handler(self, event, cap);
@@ -159,7 +160,7 @@ impl TestContainer {
   #[allow(unused)]
   pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<UiEvent>,
+    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>,
   {
     TestContainer {
       id: id,
@@ -171,7 +172,7 @@ impl TestContainer {
 }
 
 impl Handleable for TestContainer {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     match self.handler.take() {
       Some(handler) => {
         let event = handler(self, event, cap);
@@ -213,7 +214,6 @@ pub fn compare_events(event1: &Event, event2: &Event) -> bool {
 }
 
 
-#[allow(unused)]
 pub fn clone_ui_event(event: &UiEvent) -> UiEvent {
   match *event {
     UiEvent::Event(ref event) => UiEvent::Event(clone_event(event)),
@@ -222,7 +222,6 @@ pub fn clone_ui_event(event: &UiEvent) -> UiEvent {
   }
 }
 
-#[allow(unused)]
 pub fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
   match *event1 {
     UiEvent::Event(ref event1) => {
@@ -254,5 +253,39 @@ where
       }
     },
     _ => panic!("Unexpected event: {:?}", event),
+  }
+}
+
+
+#[allow(unused)]
+pub fn clone_meta_event(event: &MetaEvent) -> MetaEvent {
+  match *event {
+    MetaEvent::UiEvent(ref event) => {
+      MetaEvent::UiEvent(clone_ui_event(event))
+    },
+    MetaEvent::Chain(ref event, ref meta) => {
+      MetaEvent::Chain(clone_ui_event(event), Box::new(clone_meta_event(meta)))
+    },
+  }
+}
+
+#[allow(unused)]
+pub fn compare_meta_events(event1: &MetaEvent, event2: &MetaEvent) -> bool {
+  match *event1 {
+    MetaEvent::UiEvent(ref event1) => {
+      match *event2 {
+        MetaEvent::UiEvent(ref event2) => compare_ui_events(event1, event2),
+        _ => false,
+      }
+    },
+    MetaEvent::Chain(ref event1, ref meta1) => {
+      match *event2 {
+        MetaEvent::Chain(ref event2, ref meta2) => {
+          compare_ui_events(event1, event2) &&
+          compare_meta_events(meta1, meta2)
+        },
+        _ => false,
+      }
+    },
   }
 }

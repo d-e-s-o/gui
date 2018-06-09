@@ -22,11 +22,11 @@ use ChildIter;
 use Event;
 use Handleable;
 use Id;
+use MetaEvent;
 use Object;
 use Renderable;
 use Renderer;
 use Ui;
-use UiEvent;
 use Widget;
 use WidgetRef;
 
@@ -69,7 +69,7 @@ impl Object for Placeholder {
 }
 
 impl Handleable for Placeholder {
-  fn handle(&mut self, _event: Event, _cap: &mut Cap) -> Option<UiEvent> {
+  fn handle(&mut self, _event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
     unreachable!()
   }
 }

@@ -31,13 +31,18 @@ use std::rc::Rc;
 
 use gui::Cap;
 use gui::Event;
+use gui::EventChain;
 use gui::Id;
 use gui::Key;
+use gui::MetaEvent;
 use gui::Ui;
 use gui::UiEvent;
 use gui::WidgetRef;
 
 use common::clone_event;
+use common::clone_meta_event;
+use common::clone_ui_event;
+use common::compare_meta_events;
 use common::compare_ui_events;
 use common::TestContainer;
 use common::TestRootWidget;
@@ -52,6 +57,51 @@ fn convert_event_into() {
   let ui_event = UiEvent::from(event);
 
   assert!(compare_ui_events(&ui_event, &UiEvent::Event(orig_event)));
+}
+
+#[test]
+fn chain_meta_event() {
+  let event1 = UiEvent::Event(Event::KeyUp(Key::Char('a')));
+  let event2 = UiEvent::Quit.into();
+  let orig_event1 = clone_ui_event(&event1);
+  let orig_event2 = clone_meta_event(&event2);
+  let event = event1.chain(event2);
+  let expected = MetaEvent::Chain(
+    orig_event1,
+    Box::new(orig_event2),
+  );
+
+  assert!(compare_meta_events(&event, &expected));
+}
+
+#[test]
+fn chain_meta_event_chain() {
+  let event1 = Event::KeyUp(Key::Char('a')).into();
+  let orig_event1 = clone_ui_event(&event1);
+  let event2 = Event::KeyUp(Key::Char('z')).into();
+  let orig_event2 = clone_ui_event(&event2);
+  let event3 = UiEvent::Quit.into();
+  let orig_event3 = clone_meta_event(&event3);
+  let event_chain = MetaEvent::Chain(event1, Box::new(event2.into()));
+  let event = event_chain.chain(event3);
+  let expected = MetaEvent::Chain(
+    orig_event1,
+    Box::new(
+      MetaEvent::Chain(orig_event2, Box::new(orig_event3))
+    ),
+  );
+
+  assert!(compare_meta_events(&event, &expected));
+}
+
+#[test]
+fn last_event_in_chain() {
+  let event1 = Event::KeyUp(Key::Char('a')).into();
+  let event2 = Event::KeyUp(Key::Char('z')).into();
+  let orig_event2 = clone_ui_event(&event2);
+  let event_chain = MetaEvent::Chain(event1, Box::new(event2.into()));
+
+  assert!(compare_ui_events(&event_chain.into_last(), &orig_event2));
 }
 
 #[test]
@@ -78,7 +128,7 @@ fn events_bubble_up_when_unhandled() {
   assert!(compare_ui_events(&result.unwrap(), &event.into()));
 }
 
-fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<UiEvent> {
+fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<MetaEvent> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -124,7 +174,7 @@ fn event_handling_with_focus() {
   assert!(ui.is_focused(&w1));
 }
 
-fn custom_undirected_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<UiEvent> {
+fn custom_undirected_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   Some(
     match event {
       Event::Custom(e) => {
@@ -158,7 +208,7 @@ fn custom_undirected_response_event() {
   assert_eq!(*unwrap_custom::<u64>(result), 45);
 }
 
-fn custom_directed_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<UiEvent> {
+fn custom_directed_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   match event {
     Event::Custom(data) => {
       let cell = *data.downcast::<Rc<RefCell<u64>>>().unwrap();
@@ -228,4 +278,52 @@ fn quit_event() {
 
   let result = ui.handle(UiEvent::Quit);
   assert!(compare_ui_events(&result.unwrap(), &UiEvent::Quit));
+}
+
+
+static mut ACCUMULATOR: u64 = 0;
+
+fn accumulating_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+  match event {
+    Event::Custom(data) => {
+      let value = *data.downcast::<u64>().unwrap();
+
+      unsafe {
+        ACCUMULATOR += value;
+        Some(Event::Custom(Box::new(ACCUMULATOR)).into())
+      }
+    },
+    _ => Some(event.into()),
+  }
+}
+
+fn chaining_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+  match event {
+    Event::Custom(data) => {
+      let value = data.downcast::<u64>().unwrap();
+      let event1 = Event::Custom(Box::new(*value));
+      let event2 = Event::Custom(Box::new(*value + 1));
+      Some(event1.chain(event2))
+    },
+    _ => Some(event.into()),
+  }
+}
+
+#[test]
+fn chain_event_dispatch() {
+  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+    Box::new(TestRootWidget::with_handler(id, accumulating_handler))
+  });
+  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
+    Box::new(TestContainer::with_handler(parent, id, chaining_handler))
+  });
+  let w1 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
+    Box::new(TestWidget::with_handler(parent, id, chaining_handler))
+  });
+
+  ui.focus(&w1);
+
+  let event = Event::Custom(Box::new(1u64));
+  let result = ui.handle(event).unwrap();
+  assert_eq!(*unwrap_custom::<u64>(result), 8);
 }

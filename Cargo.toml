@@ -1,6 +1,6 @@
 [package]
 name = "gui"
-version = "0.0.0"
+version = "0.1.0-alpha.0"
 authors = ["Daniel Mueller <deso@posteo.net>"]
 license = "GPL-3.0+"
 homepage = "https://crates.io/crates/gui"
@@ -15,5 +15,5 @@ A generic UI library/framework.
 members = ["derive"]
 
 [dev-dependencies.gui-derive]
-version = "0.0"
+version = "0.1.0-alpha.0"
 path = "derive"

@@ -30,7 +30,9 @@ use gui::Event;
 use gui::Handleable;
 use gui::Id;
 use gui::Key;
+use gui::MetaEvent;
 use gui::Ui;
+#[cfg(debug_assertions)]
 use gui::UiEvent;
 use gui::WidgetRef;
 
@@ -141,7 +143,7 @@ fn focus_widget() {
 }
 
 
-fn counting_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<UiEvent> {
+fn counting_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   Some(
     match event {
       Event::Custom(e) => {
@@ -173,7 +175,7 @@ impl CreatingRootWidget {
 }
 
 impl Handleable for CreatingRootWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     counting_handler(self, event, cap)
   }
 }
@@ -201,7 +203,7 @@ impl CreatingContainer {
 }
 
 impl Handleable for CreatingContainer {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     counting_handler(self, event, cap)
   }
 }
@@ -232,7 +234,7 @@ impl CreatingWidget {
 }
 
 impl Handleable for CreatingWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     counting_handler(self, event, cap)
   }
 }
@@ -291,7 +293,7 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(widget: &mut WidgetRef, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+fn create_handler(widget: &mut WidgetRef, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -326,7 +328,7 @@ fn event_based_widget_creation() {
 }
 
 
-fn panicing_handler(widget: &mut WidgetRef, _event: Event, cap: &mut Cap) -> Option<UiEvent> {
+fn panicing_handler(widget: &mut WidgetRef, _event: Event, cap: &mut Cap) -> Option<MetaEvent> {
   // Because of the usage of an `Id` that represents the same widget
   // from which the call originates we will panic when attempting to
   // retrieve the parent `Id`. Correct usage would be to use the

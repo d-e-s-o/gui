@@ -28,6 +28,7 @@ use std::sync::atomic::Ordering;
 
 use Event;
 use Handleable;
+use MetaEvent;
 use Object;
 use Placeholder;
 use Renderable;
@@ -306,12 +307,12 @@ impl Ui {
         }
       },
       _ => self.handle_ui_specific_event(ui_event),
-    }
+    }.and_then(|x| Some(x.into_last()))
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
-  fn handle_event(&mut self, idx: Index, event: Event) -> Option<UiEvent> {
-    let (ui_event, id) = {
+  fn handle_event(&mut self, idx: Index, event: Event) -> Option<MetaEvent> {
+    let (meta_event, id) = {
       // To enable a mutable borrow of the Ui as well as the widget we
       // temporarily remove the widget from the internally used vector.
       // This means that now we would panic if we were to access the
@@ -325,44 +326,60 @@ impl Ui {
       // which can be either an `Id` or an actual reference.
       match self.widgets[idx.idx].take() {
         Some(mut widget) => {
-          let ui_event = widget.handle(event, self);
+          let meta_event = widget.handle(event, self);
           let parent_id = widget.parent_id();
 
           self.widgets[idx.idx] = Some(widget);
-          (ui_event, parent_id)
+          (meta_event, parent_id)
         },
         None => panic!("Widget {} is currently taken", idx),
       }
     };
 
-    if let Some(ui_event) = ui_event {
-      match ui_event {
-        UiEvent::Event(event) => {
-          if let Some(id) = id {
-            let idx = self.validate(id);
-            self.handle_event(idx, event)
-          } else {
-            // The event has not been handled. Return it as-is.
-            Some(event.into())
-          }
-        },
-        _ => self.handle_ui_specific_event(ui_event),
-      }
+    if let Some(meta_event) = meta_event {
+      self.handle_meta_event(id, meta_event)
     } else {
       // The event got handled.
       None
     }
   }
 
+  /// Handle a `MetaEvent`.
+  fn handle_meta_event(&mut self, id: Option<Id>, event: MetaEvent) -> Option<MetaEvent> {
+    match event {
+      MetaEvent::UiEvent(ui_event) => self.handle_ui_event(id, ui_event),
+      MetaEvent::Chain(ui_event, meta_event) => {
+        self.handle_ui_event(id, ui_event);
+        self.handle_meta_event(id, *meta_event)
+      },
+    }
+  }
+
+  /// Handle a `UiEvent`.
+  fn handle_ui_event(&mut self, id: Option<Id>, event: UiEvent) -> Option<MetaEvent> {
+    match event {
+      UiEvent::Event(event) => {
+        if let Some(id) = id {
+          let idx = self.validate(id);
+          self.handle_event(idx, event)
+        } else {
+          // The event has not been handled. Return it as-is.
+          Some(event.into())
+        }
+      },
+      _ => self.handle_ui_specific_event(event),
+    }
+  }
+
   /// Handle a UI specific event.
-  fn handle_ui_specific_event(&mut self, event: UiEvent) -> Option<UiEvent> {
+  fn handle_ui_specific_event(&mut self, event: UiEvent) -> Option<MetaEvent> {
     match event {
       UiEvent::Custom(id, any) => {
         let event = Event::Custom(any);
         let idx = self.validate(id);
         self.handle_event(idx, event)
       },
-      UiEvent::Quit => Some(UiEvent::Quit),
+      UiEvent::Quit => Some(UiEvent::Quit.into()),
       UiEvent::Event(_) => unreachable!(),
     }
   }

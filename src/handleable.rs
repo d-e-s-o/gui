@@ -19,7 +19,7 @@
 
 use Cap;
 use Event;
-use UiEvent;
+use MetaEvent;
 
 
 /// A trait representing an object capable of handling events.
@@ -31,7 +31,7 @@ pub trait Handleable {
   /// it directly (the default behavior), in which case the its parent
   /// widget will receive it, or return a completely different event.
   #[allow(unused_variables)]
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())

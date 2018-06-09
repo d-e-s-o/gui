@@ -97,3 +97,72 @@ impl From<Event> for UiEvent {
     UiEvent::Event(event)
   }
 }
+
+
+/// An event potentially comprising multiple `UiEvent` objects.
+#[derive(Debug)]
+pub enum MetaEvent {
+  /// An event handleable by a `Ui`.
+  UiEvent(UiEvent),
+  /// A chain of events.
+  ///
+  /// The events will be processed in the order they are chained. Only
+  /// the result of the event handler for the last event will be
+  /// propagated to the caller.
+  Chain(UiEvent, Box<MetaEvent>),
+}
+
+impl MetaEvent {
+  /// Convert this `MetaEvent` into the last `UiEvent` it comprises.
+  pub fn into_last(self) -> UiEvent {
+    match self {
+      MetaEvent::UiEvent(ui_event) => ui_event,
+      MetaEvent::Chain(_, meta_event) => meta_event.into_last(),
+    }
+  }
+}
+
+/// A convenience conversion from `Event` to `MetaEvent`.
+impl From<Event> for MetaEvent {
+  fn from(event: Event) -> Self {
+    MetaEvent::UiEvent(event.into())
+  }
+}
+
+/// A convenience conversion from `UiEvent` to `MetaEvent`.
+impl From<UiEvent> for MetaEvent {
+  fn from(event: UiEvent) -> Self {
+    MetaEvent::UiEvent(event)
+  }
+}
+
+
+/// A trait for chaining of events.
+pub trait EventChain {
+  /// Chain together two events.
+  ///
+  /// The given event will effectively be appended to the current one
+  /// and, hence, be handled after the first one got processed.
+  fn chain<E>(self, event: E) -> MetaEvent
+  where
+    E: Into<MetaEvent>;
+}
+
+impl<ES> EventChain for ES
+where
+  ES: Into<MetaEvent>,
+{
+  fn chain<E>(self, event: E) -> MetaEvent
+  where
+    E: Into<MetaEvent>
+  {
+    match self.into() {
+      MetaEvent::UiEvent(ui_event) => {
+        MetaEvent::Chain(ui_event, Box::new(event.into()))
+      },
+      MetaEvent::Chain(ui_event, meta_event) => {
+        MetaEvent::Chain(ui_event, Box::new(meta_event.chain(event)))
+      },
+    }
+  }
+}

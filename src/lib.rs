@@ -46,7 +46,9 @@ mod ui;
 use self::placeholder::Placeholder;
 
 pub use self::event::Event;
+pub use self::event::EventChain;
 pub use self::event::Key;
+pub use self::event::MetaEvent;
 pub use self::event::UiEvent;
 pub use self::handleable::Handleable;
 pub use self::object::ChildIter;
