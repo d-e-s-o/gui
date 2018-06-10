@@ -299,38 +299,14 @@ impl Ui {
     let ui_event = event.into();
     match ui_event {
       UiEvent::Event(event) => {
-        match event {
-          Event::KeyUp(_) |
-          Event::KeyDown(_) => self.handle_key_event(event),
-          Event::Custom(_) => self.handle_custom_event(event),
+        if let Some(idx) = self.focused {
+          self.handle_event(idx, event)
+        } else {
+          None
         }
       },
       _ => self.handle_ui_specific_event(ui_event),
     }
-  }
-
-  /// Send a key event to the focused widget.
-  fn handle_key_event(&mut self, event: Event) -> Option<UiEvent> {
-    // All key events go to the focused widget.
-    if let Some(idx) = self.focused {
-      self.handle_event(idx, event)
-    } else {
-      None
-    }
-  }
-
-  /// Handle a custom event.
-  fn handle_custom_event(&mut self, event: Event) -> Option<UiEvent> {
-    if let Some(idx) = self.focused {
-      self.handle_event(idx, event)
-    } else {
-      None
-    }
-  }
-
-  /// Handle a quit event, i.e., one requesting the application to exit.
-  fn handle_quit_event(&self) -> Option<UiEvent> {
-    Some(UiEvent::Quit)
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
@@ -386,7 +362,7 @@ impl Ui {
         let idx = self.validate(id);
         self.handle_event(idx, event)
       },
-      UiEvent::Quit => self.handle_quit_event(),
+      UiEvent::Quit => Some(UiEvent::Quit),
       UiEvent::Event(_) => unreachable!(),
     }
   }
