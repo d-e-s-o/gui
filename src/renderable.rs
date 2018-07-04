@@ -17,11 +17,12 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use BBox;
 use Renderer;
 
 
 /// A trait representing a renderable object.
 pub trait Renderable {
   /// Render the renderable object.
-  fn render(&self, renderer: &Renderer);
+  fn render(&self, renderer: &Renderer, bbox: BBox);
 }

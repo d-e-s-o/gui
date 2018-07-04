@@ -20,8 +20,34 @@
 use std::any::Any;
 
 
+/// A bounding box representing the area that a widget may occupy. A
+/// bounding box always describes a rectangular area. The origin [x=0,
+/// y=0] is typically assumed to reside in the upper left corner of the
+/// screen, but it is really up to the individual `Renderer` to make do
+/// with whatever is provided.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct BBox {
+  /// The x-coordinate of the bounding box.
+  pub x: u16,
+  /// The y-coordinate of the bounding box.
+  pub y: u16,
+  /// The width of the bounding box.
+  pub w: u16,
+  /// The height of the bounding box.
+  pub h: u16,
+}
+
+
 /// An abstraction for objects used for rendering widgets.
 pub trait Renderer {
+  /// Retrieve the bounding box of the renderable area (typically the
+  /// screen).
+  /// Note that the units to be used are not specified. That is, the
+  /// result could be in pixels, characters (in case of a terminal), or
+  /// just arbitrary numbers (if virtual coordinates are being used), as
+  /// long as this `Renderer` knows how to interpret them.
+  fn renderable_area(&self) -> BBox;
+
   /// Perform some pre-render step.
   fn pre_render(&self) {}
 
@@ -31,7 +57,7 @@ pub trait Renderer {
   /// to render by the `Renderer` itself.
   // TODO: Ideally we would like to have a double dispatch mechanism for
   //       determining the object to render.
-  fn render(&self, object: &Any);
+  fn render(&self, object: &Any, bbox: BBox);
 
   /// Perform some post-render step.
   fn post_render(&self) {}

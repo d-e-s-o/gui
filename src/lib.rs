@@ -54,6 +54,7 @@ pub use self::handleable::Handleable;
 pub use self::object::ChildIter;
 pub use self::object::Object;
 pub use self::renderable::Renderable;
+pub use self::renderer::BBox;
 pub use self::renderer::Renderer;
 pub use self::ui::Cap;
 pub use self::ui::Id;

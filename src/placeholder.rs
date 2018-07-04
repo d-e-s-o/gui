@@ -17,6 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use BBox;
 use Cap;
 use ChildIter;
 use Event;
@@ -48,7 +49,7 @@ impl Placeholder {
 }
 
 impl Renderable for Placeholder {
-  fn render(&self, _renderer: &Renderer) {
+  fn render(&self, _renderer: &Renderer, _bbox: BBox) {
     unreachable!()
   }
 }

@@ -28,10 +28,12 @@ mod common;
 use std::any::Any;
 use std::cell::Cell;
 
+use gui::BBox;
 use gui::Cap;
 use gui::Renderer;
 use gui::Ui;
 
+use common::TestContainer;
 use common::TestRootWidget;
 use common::TestWidget;
 
@@ -58,11 +60,15 @@ impl CountingRenderer {
 }
 
 impl Renderer for CountingRenderer {
+  fn renderable_area(&self) -> BBox {
+    BBox::default()
+  }
+
   fn pre_render(&self) {
     self.pre_render_count.set(self.pre_render_count.get() + 1);
   }
 
-  fn render(&self, object: &Any) {
+  fn render(&self, object: &Any, _bbox: BBox) {
     if object.downcast_ref::<TestRootWidget>().is_some() {
       self.root_widget_render_count.set(
         self.root_widget_render_count.get() +
@@ -104,4 +110,54 @@ fn render_is_called_for_each_widget() {
   assert_eq!(renderer.root_widget_render_count.get(), 1);
   assert_eq!(renderer.widget_render_count.get(), 2);
   assert_eq!(renderer.total_render_count.get(), 3);
+}
+
+
+#[derive(Debug)]
+struct BBoxRenderer {
+  valid_bbox_count: Cell<u64>,
+}
+
+impl BBoxRenderer {
+  fn new() -> Self {
+    BBoxRenderer {
+      valid_bbox_count: Cell::new(0),
+    }
+  }
+}
+
+impl Renderer for BBoxRenderer {
+  fn renderable_area(&self) -> BBox {
+    BBox {
+      x: 0,
+      y: 10,
+      w: 100,
+      h: 40,
+    }
+  }
+
+  fn render(&self, _object: &Any, bbox: BBox) {
+    if bbox == self.renderable_area() {
+      self.valid_bbox_count.set(self.valid_bbox_count.get() + 1);
+    }
+  }
+}
+
+
+#[test]
+fn bounding_box_is_properly_sized() {
+  let renderer = BBoxRenderer::new();
+  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestRootWidget::new(id))
+  });
+  let mut cont = ui.add_widget(&mut root, &mut |parent_id, id, _cap| {
+    Box::new(TestContainer::new(parent_id, id))
+  });
+  let _ = ui.add_widget(&mut cont, &mut |parent_id, id, _cap| {
+    Box::new(TestWidget::new(parent_id, id))
+  });
+
+  ui.render(&renderer);
+
+  assert_eq!(renderer.valid_bbox_count.get(), 3)
 }

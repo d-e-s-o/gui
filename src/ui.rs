@@ -26,6 +26,7 @@ use std::sync::atomic::AtomicUsize;
 #[cfg(debug_assertions)]
 use std::sync::atomic::Ordering;
 
+use BBox;
 use Event;
 use Handleable;
 use MetaEvent;
@@ -272,23 +273,25 @@ impl Ui {
     // relationships into account in case widgets cover each other.
     let idx = self.validate(self.root_id());
     let root = self.lookup(idx);
+    let bbox = renderer.renderable_area();
+
     renderer.pre_render();
-    self.render_all(&root, renderer);
+    self.render_all(&root, renderer, bbox);
     renderer.post_render();
   }
 
   /// Recursively render the given widget and its children.
   #[allow(borrowed_box)]
-  fn render_all(&self, widget: &Box<Widget>, renderer: &Renderer) {
+  fn render_all(&self, widget: &Box<Widget>, renderer: &Renderer, bbox: BBox) {
     // TODO: Ideally we would want to go without the recursion stuff we
     //       have. This may not be possible (efficiently) with safe
     //       Rust, though. Not sure.
-    widget.render(renderer);
+    widget.render(renderer, bbox);
 
     for child_id in widget.iter().rev() {
       let idx = self.validate(*child_id);
       let child = self.lookup(idx);
-      self.render_all(&child, renderer)
+      self.render_all(&child, renderer, bbox)
     }
   }
 
