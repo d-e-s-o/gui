@@ -68,7 +68,7 @@ impl Renderer for CountingRenderer {
     self.pre_render_count.set(self.pre_render_count.get() + 1);
   }
 
-  fn render(&self, object: &Any, _bbox: BBox) {
+  fn render(&self, object: &Any, bbox: BBox) -> BBox {
     if object.downcast_ref::<TestRootWidget>().is_some() {
       self.root_widget_render_count.set(
         self.root_widget_render_count.get() +
@@ -82,6 +82,8 @@ impl Renderer for CountingRenderer {
     self.total_render_count.set(
       self.total_render_count.get() + 1,
     );
+
+    bbox
   }
 
   fn post_render(&self) {
@@ -136,10 +138,26 @@ impl Renderer for BBoxRenderer {
     }
   }
 
-  fn render(&self, _object: &Any, bbox: BBox) {
-    if bbox == self.renderable_area() {
+  fn render(&self, object: &Any, mut bbox: BBox) -> BBox {
+    let mut expected = self.renderable_area();
+
+    if object.downcast_ref::<TestContainer>().is_some() {
+      expected.w -= 10;
+    } else if object.downcast_ref::<TestWidget>().is_some() {
+      expected.w -= 10;
+      expected.h -= 10;
+    }
+
+    if bbox == expected {
       self.valid_bbox_count.set(self.valid_bbox_count.get() + 1);
     }
+
+    if object.downcast_ref::<TestRootWidget>().is_some() {
+      bbox.w -= 10
+    } else if object.downcast_ref::<TestContainer>().is_some() {
+      bbox.h -= 10
+    }
+    bbox
   }
 }
 

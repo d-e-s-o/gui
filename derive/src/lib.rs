@@ -127,7 +127,7 @@ type Result<T> = std::result::Result<T, Error>;
 /// #   parent_id: gui::Id,
 /// # }
 /// impl gui::Renderable for TestWidget {
-///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) {
+///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) -> gui::BBox {
 ///     renderer.render(self, bbox)
 ///   }
 /// }
@@ -176,7 +176,7 @@ pub fn widget(input: TokenStream) -> TokenStream {
 /// #   children: Vec<gui::Id>,
 /// # }
 /// impl gui::Renderable for TestContainer {
-///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) {
+///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) -> gui::BBox {
 ///     renderer.render(self, bbox)
 ///   }
 /// }
@@ -229,7 +229,7 @@ pub fn container(input: TokenStream) -> TokenStream {
 /// #   children: Vec<gui::Id>,
 /// # }
 /// impl gui::Renderable for TestRootWidget {
-///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) {
+///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) -> gui::BBox {
 ///     renderer.render(self, bbox)
 ///   }
 /// }
@@ -474,7 +474,7 @@ fn expand_renderer_trait(input: &DeriveInput) -> Tokens {
 
   quote! {
     impl #impl_generics ::gui::Renderable for #name #ty_generics #where_clause {
-      fn render(&self, renderer: &::gui::Renderer, bbox: ::gui::BBox) {
+      fn render(&self, renderer: &::gui::Renderer, bbox: ::gui::BBox) -> ::gui::BBox {
         renderer.render(self, bbox)
       }
     }

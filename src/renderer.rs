@@ -57,7 +57,7 @@ pub trait Renderer {
   /// to render by the `Renderer` itself.
   // TODO: Ideally we would like to have a double dispatch mechanism for
   //       determining the object to render.
-  fn render(&self, object: &Any, bbox: BBox);
+  fn render(&self, object: &Any, bbox: BBox) -> BBox;
 
   /// Perform some post-render step.
   fn post_render(&self) {}

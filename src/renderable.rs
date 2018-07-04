@@ -24,5 +24,5 @@ use Renderer;
 /// A trait representing a renderable object.
 pub trait Renderable {
   /// Render the renderable object.
-  fn render(&self, renderer: &Renderer, bbox: BBox);
+  fn render(&self, renderer: &Renderer, bbox: BBox) -> BBox;
 }
