@@ -157,6 +157,12 @@ pub trait Cap {
   /// Retrieve the parent of the given widget.
   fn parent_id(&self, widget: &WidgetRef) -> Option<Id>;
 
+  /// Retrieve the currently focused widget.
+  fn focused(&self) -> Option<Id>;
+
+  /// Retrieve the last focused widget.
+  fn last_focused(&self) -> Option<Id>;
+
   /// Focus a widget.
   ///
   /// The focused widget is the one receiving certain types of events
@@ -184,6 +190,7 @@ pub struct Ui {
   id: usize,
   widgets: Vec<Option<Box<Widget>>>,
   focused: Option<Index>,
+  last_focused: Option<Index>,
 }
 
 // Clippy raises a false alert due to the generic type used but not
@@ -199,6 +206,7 @@ impl Ui {
       id: get_next_ui_id(),
       widgets: Default::default(),
       focused: None,
+      last_focused: None,
     };
 
     let id = ui._add_widget(new_root_widget);
@@ -415,9 +423,20 @@ impl Cap for Ui {
     widget.as_widget(self).parent_id()
   }
 
+  /// Retrieve the currently focused widget.
+  fn focused(&self) -> Option<Id> {
+    self.focused.and_then(|x| Some(Id::new(x.idx, self)))
+  }
+
+  /// Retrieve the last focused widget.
+  fn last_focused(&self) -> Option<Id> {
+    self.last_focused.and_then(|x| Some(Id::new(x.idx, self)))
+  }
+
   /// Focus a widget.
   fn focus(&mut self, widget: &WidgetRef) {
     let idx = self.validate(widget.as_id());
+    self.last_focused = self.focused;
     self.focused = Some(idx)
   }
 

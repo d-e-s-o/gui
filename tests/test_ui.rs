@@ -142,6 +142,28 @@ fn focus_widget() {
   assert!(ui.is_focused(&widget));
 }
 
+#[test]
+fn last_focused() {
+  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestRootWidget::new(id))
+  });
+  let mut c = ui.add_widget(&mut root, &mut |parent, id, _cap| {
+    Box::new(TestContainer::new(parent, id))
+  });
+  let w = ui.add_widget(&mut c, &mut |parent, id, _cap| {
+    Box::new(TestWidget::new(parent, id))
+  });
+
+  assert!(ui.is_focused(&root));
+  assert!(ui.last_focused().is_none());
+
+  ui.focus(&c);
+  assert_eq!(ui.last_focused().unwrap(), root);
+
+  ui.focus(&w);
+  assert_eq!(ui.last_focused().unwrap(), c);
+}
+
 
 fn counting_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   Some(
