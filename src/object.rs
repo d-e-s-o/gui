@@ -28,9 +28,6 @@ pub trait Object {
   /// Retrieve this object's `Id`.
   fn id(&self) -> Id;
 
-  /// Retrieve the `Id` for the parent object, if any.
-  fn parent_id(&self) -> Option<Id>;
-
   /// Add a child to an object.
   // TODO: I don't consider it nice to have each `Object` contain this
   //       method. It may be nicer to use a downcast to something like a

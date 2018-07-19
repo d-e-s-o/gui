@@ -58,9 +58,6 @@ impl Object for Placeholder {
   fn id(&self) -> Id {
     unreachable!()
   }
-  fn parent_id(&self) -> Option<Id> {
-    unreachable!()
-  }
   fn add_child(&mut self, widget: &WidgetRef) {
     self.children.push(widget.as_id())
   }

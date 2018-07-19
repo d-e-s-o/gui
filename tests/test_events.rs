@@ -109,14 +109,14 @@ fn events_bubble_up_when_unhandled() {
   let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestContainer::new(parent, id))
+  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+    Box::new(TestContainer::new(id))
   });
-  let mut c2 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
-    Box::new(TestContainer::new(parent, id))
+  let mut c2 = ui.add_widget(&mut c1, &mut |id, _cap| {
+    Box::new(TestContainer::new(id))
   });
-  let w1 = ui.add_widget(&mut c2, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let w1 = ui.add_widget(&mut c2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 
   let event = Event::KeyUp(Key::Char(' '));
@@ -152,13 +152,13 @@ fn event_handling_with_focus() {
   let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let w1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, |_s, e, c| {
+  let w1 = ui.add_widget(&mut r, &mut |id, _cap| {
+    Box::new(TestWidget::with_handler(id, |_s, e, c| {
       key_handler(e, c, None)
     }))
   });
-  let w2 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, move |_s, e, c| {
+  let w2 = ui.add_widget(&mut r, &mut |id, _cap| {
+    Box::new(TestWidget::with_handler(id, move |_s, e, c| {
       key_handler(e, c, Some(w1))
     }))
   });
@@ -191,11 +191,11 @@ fn custom_undirected_response_event() {
   let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestContainer::with_handler(parent, id, custom_undirected_response_handler))
+  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+    Box::new(TestContainer::with_handler(id, custom_undirected_response_handler))
   });
-  let w1 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, custom_undirected_response_handler))
+  let w1 = ui.add_widget(&mut c1, &mut |id, _cap| {
+    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
   });
 
   // We focus the widget we just created, which means that the event
@@ -225,11 +225,11 @@ fn custom_directed_response_event() {
   let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_directed_response_handler))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestContainer::with_handler(parent, id, custom_directed_response_handler))
+  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+    Box::new(TestContainer::with_handler(id, custom_directed_response_handler))
   });
-  let w1 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, custom_directed_response_handler))
+  let w1 = ui.add_widget(&mut c1, &mut |id, _cap| {
+    Box::new(TestWidget::with_handler(id, custom_directed_response_handler))
   });
 
   ui.focus(&w1);
@@ -250,11 +250,11 @@ fn direct_custom_event() {
   let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |parent_id, id, _cap| {
-    Box::new(TestContainer::with_handler(parent_id, id, custom_undirected_response_handler))
+  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+    Box::new(TestContainer::with_handler(id, custom_undirected_response_handler))
   });
-  let w1 = ui.add_widget(&mut c1, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::with_handler(parent_id, id, custom_undirected_response_handler))
+  let w1 = ui.add_widget(&mut c1, &mut |id, _cap| {
+    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
   });
 
   ui.focus(&c1);
@@ -269,11 +269,11 @@ fn quit_event() {
   let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestContainer::new(parent, id))
+  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+    Box::new(TestContainer::new(id))
   });
-  let _ = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let _ = ui.add_widget(&mut c1, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 
   let result = ui.handle(UiEvent::Quit);
@@ -314,11 +314,11 @@ fn chain_event_dispatch() {
   let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, accumulating_handler))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |parent, id, _cap| {
-    Box::new(TestContainer::with_handler(parent, id, chaining_handler))
+  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+    Box::new(TestContainer::with_handler(id, chaining_handler))
   });
-  let w1 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
-    Box::new(TestWidget::with_handler(parent, id, chaining_handler))
+  let w1 = ui.add_widget(&mut c1, &mut |id, _cap| {
+    Box::new(TestWidget::with_handler(id, chaining_handler))
   });
 
   ui.focus(&w1);

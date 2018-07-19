@@ -98,27 +98,24 @@ impl Handleable for TestRootWidget {
 #[derive(Debug, GuiWidget)]
 pub struct TestWidget {
   id: Id,
-  parent_id: Id,
   handler: Option<Handler>,
 }
 
 impl TestWidget {
-  pub fn new(parent: &WidgetRef, id: Id) -> Self {
+  pub fn new(id: Id) -> Self {
     TestWidget {
       id: id,
-      parent_id: parent.as_id(),
       handler: None,
     }
   }
 
   #[allow(unused)]
-  pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
+  pub fn with_handler<F>(id: Id, handler: F) -> Self
   where
     F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>,
   {
     TestWidget {
       id: id,
-      parent_id: parent.as_id(),
       handler: Some(Handler(Box::new(handler))),
     }
   }
@@ -141,30 +138,27 @@ impl Handleable for TestWidget {
 #[derive(Debug, GuiContainer)]
 pub struct TestContainer {
   id: Id,
-  parent_id: Id,
   children: Vec<Id>,
   handler: Option<Handler>,
 }
 
 impl TestContainer {
   #[allow(unused)]
-  pub fn new(parent: &WidgetRef, id: Id) -> Self {
+  pub fn new(id: Id) -> Self {
     TestContainer {
       id: id,
-      parent_id: parent.as_id(),
       children: Vec::new(),
       handler: None,
     }
   }
 
   #[allow(unused)]
-  pub fn with_handler<F>(parent: &WidgetRef, id: Id, handler: F) -> Self
+  pub fn with_handler<F>(id: Id, handler: F) -> Self
   where
     F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>,
   {
     TestContainer {
       id: id,
-      parent_id: parent.as_id(),
       children: Vec::new(),
       handler: Some(Handler(Box::new(handler))),
     }

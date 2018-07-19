@@ -124,7 +124,6 @@ type Result<T> = std::result::Result<T, Error>;
 /// # #[derive(Debug)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
-/// #   parent_id: gui::Id,
 /// # }
 /// impl gui::Renderable for TestWidget {
 ///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) -> gui::BBox {
@@ -135,9 +134,6 @@ type Result<T> = std::result::Result<T, Error>;
 /// impl gui::Object for TestWidget {
 ///   fn id(&self) -> gui::Id {
 ///     self.id
-///   }
-///   fn parent_id(&self) -> Option<gui::Id> {
-///     Some(self.parent_id)
 ///   }
 /// }
 ///
@@ -172,7 +168,6 @@ pub fn widget(input: TokenStream) -> TokenStream {
 /// # #[derive(Debug)]
 /// # struct TestContainer {
 /// #   id: gui::Id,
-/// #   parent_id: gui::Id,
 /// #   children: Vec<gui::Id>,
 /// # }
 /// impl gui::Renderable for TestContainer {
@@ -184,9 +179,6 @@ pub fn widget(input: TokenStream) -> TokenStream {
 /// impl gui::Object for TestContainer {
 ///   fn id(&self) -> gui::Id {
 ///     self.id
-///   }
-///   fn parent_id(&self) -> Option<gui::Id> {
-///     Some(self.parent_id)
 ///   }
 ///   fn add_child(&mut self, widget: &gui::WidgetRef) {
 ///     self.children.push(widget.as_id())
@@ -237,9 +229,6 @@ pub fn container(input: TokenStream) -> TokenStream {
 /// impl gui::Object for TestRootWidget {
 ///   fn id(&self) -> gui::Id {
 ///     self.id
-///   }
-///   fn parent_id(&self) -> Option<gui::Id> {
-///     None
 ///   }
 ///   fn add_child(&mut self, widget: &gui::WidgetRef) {
 ///     self.children.push(widget.as_id())
@@ -371,12 +360,11 @@ fn expand_widget_input(type_: &Type, new: &New, input: &DeriveInput) -> Result<T
 // type Id but that could map to ::foo::Id and not ::gui::Id).
 fn check_struct_fields(type_: &Type, fields: &Fields) -> Result<()> {
   let id = ("id", "::gui::Id");
-  let par_id = ("parent_id", "::gui::Id");
   let childs = ("children", "::std::vec::Vec<::gui::Id>");
 
   let req_fields = match *type_ {
-    Type::Widget => vec![id, par_id],
-    Type::Container => vec![id, par_id, childs],
+    Type::Widget => vec![id],
+    Type::Container |
     Type::RootWidget => vec![id, childs],
   };
 
@@ -420,32 +408,19 @@ fn expand_new_impl(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
 
   match *new {
     New::Default => {
-      let (args, fields) = match *type_ {
+      let fields = match *type_ {
         Type::Widget => {(
           quote! {
-            parent: &::gui::WidgetRef,
-            id: ::gui::Id,
-          },
-          quote! {
             id: id,
-            parent_id: parent.as_id(),
           }
         )},
         Type::Container => {(
           quote! {
-            parent: &::gui::WidgetRef,
-            id: ::gui::Id,
-          },
-          quote! {
             id: id,
-            parent_id: parent.as_id(),
             children: Vec::new(),
           }
         )},
         Type::RootWidget => {(
-          quote! {
-            id: ::gui::Id,
-          },
           quote! {
             id: id,
             children: Vec::new(),
@@ -455,7 +430,7 @@ fn expand_new_impl(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
       quote! {
         #[allow(dead_code)]
         impl #impl_generics #name #ty_generics #where_clause {
-          pub fn new(#args) -> Self {
+          pub fn new(id: ::gui::Id) -> Self {
             #name {
               #fields
             }
@@ -487,11 +462,6 @@ fn expand_object_trait(type_: &Type, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-  let parent_id = match *type_ {
-    Type::Widget | Type::Container => quote!{ Some(self.parent_id) },
-    Type::RootWidget => quote!{ None },
-  };
-
   let children = match *type_ {
     Type::Widget => quote!{},
     Type::Container | Type::RootWidget => {
@@ -511,10 +481,6 @@ fn expand_object_trait(type_: &Type, input: &DeriveInput) -> Tokens {
     impl #impl_generics ::gui::Object for #name #ty_generics #where_clause {
       fn id(&self) -> ::gui::Id {
         self.id
-      }
-
-      fn parent_id(&self) -> ::std::option::Option<::gui::Id> {
-        #parent_id
       }
 
       #children
@@ -548,7 +514,6 @@ fn expand_widget_trait(input: &DeriveInput) -> Tokens {
 /// # #[derive(Debug, GuiWidget)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
-/// #   parent_id: gui::Id,
 /// # }
 /// impl gui::Handleable for TestWidget {}
 /// # fn main() {}

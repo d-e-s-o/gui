@@ -142,8 +142,7 @@ pub trait Widget: Handleable + Renderable + Object + Debug + WidgetRef {}
 //       solution but is a nightly-only API. For now, users are advised
 //       to use an Option as one of the parameters and panic if None is
 //       supplied.
-type NewRootWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
-type NewWidgetFn<'f> = &'f mut FnMut(&mut WidgetRef, Id, &mut Cap) -> Box<Widget>;
+type NewWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
 
 
 /// A capability allowing for various widget related operations.
@@ -221,7 +220,7 @@ pub struct Ui {
 impl Ui {
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
-  pub fn new(new_root_widget: NewRootWidgetFn) -> (Self, Id) {
+  pub fn new(new_root_widget: NewWidgetFn) -> (Self, Id) {
     let mut ui = Ui {
       #[cfg(debug_assertions)]
       id: get_next_ui_id(),
@@ -236,11 +235,7 @@ impl Ui {
   }
 
   /// Add a widget to the `Ui`.
-  // TODO: Usage of NewRootWidgetFn here gives the wrong impression of
-  //       intention as we are not necessarily adding a root widget. It
-  //       could just be a normal widget. The type just happens to have
-  //       the right signature.
-  fn _add_widget(&mut self, parent_id: Option<Id>, new_widget: NewRootWidgetFn) -> Id {
+  fn _add_widget(&mut self, parent_id: Option<Id>, new_widget: NewWidgetFn) -> Id {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
 
@@ -367,7 +362,7 @@ impl Ui {
     // which can be either an `Id` or an actual reference.
     let (meta_event, id) = self.with(idx, |ui, mut widget| {
       let meta_event = widget.handle(event, ui);
-      let parent_id = widget.parent_id();
+      let parent_id = ui.widgets[idx.idx].0.parent_id;
       (widget, (meta_event, parent_id))
     });
 
@@ -423,7 +418,7 @@ impl Ui {
 impl Cap for Ui {
   /// Add a widget to the `Ui`.
   fn add_widget(&mut self, parent: &mut WidgetRef, new_widget: NewWidgetFn) -> Id {
-    let id = self._add_widget(Some(parent.as_id()), &mut |id, cap| new_widget(parent, id, cap));
+    let id = self._add_widget(Some(parent.as_id()), &mut |id, cap| new_widget(id, cap));
     // The widget is already linked to its parent but the parent needs to
     // know about the child as well.
     parent.as_mut_widget(self).add_child(&id);
@@ -444,7 +439,8 @@ impl Cap for Ui {
 
   /// Retrieve the parent of the given widget.
   fn parent_id(&self, widget: &WidgetRef) -> Option<Id> {
-    widget.as_widget(self).parent_id()
+    let idx = self.validate(widget.as_id());
+    self.widgets[idx.idx].0.parent_id
   }
 
   /// Retrieve the currently focused widget.

@@ -47,27 +47,27 @@ fn correct_ids() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let w1 = ui.add_widget(&mut root, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let w1 = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
-  let w2 = ui.add_widget(&mut root, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let w2 = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
   // And a container.
-  let mut c1 = ui.add_widget(&mut root, &mut |parent, id, _cap| {
-    Box::new(TestContainer::new(parent, id))
+  let mut c1 = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestContainer::new(id))
   });
   // And a widget to the container.
-  let w3 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let w3 = ui.add_widget(&mut c1, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
   // And another container for deeper nesting.
-  let mut c2 = ui.add_widget(&mut c1, &mut |parent, id, _cap| {
-    Box::new(TestContainer::new(parent, id))
+  let mut c2 = ui.add_widget(&mut c1, &mut |id, _cap| {
+    Box::new(TestContainer::new(id))
   });
   // And the last widget.
-  let w4 = ui.add_widget(&mut c2, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let w4 = ui.add_widget(&mut c2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 
   assert_eq!(ui.parent_id(&root), None);
@@ -85,8 +85,8 @@ fn share_ids_between_ui_objects() {
   let (mut ui1, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let widget = ui1.add_widget(&mut root, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let widget = ui1.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 
   let (mut ui2, _) = Ui::new(&mut |id, _cap| {
@@ -105,11 +105,11 @@ fn only_containers_can_have_children() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut widget = ui.add_widget(&mut root, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let mut widget = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
-  let _ = ui.add_widget(&mut widget, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let _ = ui.add_widget(&mut widget, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 }
 
@@ -123,8 +123,8 @@ fn initial_focus() {
   // focused until directed otherwise.
   assert!(ui.is_focused(&root));
 
-  let _ = ui.add_widget(&mut root, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let _ = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
   assert!(ui.is_focused(&root));
 }
@@ -134,8 +134,8 @@ fn focus_widget() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let widget = ui.add_widget(&mut root, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::new(parent_id, id))
+  let widget = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 
   ui.focus(&widget);
@@ -147,11 +147,11 @@ fn last_focused() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut c = ui.add_widget(&mut root, &mut |parent, id, _cap| {
-    Box::new(TestContainer::new(parent, id))
+  let mut c = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestContainer::new(id))
   });
-  let w = ui.add_widget(&mut c, &mut |parent, id, _cap| {
-    Box::new(TestWidget::new(parent, id))
+  let w = ui.add_widget(&mut c, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 
   assert!(ui.is_focused(&root));
@@ -186,8 +186,8 @@ struct CreatingRootWidget {
 
 impl CreatingRootWidget {
   pub fn new(mut id: Id, cap: &mut Cap) -> Self {
-    let _ = cap.add_widget(&mut id, &mut |parent, id, cap| {
-      Box::new(CreatingContainer::new(parent, id, cap))
+    let _ = cap.add_widget(&mut id, &mut |id, cap| {
+      Box::new(CreatingContainer::new(id, cap))
     });
     CreatingRootWidget {
       id: id,
@@ -205,19 +205,17 @@ impl Handleable for CreatingRootWidget {
 
 #[derive(Debug, GuiContainer)]
 struct CreatingContainer {
-  parent_id: Id,
   id: Id,
   children: Vec<Id>,
 }
 
 impl CreatingContainer {
-  pub fn new(parent: &mut WidgetRef, mut id: Id, cap: &mut Cap) -> Self {
-    let _ = cap.add_widget(&mut id, &mut |parent, id, cap| {
-      Box::new(CreatingWidget::new(parent, id, cap))
+  pub fn new(mut id: Id, cap: &mut Cap) -> Self {
+    let _ = cap.add_widget(&mut id, &mut |id, cap| {
+      Box::new(CreatingWidget::new(id, cap))
     });
 
     CreatingContainer {
-      parent_id: parent.as_id(),
       id: id,
       children: Vec::new(),
     }
@@ -233,23 +231,22 @@ impl Handleable for CreatingContainer {
 
 #[derive(Debug, GuiWidget)]
 struct CreatingWidget {
-  parent_id: Id,
   id: Id,
 }
 
 impl CreatingWidget {
-  pub fn new(parent: &mut WidgetRef, id: Id, cap: &mut Cap) -> Self {
+  pub fn new(id: Id, cap: &mut Cap) -> Self {
+    let mut parent = cap.parent_id(&id).unwrap();
     // This widget is not a container and so we add the newly created
     // widget to the parent.
-    let child = cap.add_widget(parent, &mut |parent, id, _cap| {
-      Box::new(TestWidget::with_handler(parent, id, counting_handler))
+    let child = cap.add_widget(&mut parent, &mut |id, _cap| {
+      Box::new(TestWidget::with_handler(id, counting_handler))
     });
     // Focus the "last" widget. Doing so allows us to send an event to
     // all widgets.
     cap.focus(&child);
 
     CreatingWidget {
-      parent_id: parent.as_id(),
       id: id,
     }
   }
@@ -284,15 +281,13 @@ struct Moveable {}
 
 #[derive(Debug, GuiWidget, GuiHandleable)]
 struct MovingWidget {
-  parent_id: Id,
   id: Id,
   object: Moveable,
 }
 
 impl MovingWidget {
-  pub fn new(parent: &mut WidgetRef, id: Id, object: Moveable) -> Self {
+  pub fn new(id: Id, object: Moveable) -> Self {
     MovingWidget {
-      parent_id: parent.as_id(),
       id: id,
       object: object,
     }
@@ -308,9 +303,9 @@ fn moving_widget_creation() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let _ = ui.add_widget(&mut root, &mut |parent, id, _cap| {
+  let _ = ui.add_widget(&mut root, &mut |id, _cap| {
     let moveable = object.take().unwrap();
-    Box::new(MovingWidget::new(parent, id, moveable))
+    Box::new(MovingWidget::new(id, moveable))
   });
 }
 
@@ -320,8 +315,8 @@ fn create_handler(widget: &mut WidgetRef, event: Event, cap: &mut Cap) -> Option
     Event::KeyDown(key) => {
       match key {
         Key::Char('z') => {
-          cap.add_widget(widget, &mut |parent, id, _cap| {
-            Box::new(TestWidget::new(parent, id))
+          cap.add_widget(widget, &mut |id, _cap| {
+            Box::new(TestWidget::new(id))
           });
           None
         },
@@ -350,21 +345,19 @@ fn event_based_widget_creation() {
 }
 
 
-fn panicing_handler(widget: &mut WidgetRef, _event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-  // Because of the usage of an `Id` that represents the same widget
-  // from which the call originates we will panic when attempting to
-  // retrieve the parent `Id`. Correct usage would be to use the
-  // `WidgetRef` (which is an actual reference in this case)
-  // instead.
+fn recursive_operations_handler(widget: &mut WidgetRef, _event: Event, cap: &mut Cap) -> Option<MetaEvent> {
+  // Check that we can use the supplied `Cap` object to retrieve our
+  // own parent's ID.
   cap.parent_id(&widget.as_id());
+  cap.focus(&widget.as_id());
+  cap.is_focused(&widget.as_id());
   None
 }
 
 #[test]
-#[should_panic(expected = "Widget 0 is currently taken")]
-fn recursive_widget_acquisition() {
+fn recursive_widget_operations() {
   let (mut ui, _) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::with_handler(id, panicing_handler))
+    Box::new(TestRootWidget::with_handler(id, recursive_operations_handler))
   });
 
   ui.handle(Event::Custom(Box::new(())));

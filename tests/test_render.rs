@@ -98,11 +98,11 @@ fn render_is_called_for_each_widget() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let _ = ui.add_widget(&mut root, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::new(parent_id, id))
+  let _ = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
-  let _ = ui.add_widget(&mut root, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::new(parent_id, id))
+  let _ = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 
   ui.render(&renderer);
@@ -168,11 +168,11 @@ fn bounding_box_is_properly_sized() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut cont = ui.add_widget(&mut root, &mut |parent_id, id, _cap| {
-    Box::new(TestContainer::new(parent_id, id))
+  let mut cont = ui.add_widget(&mut root, &mut |id, _cap| {
+    Box::new(TestContainer::new(id))
   });
-  let _ = ui.add_widget(&mut cont, &mut |parent_id, id, _cap| {
-    Box::new(TestWidget::new(parent_id, id))
+  let _ = ui.add_widget(&mut cont, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
   });
 
   ui.render(&renderer);
