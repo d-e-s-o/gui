@@ -109,13 +109,13 @@ impl WidgetRef for Id {
   /// Retrieve a reference to a widget.
   fn as_widget<'s, 'ui: 's>(&'s self, ui: &'ui Ui) -> &Widget {
     let idx = ui.validate(*self);
-    ui.lookup(idx).as_ref()
+    ui.lookup(idx)
   }
 
   /// Retrieve a mutable reference to a widget.
   fn as_mut_widget<'s, 'ui: 's>(&'s mut self, ui: &'ui mut Ui) -> &mut Widget {
     let idx = ui.validate(*self);
-    ui.lookup_mut(idx).as_mut()
+    ui.lookup_mut(idx)
   }
 
   /// Retrieve an `Id`.
@@ -183,12 +183,33 @@ fn get_next_ui_id() -> usize {
 }
 
 
+/// This type contains data that is common to all widgets.
+#[derive(Debug)]
+struct WidgetData {
+  /// The `Id` of the parent widget.
+  ///
+  /// This value may only be `None` for the root widget.
+  parent_id: Option<Id>,
+  /// Vector of all the children that have this widget as a parent.
+  children: Vec<Id>,
+}
+
+impl WidgetData {
+  fn new(parent_id: Option<Id>) -> Self {
+    WidgetData {
+      parent_id: parent_id,
+      children: Default::default(),
+    }
+  }
+}
+
+
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
 pub struct Ui {
   #[cfg(debug_assertions)]
   id: usize,
-  widgets: Vec<Option<Box<Widget>>>,
+  widgets: Vec<(WidgetData, Option<Box<Widget>>)>,
   focused: Option<Index>,
   last_focused: Option<Index>,
 }
@@ -209,7 +230,7 @@ impl Ui {
       last_focused: None,
     };
 
-    let id = ui._add_widget(new_root_widget);
+    let id = ui._add_widget(None, new_root_widget);
     debug_assert_eq!(id.idx.idx, 0);
     (ui, id)
   }
@@ -219,7 +240,7 @@ impl Ui {
   //       intention as we are not necessarily adding a root widget. It
   //       could just be a normal widget. The type just happens to have
   //       the right signature.
-  fn _add_widget(&mut self, new_widget: NewRootWidgetFn) -> Id {
+  fn _add_widget(&mut self, parent_id: Option<Id>, new_widget: NewRootWidgetFn) -> Id {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
 
@@ -232,19 +253,18 @@ impl Ui {
     // We require some trickery here to allow for dynamic widget
     // creation from within the constructor of another widget. In
     // particular, we install a "dummy" widget that acts as a container
-    // to which newly created child widgets can be registered. After the
-    // widget of interest got created we transfer all those children
-    // over.
+    // to which newly created child widgets can be registered.
     let dummy = Placeholder::new();
-    self.widgets.push(Some(Box::new(dummy)));
+    let data = WidgetData::new(parent_id);
+    self.widgets.push((data, Some(Box::new(dummy))));
 
-    let mut widget = new_widget(id, self);
-
-    for child in self.lookup(idx).iter().cloned() {
-      widget.add_child(&child)
-    }
-
-    self.widgets[idx.idx] = Some(widget);
+    let widget = new_widget(id, self);
+    // Replace our placeholder with the actual widget we just created.
+    // Note that because we store the children separately as part of an
+    // `WidgetData` object there is no need for us to do anything about
+    // them. Note furthermore that this implies that the Widget trait's
+    // `add_child` method must not have any side effects.
+    self.with(idx, |_, _| (widget, ()));
     id
   }
 
@@ -257,19 +277,31 @@ impl Ui {
   }
 
   /// Lookup a widget from an `Index`.
-  #[allow(borrowed_box)]
-  fn lookup(&self, idx: Index) -> &Box<Widget> {
-    match self.widgets[idx.idx].as_ref() {
-      Some(widget) => widget,
+  fn lookup(&self, idx: Index) -> &Widget {
+    match &self.widgets[idx.idx].1 {
+      Some(widget) => widget.as_ref(),
       None => panic!("Widget {} is currently taken", idx),
     }
   }
 
   /// Lookup a widget from an `Index`.
-  #[allow(borrowed_box)]
-  fn lookup_mut(&mut self, idx: Index) -> &mut Box<Widget> {
-    match self.widgets[idx.idx].as_mut() {
-      Some(widget) => widget,
+  fn lookup_mut(&mut self, idx: Index) -> &mut Widget {
+    match &mut self.widgets[idx.idx].1 {
+      Some(widget) => widget.as_mut(),
+      None => panic!("Widget {} is currently taken", idx),
+    }
+  }
+
+  fn with<F, R>(&mut self, idx: Index, with_widget: F) -> R
+  where
+    F: FnOnce(&mut Ui, Box<Widget>) -> (Box<Widget>, R),
+  {
+    match self.widgets[idx.idx].1.take() {
+      Some(widget) => {
+        let (widget, result) = with_widget(self, widget);
+        self.widgets[idx.idx].1 = Some(widget);
+        result
+      },
       None => panic!("Widget {} is currently taken", idx),
     }
   }
@@ -284,13 +316,12 @@ impl Ui {
     let bbox = renderer.renderable_area();
 
     renderer.pre_render();
-    self.render_all(&root, renderer, bbox);
+    self.render_all(root, renderer, bbox);
     renderer.post_render();
   }
 
   /// Recursively render the given widget and its children.
-  #[allow(borrowed_box)]
-  fn render_all(&self, widget: &Box<Widget>, renderer: &Renderer, bbox: BBox) {
+  fn render_all(&self, widget: &Widget, renderer: &Renderer, bbox: BBox) {
     // TODO: Ideally we would want to go without the recursion stuff we
     //       have. This may not be possible (efficiently) with safe
     //       Rust, though. Not sure.
@@ -299,7 +330,7 @@ impl Ui {
     for child_id in widget.iter().rev() {
       let idx = self.validate(*child_id);
       let child = self.lookup(idx);
-      self.render_all(&child, renderer, bbox)
+      self.render_all(child, renderer, bbox)
     }
   }
 
@@ -323,29 +354,22 @@ impl Ui {
 
   /// Bubble up an event until it is handled by some `Widget`.
   fn handle_event(&mut self, idx: Index, event: Event) -> Option<MetaEvent> {
-    let (meta_event, id) = {
-      // To enable a mutable borrow of the Ui as well as the widget we
-      // temporarily remove the widget from the internally used vector.
-      // This means that now we would panic if we were to access the
-      // widget recursively (because that's what we do if the Option is
-      // None). The only way this can happen is if the widget's handle
-      // method uses the provided `Cap` object. We fudge that case by
-      // requiring that the widget supply its own reference to the `Cap`
-      // object, and not its own `Id`. This way we do not have to lookup
-      // the widget and, hence, do not panic. This use case is enabled
-      // since all methods in the `Cap` trait accept a `WidgetRef`,
-      // which can be either an `Id` or an actual reference.
-      match self.widgets[idx.idx].take() {
-        Some(mut widget) => {
-          let meta_event = widget.handle(event, self);
-          let parent_id = widget.parent_id();
-
-          self.widgets[idx.idx] = Some(widget);
-          (meta_event, parent_id)
-        },
-        None => panic!("Widget {} is currently taken", idx),
-      }
-    };
+    // To enable a mutable borrow of the Ui as well as the widget we
+    // temporarily remove the widget from the internally used vector.
+    // This means that now we would panic if we were to access the
+    // widget recursively (because that's what we do if the Option is
+    // None). The only way this can happen is if the widget's handle
+    // method uses the provided `Cap` object. We fudge that case by
+    // requiring that the widget supply its own reference to the `Cap`
+    // object, and not its own `Id`. This way we do not have to lookup
+    // the widget and, hence, do not panic. This use case is enabled
+    // since all methods in the `Cap` trait accept a `WidgetRef`,
+    // which can be either an `Id` or an actual reference.
+    let (meta_event, id) = self.with(idx, |ui, mut widget| {
+      let meta_event = widget.handle(event, ui);
+      let parent_id = widget.parent_id();
+      (widget, (meta_event, parent_id))
+    });
 
     if let Some(meta_event) = meta_event {
       self.handle_meta_event(id, meta_event)
@@ -399,7 +423,7 @@ impl Ui {
 impl Cap for Ui {
   /// Add a widget to the `Ui`.
   fn add_widget(&mut self, parent: &mut WidgetRef, new_widget: NewWidgetFn) -> Id {
-    let id = self._add_widget(&mut |id, cap| new_widget(parent, id, cap));
+    let id = self._add_widget(Some(parent.as_id()), &mut |id, cap| new_widget(parent, id, cap));
     // The widget is already linked to its parent but the parent needs to
     // know about the child as well.
     parent.as_mut_widget(self).add_child(&id);
@@ -413,7 +437,7 @@ impl Cap for Ui {
     // We do not unconditionally unwrap the Option returned by as_ref()
     // here as it is possible that it is empty and we do not want to
     // panic here. This is mostly important for unit testing.
-    debug_assert_eq!(self.widgets[0].as_ref().map_or(0, |x| self.validate(x.id()).idx), 0);
+    debug_assert_eq!(self.widgets[0].1.as_ref().map_or(0, |x| self.validate(x.id()).idx), 0);
 
     Id::new(0, self)
   }
