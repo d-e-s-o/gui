@@ -19,6 +19,7 @@
 
 #![allow(
   unknown_lints,
+  block_in_if_condition_stmt,
   redundant_field_names,
 )]
 #![deny(
@@ -51,7 +52,6 @@ pub use self::event::Key;
 pub use self::event::MetaEvent;
 pub use self::event::UiEvent;
 pub use self::handleable::Handleable;
-pub use self::object::ChildIter;
 pub use self::object::Object;
 pub use self::renderable::Renderable;
 pub use self::renderer::BBox;

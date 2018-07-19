@@ -19,7 +19,6 @@
 
 use BBox;
 use Cap;
-use ChildIter;
 use Event;
 use Handleable;
 use Id;
@@ -57,12 +56,6 @@ impl Renderable for Placeholder {
 impl Object for Placeholder {
   fn id(&self) -> Id {
     unreachable!()
-  }
-  fn add_child(&mut self, widget: &WidgetRef) {
-    self.children.push(widget.as_id())
-  }
-  fn iter(&self) -> ChildIter {
-    ChildIter::with_iter(self.children.iter())
   }
 }
 

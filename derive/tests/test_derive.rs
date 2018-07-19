@@ -46,7 +46,6 @@ struct TestWidget {
 #[gui(default_new)]
 struct TestContainer {
   id: Id,
-  children: Vec<Id>,
 }
 
 impl Handleable for TestContainer {}
@@ -56,7 +55,6 @@ impl Handleable for TestContainer {}
 #[gui(default_new)]
 struct TestRootWidget {
   id: Id,
-  children: Vec<Id>,
 }
 
 
@@ -66,7 +64,6 @@ where
   T: 'static + Debug,
 {
   id: Id,
-  children: Vec<Id>,
   _data: PhantomData<T>,
 }
 
@@ -77,26 +74,11 @@ where
   pub fn new(id: Id) -> Self {
     TestContainerT {
       id: id,
-      children: Vec::new(),
       _data: PhantomData,
     }
   }
 }
 
-
-#[test]
-#[should_panic(expected = "Cannot add an object to a non-container")]
-fn widget_type_yields_widget() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
-  });
-  let mut w = ui.add_widget(&mut r, &mut |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let _ = ui.add_widget(&mut w, &mut |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-}
 
 #[test]
 fn container_type_yields_container() {

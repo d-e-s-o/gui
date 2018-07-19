@@ -21,6 +21,7 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
+use std::slice::Iter;
 #[cfg(debug_assertions)]
 use std::sync::atomic::AtomicUsize;
 #[cfg(debug_assertions)]
@@ -134,6 +135,8 @@ impl WidgetRef for Id {
 /// `WidgetRef`.
 pub trait Widget: Handleable + Renderable + Object + Debug + WidgetRef {}
 
+/// An iterator over the children of a widget.
+pub type ChildIter<'widget> = Iter<'widget, Id>;
 
 // TODO: Ideally we would want to use FnOnce here, in case callers need
 //       to move data into a widget. We cannot do so with a reference
@@ -149,6 +152,10 @@ type NewWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
 pub trait Cap {
   /// Add a widget to the `Ui` represented by the capability.
   fn add_widget(&mut self, parent: &mut WidgetRef, new_widget: NewWidgetFn) -> Id;
+
+  /// Retrieve an iterator over the children. Iteration happens in
+  /// z-order, from highest to lowest.
+  fn children(&self, widget: &WidgetRef) -> ChildIter;
 
   /// Retrieve the `Id` of the root widget.
   fn root_id(&self) -> Id;
@@ -253,6 +260,16 @@ impl Ui {
     let data = WidgetData::new(parent_id);
     self.widgets.push((data, Some(Box::new(dummy))));
 
+    // The widget is already linked to its parent but the parent needs to
+    // know about the child as well. We do that registration before the
+    // widget is actually fully constructed to preserve the invariant
+    // that a widget's ID is part of the list of IDs managed by its
+    // parent.
+    if let Some(parent_id) = parent_id {
+      let idx = self.validate(parent_id);
+      self.widgets[idx.idx].0.children.push(id)
+    }
+
     let widget = new_widget(id, self);
     // Replace our placeholder with the actual widget we just created.
     // Note that because we store the children separately as part of an
@@ -322,7 +339,7 @@ impl Ui {
     //       Rust, though. Not sure.
     let bbox = widget.render(renderer, bbox);
 
-    for child_id in widget.iter().rev() {
+    for child_id in self.children(&widget.as_id()).rev() {
       let idx = self.validate(*child_id);
       let child = self.lookup(idx);
       self.render_all(child, renderer, bbox)
@@ -418,12 +435,14 @@ impl Ui {
 impl Cap for Ui {
   /// Add a widget to the `Ui`.
   fn add_widget(&mut self, parent: &mut WidgetRef, new_widget: NewWidgetFn) -> Id {
-    let id = self._add_widget(Some(parent.as_id()), &mut |id, cap| new_widget(id, cap));
-    // The widget is already linked to its parent but the parent needs to
-    // know about the child as well.
-    parent.as_mut_widget(self).add_child(&id);
+    self._add_widget(Some(parent.as_id()), &mut |id, cap| new_widget(id, cap))
+  }
 
-    id
+  /// Retrieve an iterator over the children. Iteration happens in
+  /// z-order, from highest to lowest.
+  fn children(&self, widget: &WidgetRef) -> ChildIter {
+    let idx = self.validate(widget.as_id());
+    self.widgets[idx.idx].0.children.iter()
   }
 
   /// Retrieve the `Id` of the root widget.
@@ -440,7 +459,9 @@ impl Cap for Ui {
   /// Retrieve the parent of the given widget.
   fn parent_id(&self, widget: &WidgetRef) -> Option<Id> {
     let idx = self.validate(widget.as_id());
-    self.widgets[idx.idx].0.parent_id
+    let id = self.widgets[idx.idx].0.parent_id;
+    debug_assert!(id.map_or(true, |x| self.children(&x).any(|x| *x == widget.as_id())));
+    id
   }
 
   /// Retrieve the currently focused widget.

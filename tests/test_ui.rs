@@ -100,20 +100,6 @@ fn share_ids_between_ui_objects() {
 }
 
 #[test]
-#[should_panic(expected = "Cannot add an object to a non-container")]
-fn only_containers_can_have_children() {
-  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
-  });
-  let mut widget = ui.add_widget(&mut root, &mut |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let _ = ui.add_widget(&mut widget, &mut |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-}
-
-#[test]
 fn initial_focus() {
   let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
@@ -334,14 +320,14 @@ fn event_based_widget_creation() {
     Box::new(TestRootWidget::with_handler(id, create_handler))
   });
 
-  assert_eq!(root.as_widget(&ui).iter().count(), 0);
+  assert_eq!(ui.children(&root).count(), 0);
 
   let event = Event::KeyDown(Key::Char('z'));
   let result = ui.handle(event);
   assert!(result.is_none());
 
   // We must have created a widget.
-  assert_eq!(root.as_widget(&ui).iter().count(), 1)
+  assert_eq!(ui.children(&root).count(), 1);
 }
 
 

@@ -55,14 +55,6 @@ use syn::punctuated::Punctuated;
 use syn::token::Comma;
 
 
-/// An enum representing the various widget types we support to derive from.
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum Type {
-  Container,
-  RootWidget,
-  Widget,
-}
-
 /// An enum to decide whether or not to create a default implementation of type::new().
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum New {
@@ -155,7 +147,7 @@ type Result<T> = std::result::Result<T, Error>;
 /// ```
 #[proc_macro_derive(GuiWidget, attributes(gui))]
 pub fn widget(input: TokenStream) -> TokenStream {
-  ui_object(&Type::Widget, input)
+  ui_object(input)
 }
 
 /// Custom derive functionality for the `gui::Widget` trait for a
@@ -168,7 +160,6 @@ pub fn widget(input: TokenStream) -> TokenStream {
 /// # #[derive(Debug)]
 /// # struct TestContainer {
 /// #   id: gui::Id,
-/// #   children: Vec<gui::Id>,
 /// # }
 /// impl gui::Renderable for TestContainer {
 ///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) -> gui::BBox {
@@ -179,12 +170,6 @@ pub fn widget(input: TokenStream) -> TokenStream {
 /// impl gui::Object for TestContainer {
 ///   fn id(&self) -> gui::Id {
 ///     self.id
-///   }
-///   fn add_child(&mut self, widget: &gui::WidgetRef) {
-///     self.children.push(widget.as_id())
-///   }
-///   fn iter(&self) -> gui::ChildIter {
-///     gui::ChildIter::with_iter(self.children.iter())
 ///   }
 /// }
 ///
@@ -205,7 +190,7 @@ pub fn widget(input: TokenStream) -> TokenStream {
 /// # impl gui::Handleable for TestContainer {}
 #[proc_macro_derive(GuiContainer, attributes(gui))]
 pub fn container(input: TokenStream) -> TokenStream {
-  ui_object(&Type::Container, input)
+  ui_object(input)
 }
 
 /// Custom derive functionality for the `gui::Widget` trait for a root
@@ -218,7 +203,6 @@ pub fn container(input: TokenStream) -> TokenStream {
 /// # #[derive(Debug)]
 /// # struct TestRootWidget {
 /// #   id: gui::Id,
-/// #   children: Vec<gui::Id>,
 /// # }
 /// impl gui::Renderable for TestRootWidget {
 ///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) -> gui::BBox {
@@ -229,12 +213,6 @@ pub fn container(input: TokenStream) -> TokenStream {
 /// impl gui::Object for TestRootWidget {
 ///   fn id(&self) -> gui::Id {
 ///     self.id
-///   }
-///   fn add_child(&mut self, widget: &gui::WidgetRef) {
-///     self.children.push(widget.as_id())
-///   }
-///   fn iter(&self) -> gui::ChildIter {
-///     gui::ChildIter::with_iter(self.children.iter())
 ///   }
 /// }
 ///
@@ -256,22 +234,22 @@ pub fn container(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_derive(GuiRootWidget, attributes(gui))]
 pub fn root_widget(input: TokenStream) -> TokenStream {
-  ui_object(&Type::RootWidget, input)
+  ui_object(input)
 }
 
-fn ui_object(type_: &Type, input: TokenStream) -> TokenStream {
-  match expand_ui_object(type_, input) {
+fn ui_object(input: TokenStream) -> TokenStream {
+  match expand_ui_object(input) {
     Ok(tokens) => tokens,
     Err(error) => panic!("{}", error),
   }
 }
 
-fn expand_ui_object(type_: &Type, input: TokenStream) -> Result<TokenStream> {
+fn expand_ui_object(input: TokenStream) -> Result<TokenStream> {
   let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
     Err("unable to parse input")
   })?;
   let new = parse_ui_object_attributes(&input.attrs)?;
-  let tokens = expand_widget_input(&type_, &new, &input)?;
+  let tokens = expand_widget_input(&new, &input)?;
   Ok(tokens.into())
 }
 
@@ -343,11 +321,11 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<Option<New>> {
 }
 
 /// Expand the input with the implementation of the required traits.
-fn expand_widget_input(type_: &Type, new: &New, input: &DeriveInput) -> Result<Tokens> {
+fn expand_widget_input(new: &New, input: &DeriveInput) -> Result<Tokens> {
   match input.data {
     Data::Struct(ref data) => {
-      check_struct_fields(type_, &data.fields)?;
-      Ok(expand_widget_traits(type_, new, input))
+      check_struct_fields(&data.fields)?;
+      Ok(expand_widget_traits(new, input))
     },
     _ => Err(Error::from("#[derive(GuiWidget)] is only defined for structs")),
   }
@@ -358,17 +336,10 @@ fn expand_widget_input(type_: &Type, new: &New, input: &DeriveInput) -> Result<T
 // the types. Checking types is cumbersome and best-effort anyway as we
 // are working on tokens without context (a user could have a field of
 // type Id but that could map to ::foo::Id and not ::gui::Id).
-fn check_struct_fields(type_: &Type, fields: &Fields) -> Result<()> {
+fn check_struct_fields(fields: &Fields) -> Result<()> {
   let id = ("id", "::gui::Id");
-  let childs = ("children", "::std::vec::Vec<::gui::Id>");
 
-  let req_fields = match *type_ {
-    Type::Widget => vec![id],
-    Type::Container |
-    Type::RootWidget => vec![id, childs],
-  };
-
-  for (req_field, req_type) in req_fields {
+  for (req_field, req_type) in &[id] {
     fields
       .iter()
       .find(|field| {
@@ -384,10 +355,10 @@ fn check_struct_fields(type_: &Type, fields: &Fields) -> Result<()> {
 }
 
 /// Expand the struct input with the implementation of the required traits.
-fn expand_widget_traits(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
-  let new_impl = expand_new_impl(type_, new, input);
+fn expand_widget_traits(new: &New, input: &DeriveInput) -> Tokens {
+  let new_impl = expand_new_impl(new, input);
   let renderer = expand_renderer_trait(input);
-  let object = expand_object_trait(type_, input);
+  let object = expand_object_trait(input);
   let widget_ref = expand_widget_ref_trait(input);
   let widget = expand_widget_trait(input);
 
@@ -402,37 +373,18 @@ fn expand_widget_traits(type_: &Type, new: &New, input: &DeriveInput) -> Tokens 
 
 
 /// Expand an implementation of Type::new() for the struct.
-fn expand_new_impl(type_: &Type, new: &New, input: &DeriveInput) -> Tokens {
+fn expand_new_impl(new: &New, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
   match *new {
     New::Default => {
-      let fields = match *type_ {
-        Type::Widget => {(
-          quote! {
-            id: id,
-          }
-        )},
-        Type::Container => {(
-          quote! {
-            id: id,
-            children: Vec::new(),
-          }
-        )},
-        Type::RootWidget => {(
-          quote! {
-            id: id,
-            children: Vec::new(),
-          }
-        )},
-      };
       quote! {
         #[allow(dead_code)]
         impl #impl_generics #name #ty_generics #where_clause {
           pub fn new(id: ::gui::Id) -> Self {
             #name {
-              #fields
+              id: id,
             }
           }
         }
@@ -458,32 +410,15 @@ fn expand_renderer_trait(input: &DeriveInput) -> Tokens {
 
 
 /// Expand an implementation for the `gui::Object` trait.
-fn expand_object_trait(type_: &Type, input: &DeriveInput) -> Tokens {
+fn expand_object_trait(input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-  let children = match *type_ {
-    Type::Widget => quote!{},
-    Type::Container | Type::RootWidget => {
-      quote!{
-        fn add_child(&mut self, widget: &::gui::WidgetRef) {
-          self.children.push(widget.as_id())
-        }
-
-        fn iter(&self) -> ::gui::ChildIter {
-          ::gui::ChildIter::with_iter(self.children.iter())
-        }
-      }
-    },
-  };
 
   quote! {
     impl #impl_generics ::gui::Object for #name #ty_generics #where_clause {
       fn id(&self) -> ::gui::Id {
         self.id
       }
-
-      #children
     }
   }
 }
