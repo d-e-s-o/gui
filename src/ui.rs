@@ -38,24 +38,6 @@ use Renderer;
 use UiEvent;
 
 
-/// A type representing a reference to a `Widget`.
-///
-/// A reference to a `Widget` can be represented quite literally as a
-/// reference to a `Widget` but it can also just be an `Id`. Object of
-/// this type help abstract away from the differences between the two
-/// for the purpose of the `Ui`.
-pub trait WidgetRef {
-  /// Retrieve a reference to a widget.
-  fn as_widget<'s, 'ui: 's>(&'s self, ui: &'ui Ui) -> &Widget;
-
-  /// Retrieve a mutable reference to a widget.
-  fn as_mut_widget<'s, 'ui: 's>(&'s mut self, ui: &'ui mut Ui) -> &mut Widget;
-
-  /// Retrieve an `Id`.
-  fn as_id(&self) -> Id;
-}
-
-
 /// An `Index` is our internal representation of an `Id`. `Id`s can
 /// belong to different `Ui` objects and a validation step converts them
 /// into an `Index`.
@@ -106,34 +88,14 @@ impl Display for Id {
   }
 }
 
-impl WidgetRef for Id {
-  /// Retrieve a reference to a widget.
-  fn as_widget<'s, 'ui: 's>(&'s self, ui: &'ui Ui) -> &Widget {
-    let idx = ui.validate(*self);
-    ui.lookup(idx)
-  }
-
-  /// Retrieve a mutable reference to a widget.
-  fn as_mut_widget<'s, 'ui: 's>(&'s mut self, ui: &'ui mut Ui) -> &mut Widget {
-    let idx = ui.validate(*self);
-    ui.lookup_mut(idx)
-  }
-
-  /// Retrieve an `Id`.
-  fn as_id(&self) -> Id {
-    *self
-  }
-}
-
 
 /// A widget as used by a `Ui`.
 ///
 /// In addition to taking care of `Id` management and parent-child
 /// relationships, the `Ui` is responsible for dispatching events to
 /// widgets and rendering them. Hence, a widget usable for the `Ui`
-/// needs to implement `Handleable`, `Renderable`, `Object`, and
-/// `WidgetRef`.
-pub trait Widget: Handleable + Renderable + Object + Debug + WidgetRef {}
+/// needs to implement `Handleable`, `Renderable`, and `Object`.
+pub trait Widget: Handleable + Renderable + Object + Debug {}
 
 /// An iterator over the children of a widget.
 pub type ChildIter<'widget> = Iter<'widget, Id>;
@@ -151,17 +113,17 @@ type NewWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
 /// A capability allowing for various widget related operations.
 pub trait Cap {
   /// Add a widget to the `Ui` represented by the capability.
-  fn add_widget(&mut self, parent: &mut WidgetRef, new_widget: NewWidgetFn) -> Id;
+  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn) -> Id;
 
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
-  fn children(&self, widget: &WidgetRef) -> ChildIter;
+  fn children(&self, widget: Id) -> ChildIter;
 
   /// Retrieve the `Id` of the root widget.
   fn root_id(&self) -> Id;
 
   /// Retrieve the parent of the given widget.
-  fn parent_id(&self, widget: &WidgetRef) -> Option<Id>;
+  fn parent_id(&self, widget: Id) -> Option<Id>;
 
   /// Retrieve the currently focused widget.
   fn focused(&self) -> Option<Id>;
@@ -174,10 +136,10 @@ pub trait Cap {
   /// The focused widget is the one receiving certain types of events
   /// (such as key events) first but may also be rendered in a different
   /// color or be otherwise highlighted.
-  fn focus(&mut self, widget: &WidgetRef);
+  fn focus(&mut self, widget: Id);
 
-  /// Check whether the referenced widget is focused.
-  fn is_focused(&self, widget: &WidgetRef) -> bool;
+  /// Check whether the widget with the given `Id` is focused.
+  fn is_focused(&self, widget: Id) -> bool;
 }
 
 
@@ -249,7 +211,7 @@ impl Ui {
     // If no widget has the focus we focus the newly created widget but
     // then the focus stays unless explicitly changed.
     if self.focused.is_none() {
-      self.focus(&id);
+      self.focus(id);
     }
 
     // We require some trickery here to allow for dynamic widget
@@ -296,12 +258,8 @@ impl Ui {
     }
   }
 
-  /// Lookup a widget from an `Index`.
-  fn lookup_mut(&mut self, idx: Index) -> &mut Widget {
-    match &mut self.widgets[idx.idx].1 {
-      Some(widget) => widget.as_mut(),
-      None => panic!("Widget {} is currently taken", idx),
-    }
+  fn children(&self, idx: Index) -> ChildIter {
+    self.widgets[idx.idx].0.children.iter()
   }
 
   fn with<F, R>(&mut self, idx: Index, with_widget: F) -> R
@@ -328,21 +286,21 @@ impl Ui {
     let bbox = renderer.renderable_area();
 
     renderer.pre_render();
-    self.render_all(root, renderer, bbox);
+    self.render_all(idx, root, renderer, bbox);
     renderer.post_render();
   }
 
   /// Recursively render the given widget and its children.
-  fn render_all(&self, widget: &Widget, renderer: &Renderer, bbox: BBox) {
+  fn render_all(&self, idx: Index, widget: &Widget, renderer: &Renderer, bbox: BBox) {
     // TODO: Ideally we would want to go without the recursion stuff we
     //       have. This may not be possible (efficiently) with safe
     //       Rust, though. Not sure.
     let bbox = widget.render(renderer, bbox);
 
-    for child_id in self.children(&widget.as_id()).rev() {
-      let idx = self.validate(*child_id);
-      let child = self.lookup(idx);
-      self.render_all(child, renderer, bbox)
+    for child_id in self.children(idx).rev() {
+      let child_idx = self.validate(*child_id);
+      let child = self.lookup(child_idx);
+      self.render_all(child_idx, child, renderer, bbox)
     }
   }
 
@@ -371,12 +329,9 @@ impl Ui {
     // This means that now we would panic if we were to access the
     // widget recursively (because that's what we do if the Option is
     // None). The only way this can happen is if the widget's handle
-    // method uses the provided `Cap` object. We fudge that case by
-    // requiring that the widget supply its own reference to the `Cap`
-    // object, and not its own `Id`. This way we do not have to lookup
-    // the widget and, hence, do not panic. This use case is enabled
-    // since all methods in the `Cap` trait accept a `WidgetRef`,
-    // which can be either an `Id` or an actual reference.
+    // method uses the provided `Cap` object. All the methods of this
+    // object are carefully chosen in a way to not call into the widget
+    // itself.
     let (meta_event, id) = self.with(idx, |ui, mut widget| {
       let meta_event = widget.handle(event, ui);
       let parent_id = ui.widgets[idx.idx].0.parent_id;
@@ -434,15 +389,14 @@ impl Ui {
 
 impl Cap for Ui {
   /// Add a widget to the `Ui`.
-  fn add_widget(&mut self, parent: &mut WidgetRef, new_widget: NewWidgetFn) -> Id {
-    self._add_widget(Some(parent.as_id()), &mut |id, cap| new_widget(id, cap))
+  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn) -> Id {
+    self._add_widget(Some(parent), &mut |id, cap| new_widget(id, cap))
   }
 
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
-  fn children(&self, widget: &WidgetRef) -> ChildIter {
-    let idx = self.validate(widget.as_id());
-    self.widgets[idx.idx].0.children.iter()
+  fn children(&self, widget: Id) -> ChildIter {
+    self.children(self.validate(widget))
   }
 
   /// Retrieve the `Id` of the root widget.
@@ -457,11 +411,11 @@ impl Cap for Ui {
   }
 
   /// Retrieve the parent of the given widget.
-  fn parent_id(&self, widget: &WidgetRef) -> Option<Id> {
-    let idx = self.validate(widget.as_id());
-    let id = self.widgets[idx.idx].0.parent_id;
-    debug_assert!(id.map_or(true, |x| self.children(&x).any(|x| *x == widget.as_id())));
-    id
+  fn parent_id(&self, widget: Id) -> Option<Id> {
+    let idx = self.validate(widget);
+    let parent_id = self.widgets[idx.idx].0.parent_id;
+    debug_assert!(parent_id.map_or(true, |x| Cap::children(self, x).any(|x| *x == widget)));
+    parent_id
   }
 
   /// Retrieve the currently focused widget.
@@ -475,15 +429,15 @@ impl Cap for Ui {
   }
 
   /// Focus a widget.
-  fn focus(&mut self, widget: &WidgetRef) {
-    let idx = self.validate(widget.as_id());
+  fn focus(&mut self, widget: Id) {
+    let idx = self.validate(widget);
     self.last_focused = self.focused;
     self.focused = Some(idx)
   }
 
   /// Check whether the given widget is focused.
-  fn is_focused(&self, widget: &WidgetRef) -> bool {
-    let idx = self.validate(widget.as_id());
+  fn is_focused(&self, widget: Id) -> bool {
+    let idx = self.validate(widget);
     self.focused == Some(idx)
   }
 }

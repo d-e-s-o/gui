@@ -30,10 +30,9 @@ use gui::Handleable;
 use gui::Id;
 use gui::MetaEvent;
 use gui::UiEvent;
-use gui::WidgetRef;
 
 
-type HandlerBox = Box<Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>>;
+type HandlerBox = Box<Fn(Id, Event, &mut Cap) -> Option<MetaEvent>>;
 
 struct Handler(HandlerBox);
 
@@ -71,7 +70,7 @@ impl TestRootWidget {
   #[allow(unused)]
   pub fn with_handler<F>(id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>,
+    F: 'static + Fn(Id, Event, &mut Cap) -> Option<MetaEvent>,
   {
     TestRootWidget {
       id: id,
@@ -85,7 +84,7 @@ impl Handleable for TestRootWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     match self.handler.take() {
       Some(handler) => {
-        let event = handler(self, event, cap);
+        let event = handler(self.id, event, cap);
         self.handler = Some(handler);
         event
       },
@@ -112,7 +111,7 @@ impl TestWidget {
   #[allow(unused)]
   pub fn with_handler<F>(id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>,
+    F: 'static + Fn(Id, Event, &mut Cap) -> Option<MetaEvent>,
   {
     TestWidget {
       id: id,
@@ -125,7 +124,7 @@ impl Handleable for TestWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     match self.handler.take() {
       Some(handler) => {
-        let event = handler(self, event, cap);
+        let event = handler(self.id, event, cap);
         self.handler = Some(handler);
         event
       },
@@ -155,7 +154,7 @@ impl TestContainer {
   #[allow(unused)]
   pub fn with_handler<F>(id: Id, handler: F) -> Self
   where
-    F: 'static + Fn(&mut WidgetRef, Event, &mut Cap) -> Option<MetaEvent>,
+    F: 'static + Fn(Id, Event, &mut Cap) -> Option<MetaEvent>,
   {
     TestContainer {
       id: id,
@@ -169,7 +168,7 @@ impl Handleable for TestContainer {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     match self.handler.take() {
       Some(handler) => {
-        let event = handler(self, event, cap);
+        let event = handler(self.id, event, cap);
         self.handler = Some(handler);
         event
       },

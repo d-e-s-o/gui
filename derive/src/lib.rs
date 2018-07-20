@@ -28,7 +28,6 @@
   unused_qualifications,
   warnings,
 )]
-#![recursion_limit="128"]
 
 //! A crate providing custom derive functionality for the `gui` crate.
 
@@ -129,19 +128,6 @@ type Result<T> = std::result::Result<T, Error>;
 ///   }
 /// }
 ///
-/// impl gui::WidgetRef for TestWidget {
-///   fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui gui::Ui) -> &gui::Widget {
-///     self
-///   }
-///   fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut gui::Ui) -> &mut gui::Widget {
-///     self
-///   }
-///   fn as_id(&self) -> gui::Id {
-///     use gui::Object;
-///     self.id()
-///   }
-/// }
-///
 /// impl gui::Widget for TestWidget {}
 /// # impl gui::Handleable for TestWidget {}
 /// ```
@@ -173,19 +159,6 @@ pub fn widget(input: TokenStream) -> TokenStream {
 ///   }
 /// }
 ///
-/// impl gui::WidgetRef for TestContainer {
-///   fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui gui::Ui) -> &gui::Widget {
-///     self
-///   }
-///   fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut gui::Ui) -> &mut gui::Widget {
-///     self
-///   }
-///   fn as_id(&self) -> gui::Id {
-///     use gui::Object;
-///     self.id()
-///   }
-/// }
-///
 /// impl gui::Widget for TestContainer {}
 /// # impl gui::Handleable for TestContainer {}
 #[proc_macro_derive(GuiContainer, attributes(gui))]
@@ -213,19 +186,6 @@ pub fn container(input: TokenStream) -> TokenStream {
 /// impl gui::Object for TestRootWidget {
 ///   fn id(&self) -> gui::Id {
 ///     self.id
-///   }
-/// }
-///
-/// impl gui::WidgetRef for TestRootWidget {
-///   fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui gui::Ui) -> &gui::Widget {
-///     self
-///   }
-///   fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut gui::Ui) -> &mut gui::Widget {
-///     self
-///   }
-///   fn as_id(&self) -> gui::Id {
-///     use gui::Object;
-///     self.id()
 ///   }
 /// }
 ///
@@ -359,14 +319,12 @@ fn expand_widget_traits(new: &New, input: &DeriveInput) -> Tokens {
   let new_impl = expand_new_impl(new, input);
   let renderer = expand_renderer_trait(input);
   let object = expand_object_trait(input);
-  let widget_ref = expand_widget_ref_trait(input);
   let widget = expand_widget_trait(input);
 
   quote! {
     #new_impl
     #renderer
     #object
-    #widget_ref
     #widget
   }
 }
@@ -481,30 +439,6 @@ fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
       })
     },
     _ => Err(Error::from("#[derive(GuiHandleable)] is only defined for structs")),
-  }
-}
-
-
-/// Expand an implementation for the `gui::WidgetRef` trait.
-fn expand_widget_ref_trait(input: &DeriveInput) -> Tokens {
-  let name = &input.ident;
-  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-  quote!{
-    impl #impl_generics ::gui::WidgetRef for #name #ty_generics #where_clause {
-      fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui ::gui::Ui) -> &::gui::Widget {
-        self
-      }
-
-      fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut ::gui::Ui) -> &mut ::gui::Widget {
-        self
-      }
-
-      fn as_id(&self) -> ::gui::Id {
-        use ::gui::Object;
-        self.id()
-      }
-    }
   }
 }
 

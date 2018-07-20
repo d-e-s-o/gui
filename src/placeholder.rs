@@ -26,9 +26,7 @@ use MetaEvent;
 use Object;
 use Renderable;
 use Renderer;
-use Ui;
 use Widget;
-use WidgetRef;
 
 
 /// This class is a dummy implementation of a container style `Widget`.
@@ -62,23 +60,6 @@ impl Object for Placeholder {
 impl Handleable for Placeholder {
   fn handle(&mut self, _event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
     unreachable!()
-  }
-}
-
-impl WidgetRef for Placeholder {
-  /// Retrieve a reference to a widget.
-  fn as_widget<'s, 'ui: 's>(&'s self, _ui: &'ui Ui) -> &Widget {
-    self
-  }
-
-  /// Retrieve a mutable reference to a widget.
-  fn as_mut_widget<'s, 'ui: 's>(&'s mut self, _ui: &'ui mut Ui) -> &mut Widget {
-    self
-  }
-
-  /// Retrieve an `Id`.
-  fn as_id(&self) -> Id {
-    self.id()
   }
 }
 

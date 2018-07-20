@@ -82,26 +82,26 @@ where
 
 #[test]
 fn container_type_yields_container() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut c = ui.add_widget(&mut r, &mut |id, _cap| {
+  let c = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestContainer::new(id))
   });
-  let _ = ui.add_widget(&mut c, &mut |id, _cap| {
+  let _ = ui.add_widget(c, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 }
 
 #[test]
 fn generic_container() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut c = ui.add_widget(&mut r, &mut |id, _cap| {
+  let c = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestContainerT::<u32>::new(id))
   });
-  let _ = ui.add_widget(&mut c, &mut |id, _cap| {
+  let _ = ui.add_widget(c, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 }

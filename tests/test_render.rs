@@ -95,13 +95,13 @@ impl Renderer for CountingRenderer {
 #[test]
 fn render_is_called_for_each_widget() {
   let renderer = CountingRenderer::new();
-  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let _ = ui.add_widget(&mut root, &mut |id, _cap| {
+  let _ = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let _ = ui.add_widget(&mut root, &mut |id, _cap| {
+  let _ = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
@@ -165,13 +165,13 @@ impl Renderer for BBoxRenderer {
 #[test]
 fn bounding_box_is_properly_sized() {
   let renderer = BBoxRenderer::new();
-  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut cont = ui.add_widget(&mut root, &mut |id, _cap| {
+  let cont = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestContainer::new(id))
   });
-  let _ = ui.add_widget(&mut cont, &mut |id, _cap| {
+  let _ = ui.add_widget(cont, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 

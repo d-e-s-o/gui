@@ -34,7 +34,6 @@ use gui::MetaEvent;
 use gui::Ui;
 #[cfg(debug_assertions)]
 use gui::UiEvent;
-use gui::WidgetRef;
 
 use common::TestContainer;
 use common::TestRootWidget;
@@ -44,48 +43,48 @@ use common::unwrap_custom;
 
 #[test]
 fn correct_ids() {
-  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let w1 = ui.add_widget(&mut root, &mut |id, _cap| {
+  let w1 = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let w2 = ui.add_widget(&mut root, &mut |id, _cap| {
+  let w2 = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
   // And a container.
-  let mut c1 = ui.add_widget(&mut root, &mut |id, _cap| {
+  let c1 = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestContainer::new(id))
   });
   // And a widget to the container.
-  let w3 = ui.add_widget(&mut c1, &mut |id, _cap| {
+  let w3 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
   // And another container for deeper nesting.
-  let mut c2 = ui.add_widget(&mut c1, &mut |id, _cap| {
+  let c2 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestContainer::new(id))
   });
   // And the last widget.
-  let w4 = ui.add_widget(&mut c2, &mut |id, _cap| {
+  let w4 = ui.add_widget(c2, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
-  assert_eq!(ui.parent_id(&root), None);
-  assert_eq!(ui.parent_id(&w1).unwrap(), root);
-  assert_eq!(ui.parent_id(&w2).unwrap(), root);
-  assert_eq!(ui.parent_id(&c1).unwrap(), root);
-  assert_eq!(ui.parent_id(&w3).unwrap(), c1);
-  assert_eq!(ui.parent_id(&w4).unwrap(), c2);
+  assert_eq!(ui.parent_id(root), None);
+  assert_eq!(ui.parent_id(w1).unwrap(), root);
+  assert_eq!(ui.parent_id(w2).unwrap(), root);
+  assert_eq!(ui.parent_id(c1).unwrap(), root);
+  assert_eq!(ui.parent_id(w3).unwrap(), c1);
+  assert_eq!(ui.parent_id(w4).unwrap(), c2);
 }
 
 #[test]
 #[cfg(debug_assertions)]
 #[should_panic(expected = "The given Id belongs to a different Ui")]
 fn share_ids_between_ui_objects() {
-  let (mut ui1, mut root) = Ui::new(&mut |id, _cap| {
+  let (mut ui1, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let widget = ui1.add_widget(&mut root, &mut |id, _cap| {
+  let widget = ui1.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
@@ -101,57 +100,57 @@ fn share_ids_between_ui_objects() {
 
 #[test]
 fn initial_focus() {
-  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
 
   // The widget created first should receive the focus and stay
   // focused until directed otherwise.
-  assert!(ui.is_focused(&root));
+  assert!(ui.is_focused(root));
 
-  let _ = ui.add_widget(&mut root, &mut |id, _cap| {
+  let _ = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  assert!(ui.is_focused(&root));
+  assert!(ui.is_focused(root));
 }
 
 #[test]
 fn focus_widget() {
-  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let widget = ui.add_widget(&mut root, &mut |id, _cap| {
+  let widget = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
-  ui.focus(&widget);
-  assert!(ui.is_focused(&widget));
+  ui.focus(widget);
+  assert!(ui.is_focused(widget));
 }
 
 #[test]
 fn last_focused() {
-  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut c = ui.add_widget(&mut root, &mut |id, _cap| {
+  let c = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestContainer::new(id))
   });
-  let w = ui.add_widget(&mut c, &mut |id, _cap| {
+  let w = ui.add_widget(c, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
-  assert!(ui.is_focused(&root));
+  assert!(ui.is_focused(root));
   assert!(ui.last_focused().is_none());
 
-  ui.focus(&c);
+  ui.focus(c);
   assert_eq!(ui.last_focused().unwrap(), root);
 
-  ui.focus(&w);
+  ui.focus(w);
   assert_eq!(ui.last_focused().unwrap(), c);
 }
 
 
-fn counting_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+fn counting_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   Some(
     match event {
       Event::Custom(e) => {
@@ -171,8 +170,8 @@ struct CreatingRootWidget {
 }
 
 impl CreatingRootWidget {
-  pub fn new(mut id: Id, cap: &mut Cap) -> Self {
-    let _ = cap.add_widget(&mut id, &mut |id, cap| {
+  pub fn new(id: Id, cap: &mut Cap) -> Self {
+    let _ = cap.add_widget(id, &mut |id, cap| {
       Box::new(CreatingContainer::new(id, cap))
     });
     CreatingRootWidget {
@@ -184,7 +183,7 @@ impl CreatingRootWidget {
 
 impl Handleable for CreatingRootWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-    counting_handler(self, event, cap)
+    counting_handler(self.id, event, cap)
   }
 }
 
@@ -196,8 +195,8 @@ struct CreatingContainer {
 }
 
 impl CreatingContainer {
-  pub fn new(mut id: Id, cap: &mut Cap) -> Self {
-    let _ = cap.add_widget(&mut id, &mut |id, cap| {
+  pub fn new(id: Id, cap: &mut Cap) -> Self {
+    let _ = cap.add_widget(id, &mut |id, cap| {
       Box::new(CreatingWidget::new(id, cap))
     });
 
@@ -210,7 +209,7 @@ impl CreatingContainer {
 
 impl Handleable for CreatingContainer {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-    counting_handler(self, event, cap)
+    counting_handler(self.id, event, cap)
   }
 }
 
@@ -222,15 +221,15 @@ struct CreatingWidget {
 
 impl CreatingWidget {
   pub fn new(id: Id, cap: &mut Cap) -> Self {
-    let mut parent = cap.parent_id(&id).unwrap();
+    let parent = cap.parent_id(id).unwrap();
     // This widget is not a container and so we add the newly created
     // widget to the parent.
-    let child = cap.add_widget(&mut parent, &mut |id, _cap| {
+    let child = cap.add_widget(parent, &mut |id, _cap| {
       Box::new(TestWidget::with_handler(id, counting_handler))
     });
     // Focus the "last" widget. Doing so allows us to send an event to
     // all widgets.
-    cap.focus(&child);
+    cap.focus(child);
 
     CreatingWidget {
       id: id,
@@ -240,7 +239,7 @@ impl CreatingWidget {
 
 impl Handleable for CreatingWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-    counting_handler(self, event, cap)
+    counting_handler(self.id, event, cap)
   }
 }
 
@@ -286,17 +285,17 @@ impl MovingWidget {
 #[test]
 fn moving_widget_creation() {
   let mut object = Some(Moveable {});
-  let (mut ui, mut root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let _ = ui.add_widget(&mut root, &mut |id, _cap| {
+  let _ = ui.add_widget(root, &mut |id, _cap| {
     let moveable = object.take().unwrap();
     Box::new(MovingWidget::new(id, moveable))
   });
 }
 
 
-fn create_handler(widget: &mut WidgetRef, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
+fn create_handler(widget: Id, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -320,23 +319,23 @@ fn event_based_widget_creation() {
     Box::new(TestRootWidget::with_handler(id, create_handler))
   });
 
-  assert_eq!(ui.children(&root).count(), 0);
+  assert_eq!(ui.children(root).count(), 0);
 
   let event = Event::KeyDown(Key::Char('z'));
   let result = ui.handle(event);
   assert!(result.is_none());
 
   // We must have created a widget.
-  assert_eq!(ui.children(&root).count(), 1);
+  assert_eq!(ui.children(root).count(), 1);
 }
 
 
-fn recursive_operations_handler(widget: &mut WidgetRef, _event: Event, cap: &mut Cap) -> Option<MetaEvent> {
+fn recursive_operations_handler(widget: Id, _event: Event, cap: &mut Cap) -> Option<MetaEvent> {
   // Check that we can use the supplied `Cap` object to retrieve our
   // own parent's ID.
-  cap.parent_id(&widget.as_id());
-  cap.focus(&widget.as_id());
-  cap.is_focused(&widget.as_id());
+  cap.parent_id(widget);
+  cap.focus(widget);
+  cap.is_focused(widget);
   None
 }
 

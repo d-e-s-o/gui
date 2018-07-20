@@ -37,7 +37,6 @@ use gui::Key;
 use gui::MetaEvent;
 use gui::Ui;
 use gui::UiEvent;
-use gui::WidgetRef;
 
 use common::clone_event;
 use common::clone_meta_event;
@@ -106,21 +105,21 @@ fn last_event_in_chain() {
 
 #[test]
 fn events_bubble_up_when_unhandled() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+  let c1 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestContainer::new(id))
   });
-  let mut c2 = ui.add_widget(&mut c1, &mut |id, _cap| {
+  let c2 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestContainer::new(id))
   });
-  let w1 = ui.add_widget(&mut c2, &mut |id, _cap| {
+  let w1 = ui.add_widget(c2, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
   let event = Event::KeyUp(Key::Char(' '));
-  ui.focus(&w1);
+  ui.focus(w1);
 
   let result = ui.handle(clone_event(&event));
   // An unhandled event should just be returned after every widget
@@ -134,7 +133,7 @@ fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<Meta
       match key {
         Key::Char('a') => {
           if let Some(id) = to_focus {
-            cap.focus(&id);
+            cap.focus(id);
             None
           } else {
             Some(event.into())
@@ -149,32 +148,32 @@ fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<Meta
 
 #[test]
 fn event_handling_with_focus() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let w1 = ui.add_widget(&mut r, &mut |id, _cap| {
+  let w1 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, |_s, e, c| {
       key_handler(e, c, None)
     }))
   });
-  let w2 = ui.add_widget(&mut r, &mut |id, _cap| {
+  let w2 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, move |_s, e, c| {
       key_handler(e, c, Some(w1))
     }))
   });
 
-  ui.focus(&w2);
-  assert!(ui.is_focused(&w2));
+  ui.focus(w2);
+  assert!(ui.is_focused(w2));
 
   // Send a key down event, received by `w2`, which it will
   // translate into a focus event for `w1`.
   let event = Event::KeyDown(Key::Char('a'));
   ui.handle(event);
 
-  assert!(ui.is_focused(&w1));
+  assert!(ui.is_focused(w1));
 }
 
-fn custom_undirected_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+fn custom_undirected_response_handler(_: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   Some(
     match event {
       Event::Custom(e) => {
@@ -188,19 +187,19 @@ fn custom_undirected_response_handler(_: &mut WidgetRef, event: Event, _cap: &mu
 
 #[test]
 fn custom_undirected_response_event() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+  let c1 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestContainer::with_handler(id, custom_undirected_response_handler))
   });
-  let w1 = ui.add_widget(&mut c1, &mut |id, _cap| {
+  let w1 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
   });
 
   // We focus the widget we just created, which means that the event
   // will travel through the widget and all its parents.
-  ui.focus(&w1);
+  ui.focus(w1);
 
   let event = Event::Custom(Box::new(42u64));
   let result = ui.handle(event).unwrap();
@@ -208,7 +207,7 @@ fn custom_undirected_response_event() {
   assert_eq!(*unwrap_custom::<u64>(result), 45);
 }
 
-fn custom_directed_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+fn custom_directed_response_handler(_: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   match event {
     Event::Custom(data) => {
       let cell = *data.downcast::<Rc<RefCell<u64>>>().unwrap();
@@ -222,17 +221,17 @@ fn custom_directed_response_handler(_: &mut WidgetRef, event: Event, _cap: &mut 
 
 #[test]
 fn custom_directed_response_event() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_directed_response_handler))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+  let c1 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestContainer::with_handler(id, custom_directed_response_handler))
   });
-  let w1 = ui.add_widget(&mut c1, &mut |id, _cap| {
+  let w1 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, custom_directed_response_handler))
   });
 
-  ui.focus(&w1);
+  ui.focus(w1);
 
   let cell = RefCell::new(1337u64);
   let rc = Rc::new(cell);
@@ -247,17 +246,17 @@ fn custom_directed_response_event() {
 
 #[test]
 fn direct_custom_event() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+  let c1 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestContainer::with_handler(id, custom_undirected_response_handler))
   });
-  let w1 = ui.add_widget(&mut c1, &mut |id, _cap| {
+  let w1 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
   });
 
-  ui.focus(&c1);
+  ui.focus(c1);
 
   let event = UiEvent::Custom(w1, Box::new(10u64));
   let result = ui.handle(event).unwrap();
@@ -266,13 +265,13 @@ fn direct_custom_event() {
 
 #[test]
 fn quit_event() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::new(id))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+  let c1 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestContainer::new(id))
   });
-  let _ = ui.add_widget(&mut c1, &mut |id, _cap| {
+  let _ = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
@@ -283,7 +282,7 @@ fn quit_event() {
 
 static mut ACCUMULATOR: u64 = 0;
 
-fn accumulating_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+fn accumulating_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   match event {
     Event::Custom(data) => {
       let value = *data.downcast::<u64>().unwrap();
@@ -297,7 +296,7 @@ fn accumulating_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -
   }
 }
 
-fn chaining_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+fn chaining_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   match event {
     Event::Custom(data) => {
       let value = data.downcast::<u64>().unwrap();
@@ -311,17 +310,17 @@ fn chaining_handler(_widget: &mut WidgetRef, event: Event, _cap: &mut Cap) -> Op
 
 #[test]
 fn chain_event_dispatch() {
-  let (mut ui, mut r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
     Box::new(TestRootWidget::with_handler(id, accumulating_handler))
   });
-  let mut c1 = ui.add_widget(&mut r, &mut |id, _cap| {
+  let c1 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestContainer::with_handler(id, chaining_handler))
   });
-  let w1 = ui.add_widget(&mut c1, &mut |id, _cap| {
+  let w1 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, chaining_handler))
   });
 
-  ui.focus(&w1);
+  ui.focus(w1);
 
   let event = Event::Custom(Box::new(1u64));
   let result = ui.handle(event).unwrap();
