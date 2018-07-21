@@ -133,88 +133,23 @@ type Result<T> = std::result::Result<T, Error>;
 /// ```
 #[proc_macro_derive(GuiWidget, attributes(gui))]
 pub fn widget(input: TokenStream) -> TokenStream {
-  ui_object(input)
-}
-
-/// Custom derive functionality for the `gui::Widget` trait for a
-/// container variant.
-///
-/// This macro roughly expands to the following code:
-///
-/// ```rust
-/// # extern crate gui;
-/// # #[derive(Debug)]
-/// # struct TestContainer {
-/// #   id: gui::Id,
-/// # }
-/// impl gui::Renderable for TestContainer {
-///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) -> gui::BBox {
-///     renderer.render(self, bbox)
-///   }
-/// }
-///
-/// impl gui::Object for TestContainer {
-///   fn id(&self) -> gui::Id {
-///     self.id
-///   }
-/// }
-///
-/// impl gui::Widget for TestContainer {}
-/// # impl gui::Handleable for TestContainer {}
-#[proc_macro_derive(GuiContainer, attributes(gui))]
-pub fn container(input: TokenStream) -> TokenStream {
-  ui_object(input)
-}
-
-/// Custom derive functionality for the `gui::Widget` trait for a root
-/// widget variant.
-///
-/// This macro roughly expands to the following code:
-///
-/// ```rust
-/// # extern crate gui;
-/// # #[derive(Debug)]
-/// # struct TestRootWidget {
-/// #   id: gui::Id,
-/// # }
-/// impl gui::Renderable for TestRootWidget {
-///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox) -> gui::BBox {
-///     renderer.render(self, bbox)
-///   }
-/// }
-///
-/// impl gui::Object for TestRootWidget {
-///   fn id(&self) -> gui::Id {
-///     self.id
-///   }
-/// }
-///
-/// impl gui::Widget for TestRootWidget {}
-/// # impl gui::Handleable for TestRootWidget {}
-/// ```
-#[proc_macro_derive(GuiRootWidget, attributes(gui))]
-pub fn root_widget(input: TokenStream) -> TokenStream {
-  ui_object(input)
-}
-
-fn ui_object(input: TokenStream) -> TokenStream {
-  match expand_ui_object(input) {
+  match expand_widget(input) {
     Ok(tokens) => tokens,
     Err(error) => panic!("{}", error),
   }
 }
 
-fn expand_ui_object(input: TokenStream) -> Result<TokenStream> {
+fn expand_widget(input: TokenStream) -> Result<TokenStream> {
   let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
     Err("unable to parse input")
   })?;
-  let new = parse_ui_object_attributes(&input.attrs)?;
+  let new = parse_widget_attributes(&input.attrs)?;
   let tokens = expand_widget_input(&new, &input)?;
   Ok(tokens.into())
 }
 
 /// Parse the macro's attributes.
-fn parse_ui_object_attributes(attributes: &[Attribute]) -> Result<New> {
+fn parse_widget_attributes(attributes: &[Attribute]) -> Result<New> {
   let new = attributes
     .iter()
     .map(|attr| parse_widget_attribute(attr))
@@ -454,7 +389,7 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    let new = parse_ui_object_attributes(&input.attrs).unwrap();
+    let new = parse_widget_attributes(&input.attrs).unwrap();
     assert_eq!(new, New::None);
   }
 
@@ -466,6 +401,6 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    assert_eq!(parse_ui_object_attributes(&input.attrs).unwrap(), New::Default);
+    assert_eq!(parse_widget_attributes(&input.attrs).unwrap(), New::Default);
   }
 }

@@ -30,11 +30,11 @@ use std::cell::Cell;
 
 use gui::BBox;
 use gui::Cap;
+use gui::Id;
+use gui::Object;
 use gui::Renderer;
 use gui::Ui;
 
-use common::TestContainer;
-use common::TestRootWidget;
 use common::TestWidget;
 
 
@@ -42,8 +42,6 @@ use common::TestWidget;
 struct CountingRenderer {
   pre_render_count: Cell<u64>,
   post_render_count: Cell<u64>,
-  widget_render_count: Cell<u64>,
-  root_widget_render_count: Cell<u64>,
   total_render_count: Cell<u64>,
 }
 
@@ -52,8 +50,6 @@ impl CountingRenderer {
     CountingRenderer {
       pre_render_count: Cell::new(0),
       post_render_count: Cell::new(0),
-      widget_render_count: Cell::new(0),
-      root_widget_render_count: Cell::new(0),
       total_render_count: Cell::new(0),
     }
   }
@@ -68,17 +64,7 @@ impl Renderer for CountingRenderer {
     self.pre_render_count.set(self.pre_render_count.get() + 1);
   }
 
-  fn render(&self, object: &Any, bbox: BBox) -> BBox {
-    if object.downcast_ref::<TestRootWidget>().is_some() {
-      self.root_widget_render_count.set(
-        self.root_widget_render_count.get() +
-          1,
-      );
-    } else if object.downcast_ref::<TestWidget>().is_some() {
-      self.widget_render_count.set(
-        self.widget_render_count.get() + 1,
-      );
-    }
+  fn render(&self, _object: &Any, bbox: BBox) -> BBox {
     self.total_render_count.set(
       self.total_render_count.get() + 1,
     );
@@ -96,7 +82,7 @@ impl Renderer for CountingRenderer {
 fn render_is_called_for_each_widget() {
   let renderer = CountingRenderer::new();
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let _ = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -109,11 +95,13 @@ fn render_is_called_for_each_widget() {
 
   assert_eq!(renderer.pre_render_count.get(), 1);
   assert_eq!(renderer.post_render_count.get(), 1);
-  assert_eq!(renderer.root_widget_render_count.get(), 1);
-  assert_eq!(renderer.widget_render_count.get(), 2);
   assert_eq!(renderer.total_render_count.get(), 3);
 }
 
+
+static mut ROOT: Option<Id> = None;
+static mut CONTAINER: Option<Id> = None;
+static mut WIDGET: Option<Id> = None;
 
 #[derive(Debug)]
 struct BBoxRenderer {
@@ -140,10 +128,11 @@ impl Renderer for BBoxRenderer {
 
   fn render(&self, object: &Any, mut bbox: BBox) -> BBox {
     let mut expected = self.renderable_area();
+    let widget = object.downcast_ref::<TestWidget>().unwrap();
 
-    if object.downcast_ref::<TestContainer>().is_some() {
+    if widget.id() == unsafe { *CONTAINER.as_ref().unwrap() } {
       expected.w -= 10;
-    } else if object.downcast_ref::<TestWidget>().is_some() {
+    } else if widget.id() == unsafe { *WIDGET.as_ref().unwrap() } {
       expected.w -= 10;
       expected.h -= 10;
     }
@@ -152,9 +141,9 @@ impl Renderer for BBoxRenderer {
       self.valid_bbox_count.set(self.valid_bbox_count.get() + 1);
     }
 
-    if object.downcast_ref::<TestRootWidget>().is_some() {
+    if widget.id() == unsafe { *ROOT.as_ref().unwrap() } {
       bbox.w -= 10
-    } else if object.downcast_ref::<TestContainer>().is_some() {
+    } else if widget.id() == unsafe { *CONTAINER.as_ref().unwrap() } {
       bbox.h -= 10
     }
     bbox
@@ -166,14 +155,20 @@ impl Renderer for BBoxRenderer {
 fn bounding_box_is_properly_sized() {
   let renderer = BBoxRenderer::new();
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
-  });
-  let cont = ui.add_widget(root, &mut |id, _cap| {
-    Box::new(TestContainer::new(id))
-  });
-  let _ = ui.add_widget(cont, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
+  let cont = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let widget = ui.add_widget(cont, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  unsafe {
+    ROOT = Some(root);
+    CONTAINER = Some(cont);
+    WIDGET = Some(widget);
+  }
 
   ui.render(&renderer);
 

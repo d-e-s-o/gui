@@ -42,24 +42,17 @@ struct TestWidget {
 // Note that the deny(unused_imports) attribute exists for testing
 // purposes.
 #[deny(unused_imports)]
-#[derive(Debug, GuiContainer)]
+#[derive(Debug, GuiWidget)]
 #[gui(default_new)]
-struct TestContainer {
+struct TestWidgetCustom {
   id: Id,
 }
 
-impl Handleable for TestContainer {}
+impl Handleable for TestWidgetCustom {}
 
 
-#[derive(Debug, GuiRootWidget, GuiHandleable)]
-#[gui(default_new)]
-struct TestRootWidget {
-  id: Id,
-}
-
-
-#[derive(Debug, GuiContainer, GuiHandleable)]
-struct TestContainerT<T>
+#[derive(Debug, GuiWidget, GuiHandleable)]
+struct TestWidgetT<T>
 where
   T: 'static + Debug,
 {
@@ -67,12 +60,12 @@ where
   _data: PhantomData<T>,
 }
 
-impl<T> TestContainerT<T>
+impl<T> TestWidgetT<T>
 where
   T: 'static + Debug,
 {
   pub fn new(id: Id) -> Self {
-    TestContainerT {
+    TestWidgetT {
       id: id,
       _data: PhantomData,
     }
@@ -81,27 +74,14 @@ where
 
 
 #[test]
-fn container_type_yields_container() {
+fn various_derive_combinations() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
-  });
-  let c = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestContainer::new(id))
-  });
-  let _ = ui.add_widget(c, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-}
-
-#[test]
-fn generic_container() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+  let _ = ui.add_widget(r, &mut |id, _cap| {
+    Box::new(TestWidgetCustom::new(id))
   });
-  let c = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestContainerT::<u32>::new(id))
-  });
-  let _ = ui.add_widget(c, &mut |id, _cap| {
-    Box::new(TestWidget::new(id))
+  let _ = ui.add_widget(r, &mut |id, _cap| {
+    Box::new(TestWidgetT::<u32>::new(id))
   });
 }

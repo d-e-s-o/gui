@@ -35,8 +35,6 @@ use gui::Ui;
 #[cfg(debug_assertions)]
 use gui::UiEvent;
 
-use common::TestContainer;
-use common::TestRootWidget;
 use common::TestWidget;
 use common::unwrap_custom;
 
@@ -44,7 +42,7 @@ use common::unwrap_custom;
 #[test]
 fn correct_ids() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let w1 = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -54,7 +52,7 @@ fn correct_ids() {
   });
   // And a container.
   let c1 = ui.add_widget(root, &mut |id, _cap| {
-    Box::new(TestContainer::new(id))
+    Box::new(TestWidget::new(id))
   });
   // And a widget to the container.
   let w3 = ui.add_widget(c1, &mut |id, _cap| {
@@ -62,7 +60,7 @@ fn correct_ids() {
   });
   // And another container for deeper nesting.
   let c2 = ui.add_widget(c1, &mut |id, _cap| {
-    Box::new(TestContainer::new(id))
+    Box::new(TestWidget::new(id))
   });
   // And the last widget.
   let w4 = ui.add_widget(c2, &mut |id, _cap| {
@@ -82,14 +80,14 @@ fn correct_ids() {
 #[should_panic(expected = "The given Id belongs to a different Ui")]
 fn share_ids_between_ui_objects() {
   let (mut ui1, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let widget = ui1.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
   let (mut ui2, _) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
 
   // `widget` is registered to `ui1` and so using it in the context of
@@ -101,7 +99,7 @@ fn share_ids_between_ui_objects() {
 #[test]
 fn initial_focus() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
 
   // The widget created first should receive the focus and stay
@@ -117,7 +115,7 @@ fn initial_focus() {
 #[test]
 fn focus_widget() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let widget = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -130,10 +128,10 @@ fn focus_widget() {
 #[test]
 fn last_focused() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let c = ui.add_widget(root, &mut |id, _cap| {
-    Box::new(TestContainer::new(id))
+    Box::new(TestWidget::new(id))
   });
   let w = ui.add_widget(c, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -163,56 +161,10 @@ fn counting_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEve
 }
 
 
-#[derive(Debug, GuiRootWidget)]
-struct CreatingRootWidget {
-  id: Id,
-  children: Vec<Id>,
+/// Check if we need to create another `CreatingWidget`.
+fn need_more(id: Id, cap: &Cap) -> bool {
+  cap.parent_id(id).is_none()
 }
-
-impl CreatingRootWidget {
-  pub fn new(id: Id, cap: &mut Cap) -> Self {
-    let _ = cap.add_widget(id, &mut |id, cap| {
-      Box::new(CreatingContainer::new(id, cap))
-    });
-    CreatingRootWidget {
-      id: id,
-      children: Vec::new(),
-    }
-  }
-}
-
-impl Handleable for CreatingRootWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-    counting_handler(self.id, event, cap)
-  }
-}
-
-
-#[derive(Debug, GuiContainer)]
-struct CreatingContainer {
-  id: Id,
-  children: Vec<Id>,
-}
-
-impl CreatingContainer {
-  pub fn new(id: Id, cap: &mut Cap) -> Self {
-    let _ = cap.add_widget(id, &mut |id, cap| {
-      Box::new(CreatingWidget::new(id, cap))
-    });
-
-    CreatingContainer {
-      id: id,
-      children: Vec::new(),
-    }
-  }
-}
-
-impl Handleable for CreatingContainer {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-    counting_handler(self.id, event, cap)
-  }
-}
-
 
 #[derive(Debug, GuiWidget)]
 struct CreatingWidget {
@@ -221,15 +173,18 @@ struct CreatingWidget {
 
 impl CreatingWidget {
   pub fn new(id: Id, cap: &mut Cap) -> Self {
-    let parent = cap.parent_id(id).unwrap();
-    // This widget is not a container and so we add the newly created
-    // widget to the parent.
-    let child = cap.add_widget(parent, &mut |id, _cap| {
+    let child = cap.add_widget(id, &mut |id, _cap| {
       Box::new(TestWidget::with_handler(id, counting_handler))
     });
     // Focus the "last" widget. Doing so allows us to send an event to
     // all widgets.
     cap.focus(child);
+
+    if need_more(id, cap) {
+      let _ = cap.add_widget(id, &mut |id, cap| {
+        Box::new(CreatingWidget::new(id, cap))
+      });
+    }
 
     CreatingWidget {
       id: id,
@@ -249,7 +204,7 @@ fn recursive_widget_creation() {
   // We only create the root widget directly but it will take care of
   // recursively creating a bunch of more widgets.
   let (mut ui, _) = Ui::new(&mut |id, cap| {
-    Box::new(CreatingRootWidget::new(id, cap))
+    Box::new(CreatingWidget::new(id, cap))
   });
 
   let event = Event::Custom(Box::new(0u64));
@@ -286,7 +241,7 @@ impl MovingWidget {
 fn moving_widget_creation() {
   let mut object = Some(Moveable {});
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let _ = ui.add_widget(root, &mut |id, _cap| {
     let moveable = object.take().unwrap();
@@ -316,7 +271,7 @@ fn create_handler(widget: Id, event: Event, cap: &mut Cap) -> Option<MetaEvent> 
 #[test]
 fn event_based_widget_creation() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::with_handler(id, create_handler))
+    Box::new(TestWidget::with_handler(id, create_handler))
   });
 
   assert_eq!(ui.children(root).count(), 0);
@@ -342,7 +297,7 @@ fn recursive_operations_handler(widget: Id, _event: Event, cap: &mut Cap) -> Opt
 #[test]
 fn recursive_widget_operations() {
   let (mut ui, _) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::with_handler(id, recursive_operations_handler))
+    Box::new(TestWidget::with_handler(id, recursive_operations_handler))
   });
 
   ui.handle(Event::Custom(Box::new(())));

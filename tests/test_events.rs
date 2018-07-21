@@ -43,8 +43,6 @@ use common::clone_meta_event;
 use common::clone_ui_event;
 use common::compare_meta_events;
 use common::compare_ui_events;
-use common::TestContainer;
-use common::TestRootWidget;
 use common::TestWidget;
 use common::unwrap_custom;
 
@@ -106,13 +104,13 @@ fn last_event_in_chain() {
 #[test]
 fn events_bubble_up_when_unhandled() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestContainer::new(id))
+    Box::new(TestWidget::new(id))
   });
   let c2 = ui.add_widget(c1, &mut |id, _cap| {
-    Box::new(TestContainer::new(id))
+    Box::new(TestWidget::new(id))
   });
   let w1 = ui.add_widget(c2, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -149,7 +147,7 @@ fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<Meta
 #[test]
 fn event_handling_with_focus() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let w1 = ui.add_widget(r, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, |_s, e, c| {
@@ -188,10 +186,10 @@ fn custom_undirected_response_handler(_: Id, event: Event, _cap: &mut Cap) -> Op
 #[test]
 fn custom_undirected_response_event() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
+    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestContainer::with_handler(id, custom_undirected_response_handler))
+    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
   });
   let w1 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
@@ -222,10 +220,10 @@ fn custom_directed_response_handler(_: Id, event: Event, _cap: &mut Cap) -> Opti
 #[test]
 fn custom_directed_response_event() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::with_handler(id, custom_directed_response_handler))
+    Box::new(TestWidget::with_handler(id, custom_directed_response_handler))
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestContainer::with_handler(id, custom_directed_response_handler))
+    Box::new(TestWidget::with_handler(id, custom_directed_response_handler))
   });
   let w1 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, custom_directed_response_handler))
@@ -247,10 +245,10 @@ fn custom_directed_response_event() {
 #[test]
 fn direct_custom_event() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::with_handler(id, custom_undirected_response_handler))
+    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestContainer::with_handler(id, custom_undirected_response_handler))
+    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
   });
   let w1 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
@@ -266,10 +264,10 @@ fn direct_custom_event() {
 #[test]
 fn quit_event() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::new(id))
+    Box::new(TestWidget::new(id))
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestContainer::new(id))
+    Box::new(TestWidget::new(id))
   });
   let _ = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -311,10 +309,10 @@ fn chaining_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEve
 #[test]
 fn chain_event_dispatch() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestRootWidget::with_handler(id, accumulating_handler))
+    Box::new(TestWidget::with_handler(id, accumulating_handler))
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestContainer::with_handler(id, chaining_handler))
+    Box::new(TestWidget::with_handler(id, chaining_handler))
   });
   let w1 = ui.add_widget(c1, &mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, chaining_handler))

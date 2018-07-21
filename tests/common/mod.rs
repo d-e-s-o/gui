@@ -51,49 +51,6 @@ impl Deref for Handler {
 }
 
 
-#[derive(Debug, GuiRootWidget)]
-pub struct TestRootWidget {
-  id: Id,
-  children: Vec<Id>,
-  handler: Option<Handler>,
-}
-
-impl TestRootWidget {
-  pub fn new(id: Id) -> Self {
-    TestRootWidget {
-      id: id,
-      children: Vec::new(),
-      handler: None,
-    }
-  }
-
-  #[allow(unused)]
-  pub fn with_handler<F>(id: Id, handler: F) -> Self
-  where
-    F: 'static + Fn(Id, Event, &mut Cap) -> Option<MetaEvent>,
-  {
-    TestRootWidget {
-      id: id,
-      children: Vec::new(),
-      handler: Some(Handler(Box::new(handler))),
-    }
-  }
-}
-
-impl Handleable for TestRootWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-    match self.handler.take() {
-      Some(handler) => {
-        let event = handler(self.id, event, cap);
-        self.handler = Some(handler);
-        event
-      },
-      None => Some(event.into()),
-    }
-  }
-}
-
-
 #[derive(Debug, GuiWidget)]
 pub struct TestWidget {
   id: Id,
@@ -121,50 +78,6 @@ impl TestWidget {
 }
 
 impl Handleable for TestWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-    match self.handler.take() {
-      Some(handler) => {
-        let event = handler(self.id, event, cap);
-        self.handler = Some(handler);
-        event
-      },
-      None => Some(event.into()),
-    }
-  }
-}
-
-
-#[derive(Debug, GuiContainer)]
-pub struct TestContainer {
-  id: Id,
-  children: Vec<Id>,
-  handler: Option<Handler>,
-}
-
-impl TestContainer {
-  #[allow(unused)]
-  pub fn new(id: Id) -> Self {
-    TestContainer {
-      id: id,
-      children: Vec::new(),
-      handler: None,
-    }
-  }
-
-  #[allow(unused)]
-  pub fn with_handler<F>(id: Id, handler: F) -> Self
-  where
-    F: 'static + Fn(Id, Event, &mut Cap) -> Option<MetaEvent>,
-  {
-    TestContainer {
-      id: id,
-      children: Vec::new(),
-      handler: Some(Handler(Box::new(handler))),
-    }
-  }
-}
-
-impl Handleable for TestContainer {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
     match self.handler.take() {
       Some(handler) => {
