@@ -98,6 +98,53 @@ fn render_is_called_for_each_widget() {
   assert_eq!(renderer.total_render_count.get(), 3);
 }
 
+#[test]
+fn render_honors_visibility_flag() {
+  let renderer = CountingRenderer::new();
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w1 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w2 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let _ = ui.add_widget(w2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  ui.hide(w1);
+  ui.render(&renderer);
+
+  assert_eq!(renderer.pre_render_count.get(), 1);
+  assert_eq!(renderer.post_render_count.get(), 1);
+  assert_eq!(renderer.total_render_count.get(), 3);
+
+  // Hiding `w2` should make two widgets invisible.
+  ui.hide(w2);
+  ui.render(&renderer);
+
+  assert_eq!(renderer.pre_render_count.get(), 2);
+  assert_eq!(renderer.post_render_count.get(), 2);
+  assert_eq!(renderer.total_render_count.get(), 4);
+
+  ui.show(w1);
+  ui.render(&renderer);
+
+  assert_eq!(renderer.pre_render_count.get(), 3);
+  assert_eq!(renderer.post_render_count.get(), 3);
+  assert_eq!(renderer.total_render_count.get(), 6);
+
+  // Showing `w2` should make itself and its child visible again.
+  ui.show(w2);
+  ui.render(&renderer);
+
+  assert_eq!(renderer.pre_render_count.get(), 4);
+  assert_eq!(renderer.post_render_count.get(), 4);
+  assert_eq!(renderer.total_render_count.get(), 10);
+}
+
 
 static mut ROOT: Option<Id> = None;
 static mut CONTAINER: Option<Id> = None;

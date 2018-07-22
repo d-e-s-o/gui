@@ -125,6 +125,34 @@ pub trait Cap {
   /// Retrieve the parent of the given widget.
   fn parent_id(&self, widget: Id) -> Option<Id>;
 
+  /// Show a widget, i.e., set its and its parents' visibility flag.
+  ///
+  /// This method sets the referenced widget's visibility flag as well
+  /// as those of all its parents.
+  fn show(&mut self, widget: Id);
+
+  /// Hide a widget, i.e., unset its visibility flag.
+  ///
+  /// This method makes sure that widget referenced is no longer
+  /// displayed. If the widget has children, all those children will
+  /// also be hidden.
+  fn hide(&mut self, widget: Id);
+
+  /// Check whether a widget has its visibility flag set.
+  ///
+  /// Note that a return value of `true` does not necessary mean that
+  /// the widget is actually visible. A widget is only visible if all
+  /// its parents have the visibility flag set, too. The `is_displayed`
+  /// method can be used to check for actual visibility.
+  fn is_visible(&self, widget: Id) -> bool;
+
+  /// Check whether a widget is actually being displayed.
+  ///
+  /// This method checks whether the referenced widget is actually being
+  /// displayed, that is, whether its own as well as its parents'
+  /// visibility flags are all set.
+  fn is_displayed(&self, widget: Id) -> bool;
+
   /// Retrieve the currently focused widget.
   fn focused(&self) -> Option<Id>;
 
@@ -135,7 +163,8 @@ pub trait Cap {
   ///
   /// The focused widget is the one receiving certain types of events
   /// (such as key events) first but may also be rendered in a different
-  /// color or be otherwise highlighted.
+  /// color or be otherwise highlighted. Note that being focused implies
+  /// being visible. This invariant is enforced internally.
   fn focus(&mut self, widget: Id);
 
   /// Check whether the widget with the given `Id` is focused.
@@ -163,6 +192,8 @@ struct WidgetData {
   // this a Vec<Index> because we cannot use an impl trait return type
   // for the `children` method present in `Cap`.
   children: Vec<Id>,
+  /// Flag indicating the widget's visibility state.
+  visible: bool,
 }
 
 impl WidgetData {
@@ -170,6 +201,7 @@ impl WidgetData {
     WidgetData {
       parent_idx: parent_idx,
       children: Default::default(),
+      visible: true,
     }
   }
 }
@@ -211,12 +243,6 @@ impl Ui {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
 
-    // If no widget has the focus we focus the newly created widget but
-    // then the focus stays unless explicitly changed.
-    if self.focused.is_none() {
-      self.focus(id);
-    }
-
     // We require some trickery here to allow for dynamic widget
     // creation from within the constructor of another widget. In
     // particular, we install a "dummy" widget that acts as a container
@@ -232,6 +258,12 @@ impl Ui {
     // parent.
     if let Some(parent_idx) = parent_idx {
       self.widgets[parent_idx.idx].0.children.push(id)
+    }
+
+    // If no widget has the focus we focus the newly created widget but
+    // then the focus stays unless explicitly changed.
+    if self.focused.is_none() {
+      self.focus(idx);
     }
 
     let widget = new_widget(id, self);
@@ -264,6 +296,36 @@ impl Ui {
     self.widgets[idx.idx].0.children.iter()
   }
 
+  fn show(&mut self, idx: Index) {
+    let parent_idx = {
+      let data = &mut self.widgets[idx.idx].0;
+      data.visible = true;
+      data.parent_idx
+    };
+
+    if let Some(parent_idx) = parent_idx {
+      self.show(parent_idx)
+    }
+  }
+
+  fn is_visible(&self, idx: Index) -> bool {
+    self.widgets[idx.idx].0.visible
+  }
+
+  fn is_displayed(&self, idx: Index) -> bool {
+    let data = &self.widgets[idx.idx].0;
+    data.visible && data.parent_idx.map_or(true, |x| self.is_displayed(x))
+  }
+
+  fn focus(&mut self, idx: Index) {
+    // We want to provide the invariant that a focused widget needs to
+    // be visible.
+    self.show(idx);
+
+    self.last_focused = self.focused;
+    self.focused = Some(idx)
+  }
+
   fn with<F, R>(&mut self, idx: Index, with_widget: F) -> R
   where
     F: FnOnce(&mut Ui, Box<Widget>) -> (Box<Widget>, R),
@@ -294,15 +356,17 @@ impl Ui {
 
   /// Recursively render the given widget and its children.
   fn render_all(&self, idx: Index, widget: &Widget, renderer: &Renderer, bbox: BBox) {
-    // TODO: Ideally we would want to go without the recursion stuff we
-    //       have. This may not be possible (efficiently) with safe
-    //       Rust, though. Not sure.
-    let bbox = widget.render(renderer, bbox);
+    if self.is_visible(idx) {
+      // TODO: Ideally we would want to go without the recursion stuff we
+      //       have. This may not be possible (efficiently) with safe
+      //       Rust, though. Not sure.
+      let bbox = widget.render(renderer, bbox);
 
-    for child_id in self.children(idx).rev() {
-      let child_idx = self.validate(*child_id);
-      let child = self.lookup(child_idx);
-      self.render_all(child_idx, child, renderer, bbox)
+      for child_id in self.children(idx).rev() {
+        let child_idx = self.validate(*child_id);
+        let child = self.lookup(child_idx);
+        self.render_all(child_idx, child, renderer, bbox)
+      }
     }
   }
 
@@ -421,6 +485,32 @@ impl Cap for Ui {
     parent_id
   }
 
+  /// Show a widget, i.e., set its and its parents' visibility flag.
+  fn show(&mut self, widget: Id) {
+    let idx = self.validate(widget);
+    self.show(idx)
+  }
+
+  /// Hide a widget, i.e., unset its visibility flag.
+  fn hide(&mut self, widget: Id) {
+    if self.is_focused(widget) {
+      self.focused = None
+    }
+
+    let idx = self.validate(widget);
+    self.widgets[idx.idx].0.visible = false
+  }
+
+  /// Check whether a widget has its visibility flag set.
+  fn is_visible(&self, widget: Id) -> bool {
+    self.is_visible(self.validate(widget))
+  }
+
+  /// Check whether a widget is actually being displayed.
+  fn is_displayed(&self, widget: Id) -> bool {
+    self.is_displayed(self.validate(widget))
+  }
+
   /// Retrieve the currently focused widget.
   fn focused(&self) -> Option<Id> {
     self.focused.and_then(|x| Some(Id::new(x.idx, self)))
@@ -434,13 +524,14 @@ impl Cap for Ui {
   /// Focus a widget.
   fn focus(&mut self, widget: Id) {
     let idx = self.validate(widget);
-    self.last_focused = self.focused;
-    self.focused = Some(idx)
+    self.focus(idx)
   }
 
   /// Check whether the given widget is focused.
   fn is_focused(&self, widget: Id) -> bool {
     let idx = self.validate(widget);
-    self.focused == Some(idx)
+    let result = self.focused == Some(idx);
+    debug_assert!(result && self.is_displayed(idx) || !result);
+    result
   }
 }

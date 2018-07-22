@@ -97,6 +97,71 @@ fn share_ids_between_ui_objects() {
 }
 
 #[test]
+fn visibility_fun() {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w1 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w2 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w3 = ui.add_widget(w2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  assert!(ui.is_visible(root));
+  assert!(ui.is_visible(w1));
+  assert!(ui.is_visible(w2));
+  assert!(ui.is_visible(w3));
+  assert!(ui.is_displayed(root));
+  assert!(ui.is_displayed(w1));
+  assert!(ui.is_displayed(w2));
+  assert!(ui.is_displayed(w3));
+
+  ui.hide(root);
+  assert!(!ui.is_visible(root));
+  assert!(ui.is_visible(w1));
+  assert!(ui.is_visible(w2));
+  assert!(ui.is_visible(w3));
+  assert!(!ui.is_displayed(root));
+  assert!(!ui.is_displayed(w1));
+  assert!(!ui.is_displayed(w2));
+  assert!(!ui.is_displayed(w3));
+
+  ui.hide(w2);
+  assert!(!ui.is_visible(root));
+  assert!(ui.is_visible(w1));
+  assert!(!ui.is_visible(w2));
+  assert!(ui.is_visible(w3));
+  assert!(!ui.is_displayed(root));
+  assert!(!ui.is_displayed(w1));
+  assert!(!ui.is_displayed(w2));
+  assert!(!ui.is_displayed(w3));
+
+  ui.hide(w1);
+  assert!(!ui.is_visible(root));
+  assert!(!ui.is_visible(w1));
+  assert!(!ui.is_visible(w2));
+  assert!(ui.is_visible(w3));
+  assert!(!ui.is_displayed(root));
+  assert!(!ui.is_displayed(w1));
+  assert!(!ui.is_displayed(w2));
+  assert!(!ui.is_displayed(w3));
+
+  ui.show(w3);
+  assert!(ui.is_visible(root));
+  assert!(!ui.is_visible(w1));
+  assert!(ui.is_visible(w2));
+  assert!(ui.is_visible(w3));
+  assert!(ui.is_displayed(root));
+  assert!(!ui.is_displayed(w1));
+  assert!(ui.is_displayed(w2));
+  assert!(ui.is_displayed(w3));
+}
+
+#[test]
 fn initial_focus() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -123,6 +188,27 @@ fn focus_widget() {
 
   ui.focus(widget);
   assert!(ui.is_focused(widget));
+}
+
+#[test]
+fn focus_makes_widget_visible() {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let widget = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  ui.hide(root);
+  ui.hide(widget);
+
+  assert!(!ui.is_visible(root));
+  assert!(!ui.is_visible(widget));
+
+  // Focusing the widget should make it and all its parents visible
+  // again.
+  ui.focus(widget);
+  assert!(ui.is_displayed(widget));
 }
 
 #[test]
