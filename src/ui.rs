@@ -157,15 +157,18 @@ struct WidgetData {
   /// The `Id` of the parent widget.
   ///
   /// This value may only be `None` for the root widget.
-  parent_id: Option<Id>,
+  parent_idx: Option<Index>,
   /// Vector of all the children that have this widget as a parent.
+  // Note that unfortunately there is no straight forward way to make
+  // this a Vec<Index> because we cannot use an impl trait return type
+  // for the `children` method present in `Cap`.
   children: Vec<Id>,
 }
 
 impl WidgetData {
-  fn new(parent_id: Option<Id>) -> Self {
+  fn new(parent_idx: Option<Index>) -> Self {
     WidgetData {
-      parent_id: parent_id,
+      parent_idx: parent_idx,
       children: Default::default(),
     }
   }
@@ -204,7 +207,7 @@ impl Ui {
   }
 
   /// Add a widget to the `Ui`.
-  fn _add_widget(&mut self, parent_id: Option<Id>, new_widget: NewWidgetFn) -> Id {
+  fn _add_widget(&mut self, parent_idx: Option<Index>, new_widget: NewWidgetFn) -> Id {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
 
@@ -219,7 +222,7 @@ impl Ui {
     // particular, we install a "dummy" widget that acts as a container
     // to which newly created child widgets can be registered.
     let dummy = Placeholder::new();
-    let data = WidgetData::new(parent_id);
+    let data = WidgetData::new(parent_idx);
     self.widgets.push((data, Some(Box::new(dummy))));
 
     // The widget is already linked to its parent but the parent needs to
@@ -227,9 +230,8 @@ impl Ui {
     // widget is actually fully constructed to preserve the invariant
     // that a widget's ID is part of the list of IDs managed by its
     // parent.
-    if let Some(parent_id) = parent_id {
-      let idx = self.validate(parent_id);
-      self.widgets[idx.idx].0.children.push(id)
+    if let Some(parent_idx) = parent_idx {
+      self.widgets[parent_idx.idx].0.children.push(id)
     }
 
     let widget = new_widget(id, self);
@@ -332,14 +334,14 @@ impl Ui {
     // method uses the provided `Cap` object. All the methods of this
     // object are carefully chosen in a way to not call into the widget
     // itself.
-    let (meta_event, id) = self.with(idx, |ui, mut widget| {
+    let (meta_event, idx) = self.with(idx, |ui, mut widget| {
       let meta_event = widget.handle(event, ui);
-      let parent_id = ui.widgets[idx.idx].0.parent_id;
-      (widget, (meta_event, parent_id))
+      let parent_idx = ui.widgets[idx.idx].0.parent_idx;
+      (widget, (meta_event, parent_idx))
     });
 
     if let Some(meta_event) = meta_event {
-      self.handle_meta_event(id, meta_event)
+      self.handle_meta_event(idx, meta_event)
     } else {
       // The event got handled.
       None
@@ -347,22 +349,21 @@ impl Ui {
   }
 
   /// Handle a `MetaEvent`.
-  fn handle_meta_event(&mut self, id: Option<Id>, event: MetaEvent) -> Option<MetaEvent> {
+  fn handle_meta_event(&mut self, idx: Option<Index>, event: MetaEvent) -> Option<MetaEvent> {
     match event {
-      MetaEvent::UiEvent(ui_event) => self.handle_ui_event(id, ui_event),
+      MetaEvent::UiEvent(ui_event) => self.handle_ui_event(idx, ui_event),
       MetaEvent::Chain(ui_event, meta_event) => {
-        self.handle_ui_event(id, ui_event);
-        self.handle_meta_event(id, *meta_event)
+        self.handle_ui_event(idx, ui_event);
+        self.handle_meta_event(idx, *meta_event)
       },
     }
   }
 
   /// Handle a `UiEvent`.
-  fn handle_ui_event(&mut self, id: Option<Id>, event: UiEvent) -> Option<MetaEvent> {
+  fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent) -> Option<MetaEvent> {
     match event {
       UiEvent::Event(event) => {
-        if let Some(id) = id {
-          let idx = self.validate(id);
+        if let Some(idx) = idx {
           self.handle_event(idx, event)
         } else {
           // The event has not been handled. Return it as-is.
@@ -390,7 +391,8 @@ impl Ui {
 impl Cap for Ui {
   /// Add a widget to the `Ui`.
   fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn) -> Id {
-    self._add_widget(Some(parent), &mut |id, cap| new_widget(id, cap))
+    let parent_idx = self.validate(parent);
+    self._add_widget(Some(parent_idx), &mut |id, cap| new_widget(id, cap))
   }
 
   /// Retrieve an iterator over the children. Iteration happens in
@@ -413,7 +415,8 @@ impl Cap for Ui {
   /// Retrieve the parent of the given widget.
   fn parent_id(&self, widget: Id) -> Option<Id> {
     let idx = self.validate(widget);
-    let parent_id = self.widgets[idx.idx].0.parent_id;
+    let parent_idx = self.widgets[idx.idx].0.parent_idx;
+    let parent_id = parent_idx.and_then(|x| Some(Id::new(x.idx, self)));
     debug_assert!(parent_id.map_or(true, |x| Cap::children(self, x).any(|x| *x == widget)));
     parent_id
   }
