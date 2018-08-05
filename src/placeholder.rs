@@ -17,6 +17,8 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use std::any::TypeId;
+
 use BBox;
 use Cap;
 use Event;
@@ -63,4 +65,8 @@ impl Handleable for Placeholder {
   }
 }
 
-impl Widget for Placeholder {}
+impl Widget for Placeholder {
+  fn type_id(&self) -> TypeId {
+    TypeId::of::<Placeholder>()
+  }
+}

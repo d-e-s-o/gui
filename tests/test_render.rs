@@ -25,7 +25,6 @@ extern crate gui_derive;
 
 mod common;
 
-use std::any::Any;
 use std::cell::Cell;
 
 use gui::BBox;
@@ -34,6 +33,7 @@ use gui::Id;
 use gui::Object;
 use gui::Renderer;
 use gui::Ui;
+use gui::Widget;
 
 use common::TestWidget;
 
@@ -64,7 +64,7 @@ impl Renderer for CountingRenderer {
     self.pre_render_count.set(self.pre_render_count.get() + 1);
   }
 
-  fn render(&self, _object: &Any, bbox: BBox) -> BBox {
+  fn render(&self, _object: &Widget, bbox: BBox) -> BBox {
     self.total_render_count.set(
       self.total_render_count.get() + 1,
     );
@@ -173,7 +173,7 @@ impl Renderer for BBoxRenderer {
     }
   }
 
-  fn render(&self, object: &Any, mut bbox: BBox) -> BBox {
+  fn render(&self, object: &Widget, mut bbox: BBox) -> BBox {
     let mut expected = self.renderable_area();
     let widget = object.downcast_ref::<TestWidget>().unwrap();
 

@@ -112,6 +112,7 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 /// ```rust
 /// # extern crate gui;
+/// # use std::any::TypeId;
 /// # #[derive(Debug)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
@@ -128,7 +129,11 @@ type Result<T> = std::result::Result<T, Error>;
 ///   }
 /// }
 ///
-/// impl gui::Widget for TestWidget {}
+/// impl gui::Widget for TestWidget {
+///   fn type_id(&self) -> TypeId {
+///     TypeId::of::<TestWidget>()
+///   }
+/// }
 /// # impl gui::Handleable for TestWidget {}
 /// ```
 #[proc_macro_derive(GuiWidget, attributes(gui))]
@@ -322,7 +327,11 @@ fn expand_widget_trait(input: &DeriveInput) -> Tokens {
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
   quote! {
-    impl #impl_generics ::gui::Widget for #name #ty_generics #where_clause {}
+    impl #impl_generics ::gui::Widget for #name #ty_generics #where_clause {
+      fn type_id(&self) -> ::std::any::TypeId {
+        ::std::any::TypeId::of::<#name #ty_generics>()
+      }
+    }
   }
 }
 

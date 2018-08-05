@@ -17,7 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use std::any::Any;
+use Widget;
 
 
 /// A bounding box representing the area that a widget may occupy. A
@@ -53,11 +53,51 @@ pub trait Renderer {
 
   /// Render an object.
   ///
-  /// Objects are represented as `Any` and need to be cast into the type
-  /// to render by the `Renderer` itself.
+  /// Objects are represented as `Widget` and need to be cast into the
+  /// actual widget type to render by the `Renderer` itself, should that
+  /// be necessary. A simplified implementation could look as follows:
+  /// ```rust
+  /// # extern crate gui;
+  /// # #[macro_use]
+  /// # extern crate gui_derive;
+  /// # use gui::{BBox, Cap, Id, Renderer, Widget};
+  /// # #[derive(Debug, GuiWidget, GuiHandleable)]
+  /// # struct ConcreteWidget1 {
+  /// #   id: Id,
+  /// # }
+  /// # #[derive(Debug, GuiWidget, GuiHandleable)]
+  /// # struct ConcreteWidget2 {
+  /// #   id: Id,
+  /// # }
+  /// # #[derive(Debug)]
+  /// # struct TestRenderer {}
+  /// # impl TestRenderer {
+  /// #   fn render_concrete_widget1(&self, widget: &ConcreteWidget1, bbox: BBox) -> BBox {
+  /// #     bbox
+  /// #   }
+  /// #   fn render_concrete_widget2(&self, widget: &ConcreteWidget1, bbox: BBox) -> BBox {
+  /// #     bbox
+  /// #   }
+  /// # }
+  /// # impl Renderer for TestRenderer {
+  /// #   fn renderable_area(&self) -> BBox {
+  /// #     Default::default()
+  /// #   }
+  /// fn render(&self, widget: &Widget, bbox: BBox) -> BBox {
+  ///   if let Some(widget1) = widget.downcast_ref::<ConcreteWidget1>() {
+  ///     self.render_concrete_widget1(widget1, bbox)
+  ///   } else if let Some(widget2) = widget.downcast_ref::<ConcreteWidget1>() {
+  ///     self.render_concrete_widget2(widget2, bbox)
+  ///   } else {
+  ///     panic!("Widget {:?} is unknown to the renderer", widget)
+  ///   }
+  /// }
+  /// # }
+  /// # fn main() {}
+  /// ```
   // TODO: Ideally we would like to have a double dispatch mechanism for
   //       determining the object to render.
-  fn render(&self, object: &Any, bbox: BBox) -> BBox;
+  fn render(&self, object: &Widget, bbox: BBox) -> BBox;
 
   /// Perform some post-render step.
   fn post_render(&self) {}

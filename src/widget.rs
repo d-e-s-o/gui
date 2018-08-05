@@ -1,4 +1,4 @@
-// lib.rs
+// widget.rs
 
 // *************************************************************************
 // * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
@@ -17,46 +17,49 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-#![allow(
-  unknown_lints,
-  block_in_if_condition_stmt,
-  redundant_field_names,
-)]
-#![deny(
-  missing_debug_implementations,
-  missing_docs,
-  unstable_features,
-  unused_import_braces,
-  unused_qualifications,
-  warnings,
-)]
+use std::any::TypeId;
+use std::fmt::Debug;
 
-//! A crate containing the basic infrastructure for user interfaces. It
-//! strives for being completely agnostic of the underlying system and
-//! its rendering machinery as well as event dispatching.
+use Handleable;
+use Object;
+use Renderable;
 
-mod event;
-mod handleable;
-mod object;
-mod placeholder;
-mod renderable;
-mod renderer;
-mod ui;
-mod widget;
 
-use self::placeholder::Placeholder;
+/// A widget as used by a `Ui`.
+///
+/// In addition to taking care of `Id` management and parent-child
+/// relationships, the `Ui` is responsible for dispatching events to
+/// widgets and rendering them. Hence, a widget usable for the `Ui`
+/// needs to implement `Handleable`, `Renderable`, and `Object`.
+pub trait Widget: Handleable + Renderable + Object + Debug + 'static {
+  /// Get the `TypeId` of `self`.
+  fn type_id(&self) -> TypeId;
+}
 
-pub use self::event::Event;
-pub use self::event::EventChain;
-pub use self::event::Key;
-pub use self::event::MetaEvent;
-pub use self::event::UiEvent;
-pub use self::handleable::Handleable;
-pub use self::object::Object;
-pub use self::renderable::Renderable;
-pub use self::renderer::BBox;
-pub use self::renderer::Renderer;
-pub use self::ui::Cap;
-pub use self::ui::Id;
-pub use self::ui::Ui;
-pub use self::widget::Widget;
+impl Widget {
+  /// Check if the widget is of type `T`.
+  pub fn is<T: Widget>(&self) -> bool {
+    let t = TypeId::of::<T>();
+    let own_t = self.type_id();
+
+    t == own_t
+  }
+
+  /// Downcast the widget reference to type `T`.
+  pub fn downcast_ref<T: Widget>(&self) -> Option<&T> {
+    if self.is::<T>() {
+      unsafe { Some(&*(self as *const Widget as *const T)) }
+    } else {
+      None
+    }
+  }
+
+  /// Downcast the widget reference to type `T`.
+  pub fn downcast_mut<T: Widget>(&mut self) -> Option<&mut T> {
+    if self.is::<T>() {
+      unsafe { Some(&mut *(self as *mut Widget as *mut T)) }
+    } else {
+      None
+    }
+  }
+}

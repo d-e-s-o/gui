@@ -17,7 +17,6 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
@@ -29,13 +28,11 @@ use std::sync::atomic::Ordering;
 
 use BBox;
 use Event;
-use Handleable;
 use MetaEvent;
-use Object;
 use Placeholder;
-use Renderable;
 use Renderer;
 use UiEvent;
+use Widget;
 
 
 /// An `Index` is our internal representation of an `Id`. `Id`s can
@@ -88,14 +85,6 @@ impl Display for Id {
   }
 }
 
-
-/// A widget as used by a `Ui`.
-///
-/// In addition to taking care of `Id` management and parent-child
-/// relationships, the `Ui` is responsible for dispatching events to
-/// widgets and rendering them. Hence, a widget usable for the `Ui`
-/// needs to implement `Handleable`, `Renderable`, and `Object`.
-pub trait Widget: Handleable + Renderable + Object + Debug {}
 
 /// An iterator over the children of a widget.
 pub type ChildIter<'widget> = Iter<'widget, Id>;
