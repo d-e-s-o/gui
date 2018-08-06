@@ -416,43 +416,56 @@ impl Ui {
   }
 
   /// Handle an event.
+  ///
+  /// This function performs the initial determination of which widget
+  /// is supposed to handle the given event and then passes it down to
+  /// the actual event handler.
   pub fn handle<E>(&mut self, event: E) -> Option<UiEvent>
   where
     E: Into<UiEvent>,
   {
     let ui_event = event.into();
-    match ui_event {
-      UiEvent::Event(event) => {
-        self.invoke_event_hooks(&event);
 
-        if let Some(idx) = self.focused {
-          self.handle_event(idx, event)
-        } else {
-          Some(event.into())
-        }
-      },
-      _ => self.handle_ui_specific_event(ui_event),
-    }.and_then(|x| Some(x.into_last()))
+    if let UiEvent::Event(event) = &ui_event {
+      // Invoke the hooks before passing the event to the widgets on the
+      // "official" route.
+      self.invoke_event_hooks(&event);
+    }
+
+    // Determine the target widget from where to start handling.
+    let idx = match ui_event {
+      // All currently defined "ordinary" events go to the currently
+      // focused widget.
+      UiEvent::Event(_) => self.focused,
+      // All others either carry an explicit target with them (e.g.,
+      // some custom event) or have no target at all (for example the
+      // Quit event).
+      _ => None,
+    };
+
+    self.handle_ui_event(idx, ui_event).and_then(
+      |x| Some(x.into_last()),
+    )
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
   fn handle_event(&mut self, idx: Index, event: Event) -> Option<MetaEvent> {
     // To enable a mutable borrow of the Ui as well as the widget we
-    // temporarily remove the widget from the internally used vector.
-    // This means that now we would panic if we were to access the
-    // widget recursively (because that's what we do if the Option is
-    // None). The only way this can happen is if the widget's handle
-    // method uses the provided `Cap` object. All the methods of this
-    // object are carefully chosen in a way to not call into the widget
-    // itself.
-    let (meta_event, idx) = self.with(idx, |ui, mut widget| {
+    // temporarily remove the widget from the internally used
+    // vector. This means that now we would panic if we were to
+    // access the widget recursively (because that's what we do if
+    // the Option is None). The only way this can happen is if the
+    // widget's handle method uses the provided `Cap` object. All
+    // the methods of this object are carefully chosen in a way to
+    // not call into the widget itself.
+    let (meta_event, parent_idx) = self.with(idx, |ui, mut widget| {
       let meta_event = widget.handle(event, ui);
       let parent_idx = ui.widgets[idx.idx].0.parent_idx;
       (widget, (meta_event, parent_idx))
     });
 
     if let Some(meta_event) = meta_event {
-      self.handle_meta_event(idx, meta_event)
+      self.handle_meta_event(parent_idx, meta_event)
     } else {
       // The event got handled.
       None
@@ -477,24 +490,20 @@ impl Ui {
         if let Some(idx) = idx {
           self.handle_event(idx, event)
         } else {
-          // The event has not been handled. Return it as-is.
+          // There is no receiver for this event. That could have many
+          // reasons, for example, event propagation could have reached the
+          // root widget which does not contain a parent or we were trying
+          // to send an event to the focused widget and no widget had the
+          // focus. In any case, return the event as-is.
           Some(event.into())
         }
       },
-      _ => self.handle_ui_specific_event(event),
-    }
-  }
-
-  /// Handle a UI specific event.
-  fn handle_ui_specific_event(&mut self, event: UiEvent) -> Option<MetaEvent> {
-    match event {
       UiEvent::Custom(id, any) => {
         let event = Event::Custom(any);
         let idx = self.validate(id);
         self.handle_event(idx, event)
       },
       UiEvent::Quit => Some(UiEvent::Quit.into()),
-      UiEvent::Event(_) => unreachable!(),
     }
   }
 }
