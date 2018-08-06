@@ -126,6 +126,23 @@ fn events_bubble_up_when_unhandled() {
   assert!(compare_ui_events(&result.unwrap(), &event.into()));
 }
 
+#[test]
+fn targeted_event_returned_on_no_focus() {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w = ui.add_widget(r, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  let event = Event::KeyUp(Key::Char('y'));
+  ui.focus(w);
+  ui.hide(w);
+
+  let result = ui.handle(clone_event(&event));
+  assert!(compare_ui_events(&result.unwrap(), &event.into()));
+}
+
 fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<MetaEvent> {
   match event {
     Event::KeyDown(key) => {

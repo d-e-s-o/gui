@@ -428,7 +428,7 @@ impl Ui {
         if let Some(idx) = self.focused {
           self.handle_event(idx, event)
         } else {
-          None
+          Some(event.into())
         }
       },
       _ => self.handle_ui_specific_event(ui_event),
