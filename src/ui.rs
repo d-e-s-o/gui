@@ -17,6 +17,8 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use std::collections::HashSet;
+use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
@@ -97,6 +99,10 @@ pub type ChildIter<'widget> = Iter<'widget, Id>;
 //       to use an Option as one of the parameters and panic if None is
 //       supplied.
 type NewWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
+// Note that we only pass a non-mutable Cap object to the handler. We do
+// not want to allow operations such as changing of the input focus or
+// overwriting of the event hook itself from the event hook handler.
+type EventHookFn = &'static Fn(&mut Widget, &Event, &Cap);
 
 
 /// A capability allowing for various widget related operations.
@@ -158,6 +164,27 @@ pub trait Cap {
 
   /// Check whether the widget with the given `Id` is focused.
   fn is_focused(&self, widget: Id) -> bool;
+
+  /// Install or remove an event hook handler.
+  ///
+  /// The event hook handler is a call back function that is invoked for
+  /// all events originating outside of the UI, i.e., those that come in
+  /// through the `Ui::handle` method. For such events, the event hook
+  /// handler gets to inspect the event before any widget gets a chance
+  /// to handle it "officially" through the `Handleable::handle` method.
+  ///
+  /// Note that event hook functions are only able to inspect events and
+  /// not change or discard them. That restriction prevents conflicts
+  /// due to what effectively comes down to shared global state: widgets
+  /// could be racing to install an event hook handler and the order in
+  /// which these handlers end up being installed could influence the
+  /// handling of events.
+  ///
+  /// A widget (identified by the given `Id`) may only register one
+  /// handler and subsequent requests will overwrite the previously
+  /// installed one. The method returns the handler that was previously
+  /// installed, if any.
+  fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn>) -> Option<EventHookFn>;
 }
 
 
@@ -181,6 +208,8 @@ struct WidgetData {
   // this a Vec<Index> because we cannot use an impl trait return type
   // for the `children` method present in `Cap`.
   children: Vec<Id>,
+  /// An optional event hook that may be registered for the widget.
+  event_hook: Option<EventHook>,
   /// Flag indicating the widget's visibility state.
   visible: bool,
 }
@@ -190,8 +219,19 @@ impl WidgetData {
     WidgetData {
       parent_idx: parent_idx,
       children: Default::default(),
+      event_hook: None,
       visible: true,
     }
+  }
+}
+
+
+/// A struct wrapping an `EventHookFn` while implementing `Debug`.
+struct EventHook(EventHookFn);
+
+impl Debug for EventHook {
+  fn fmt(&self, f: &mut Formatter) -> Result {
+    write!(f, "{:p}", self.0)
   }
 }
 
@@ -202,6 +242,7 @@ pub struct Ui {
   #[cfg(debug_assertions)]
   id: usize,
   widgets: Vec<(WidgetData, Option<Box<Widget>>)>,
+  hooked: HashSet<Index>,
   focused: Option<Index>,
   last_focused: Option<Index>,
 }
@@ -218,6 +259,7 @@ impl Ui {
       #[cfg(debug_assertions)]
       id: get_next_ui_id(),
       widgets: Default::default(),
+      hooked: Default::default(),
       focused: None,
       last_focused: None,
     };
@@ -359,6 +401,20 @@ impl Ui {
     }
   }
 
+  /// Invoke all registered event hooks for the given event.
+  fn invoke_event_hooks(&mut self, event: &Event) {
+    // TODO: Is there a way to avoid this clone?
+    for idx in self.hooked.clone() {
+      self.with(idx, |ui, mut widget| {
+        match &ui.widgets[idx.idx].0.event_hook {
+          Some(hook_fn) => hook_fn.0(widget.as_mut(), event, ui),
+          None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
+        };
+        (widget, ())
+      })
+    }
+  }
+
   /// Handle an event.
   pub fn handle<E>(&mut self, event: E) -> Option<UiEvent>
   where
@@ -367,6 +423,8 @@ impl Ui {
     let ui_event = event.into();
     match ui_event {
       UiEvent::Event(event) => {
+        self.invoke_event_hooks(&event);
+
         if let Some(idx) = self.focused {
           self.handle_event(idx, event)
         } else {
@@ -522,5 +580,22 @@ impl Cap for Ui {
     let result = self.focused == Some(idx);
     debug_assert!(result && self.is_displayed(idx) || !result);
     result
+  }
+
+  /// Install or remove an event hook handler.
+  fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn>) -> Option<EventHookFn> {
+    let idx = self.validate(widget);
+    let data = &mut self.widgets[idx.idx].0;
+
+    debug_assert_eq!(self.hooked.get(&idx).is_some(), data.event_hook.is_some());
+
+    let _ = match hook_fn {
+      Some(_) => self.hooked.insert(idx),
+      None => self.hooked.remove(&idx),
+    };
+
+    let prev_hook = data.event_hook.take();
+    data.event_hook = hook_fn.map(|x| EventHook(x));
+    prev_hook.map(|x| x.0)
   }
 }

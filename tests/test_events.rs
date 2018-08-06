@@ -37,6 +37,7 @@ use gui::Key;
 use gui::MetaEvent;
 use gui::Ui;
 use gui::UiEvent;
+use gui::Widget;
 
 use common::clone_event;
 use common::clone_meta_event;
@@ -323,4 +324,61 @@ fn chain_event_dispatch() {
   let event = Event::Custom(Box::new(1u64));
   let result = ui.handle(event).unwrap();
   assert_eq!(*unwrap_custom::<u64>(result), 8);
+}
+
+static mut HOOK_COUNT: u64 = 0;
+
+fn count_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) {
+  unsafe {
+    HOOK_COUNT += 1;
+  }
+}
+
+#[test]
+fn hook_events_return_value() {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w = ui.add_widget(r, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  assert!(ui.hook_events(w, None).is_none());
+  assert!(ui.hook_events(r, None).is_none());
+  assert!(ui.hook_events(w, Some(&count_event_hook)).is_none());
+  assert!(ui.hook_events(r, None).is_none());
+  assert!(ui.hook_events(r, Some(&count_event_hook)).is_none());
+  assert!(ui.hook_events(w, Some(&count_event_hook)).is_some());
+  assert!(ui.hook_events(r, Some(&count_event_hook)).is_some());
+  assert!(ui.hook_events(w, None).is_some());
+}
+
+#[test]
+fn hook_events_handler() {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let c1 = ui.add_widget(r, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w1 = ui.add_widget(c1, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  ui.focus(w1);
+  ui.hook_events(c1, Some(&count_event_hook));
+
+  assert_eq!(unsafe { HOOK_COUNT }, 0);
+
+  let event = Event::KeyDown(Key::Char(' '));
+  ui.handle(event).unwrap();
+
+  assert_eq!(unsafe { HOOK_COUNT }, 1);
+
+  ui.hook_events(c1, None);
+
+  let event = Event::KeyDown(Key::Char(' '));
+  ui.handle(event).unwrap();
+
+  assert_eq!(unsafe { HOOK_COUNT }, 1);
 }
