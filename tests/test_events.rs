@@ -35,6 +35,7 @@ use gui::EventChain;
 use gui::Id;
 use gui::Key;
 use gui::MetaEvent;
+use gui::OptionChain;
 use gui::Ui;
 use gui::UiEvent;
 use gui::Widget;
@@ -90,6 +91,34 @@ fn chain_meta_event_chain() {
   );
 
   assert!(compare_meta_events(&event, &expected));
+}
+
+#[test]
+fn option_and_option_chain() {
+  let result = (None as Option<Event>).chain(None as Option<Event>);
+  assert!(result.is_none());
+
+  let event = Event::KeyDown(Key::PageDown).into();
+  let orig_event = clone_ui_event(&event).into();
+  let result = (None as Option<Event>).chain(Some(event));
+
+  assert!(compare_meta_events(&result.unwrap(), &orig_event));
+
+  let event = Event::KeyDown(Key::Char('u')).into();
+  let orig_event = clone_ui_event(&event).into();
+  let result = Some(event).chain(None as Option<Event>);
+
+  assert!(compare_meta_events(&result.unwrap(), &orig_event));
+
+  let event1 = Event::KeyDown(Key::End).into();
+  let orig_event1 = clone_ui_event(&event1).into();
+  let event2 = Event::KeyUp(Key::Char('u')).into();
+  let orig_event2 = clone_ui_event(&event2).into();
+
+  let result = Some(event1).chain(Some(event2));
+  let expected = MetaEvent::Chain(orig_event1, Box::new(orig_event2));
+
+  assert!(compare_meta_events(&result.unwrap(), &expected));
 }
 
 #[test]

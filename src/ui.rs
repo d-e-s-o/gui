@@ -31,6 +31,7 @@ use std::sync::atomic::Ordering;
 use BBox;
 use Event;
 use MetaEvent;
+use OptionChain;
 use Placeholder;
 use Renderer;
 use UiEvent;
@@ -477,8 +478,9 @@ impl Ui {
     match event {
       MetaEvent::UiEvent(ui_event) => self.handle_ui_event(idx, ui_event),
       MetaEvent::Chain(ui_event, meta_event) => {
-        self.handle_ui_event(idx, ui_event);
-        self.handle_meta_event(idx, *meta_event)
+        self
+          .handle_ui_event(idx, ui_event)
+          .chain(self.handle_meta_event(idx, *meta_event))
       },
     }
   }

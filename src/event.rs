@@ -166,3 +166,37 @@ where
     }
   }
 }
+
+
+/// A trait for chaining of optional events.
+pub trait OptionChain {
+  /// Chain an optional event with another optional event.
+  fn chain<E>(self, event: Option<E>) -> Option<MetaEvent>
+  where
+    E: Into<MetaEvent>;
+}
+
+impl<ES> OptionChain for Option<ES>
+where
+  ES: Into<MetaEvent>,
+{
+  fn chain<E>(self, event: Option<E>) -> Option<MetaEvent>
+  where
+    E: Into<MetaEvent>,
+  {
+    match self {
+      Some(e1) => {
+        match event {
+          Some(e2) => Some(e1.chain(e2)),
+          None => Some(e1.into()),
+        }
+      },
+      None => {
+        match event {
+          Some(e2) => Some(e2.into()),
+          None => None,
+        }
+      },
+    }
+  }
+}
