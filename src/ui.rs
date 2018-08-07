@@ -22,6 +22,7 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
+use std::mem::replace;
 use std::slice::Iter;
 #[cfg(debug_assertions)]
 use std::sync::atomic::AtomicUsize;
@@ -103,7 +104,7 @@ type NewWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
-type EventHookFn = &'static Fn(&mut Widget, &Event, &Cap);
+type EventHookFn = &'static Fn(&mut Widget, &Event, &Cap) -> Option<MetaEvent>;
 
 
 /// A capability allowing for various widget related operations.
@@ -403,17 +404,24 @@ impl Ui {
   }
 
   /// Invoke all registered event hooks for the given event.
-  fn invoke_event_hooks(&mut self, event: &Event) {
+  fn invoke_event_hooks(&mut self, event: &Event) -> Option<MetaEvent> {
+    let mut result = None;
+
     // TODO: Is there a way to avoid this clone?
     for idx in self.hooked.clone() {
       self.with(idx, |ui, mut widget| {
         match &ui.widgets[idx.idx].0.event_hook {
-          Some(hook_fn) => hook_fn.0(widget.as_mut(), event, ui),
+          Some(hook_fn) => {
+            let event = hook_fn.0(widget.as_mut(), event, ui);
+            let prev = result.take();
+            replace(&mut result, prev.chain(event));
+          },
           None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
         };
         (widget, ())
       })
     }
+    result
   }
 
   /// Handle an event.
@@ -427,11 +435,13 @@ impl Ui {
   {
     let ui_event = event.into();
 
-    if let UiEvent::Event(event) = &ui_event {
+    let meta_event = if let UiEvent::Event(event) = &ui_event {
       // Invoke the hooks before passing the event to the widgets on the
       // "official" route.
-      self.invoke_event_hooks(&event);
-    }
+      self.invoke_event_hooks(&event)
+    } else {
+      None
+    };
 
     // Determine the target widget from where to start handling.
     let idx = match ui_event {
@@ -444,7 +454,9 @@ impl Ui {
       _ => None,
     };
 
-    self.handle_ui_event(idx, ui_event).and_then(
+    let event = meta_event.opt_chain(ui_event);
+
+    self.handle_meta_event(idx, event).and_then(
       |x| Some(x.into_last()),
     )
   }

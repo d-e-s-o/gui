@@ -94,6 +94,25 @@ fn chain_meta_event_chain() {
 }
 
 #[test]
+fn event_and_option_chain() {
+  let event = Event::KeyDown(Key::Esc).into();
+  let orig_event = clone_ui_event(&event).into();
+  let result = event.chain_opt(None as Option<Event>);
+
+  assert!(compare_meta_events(&result, &orig_event));
+
+  let event1 = Event::KeyDown(Key::Right).into();
+  let orig_event1 = clone_ui_event(&event1).into();
+  let event2 = UiEvent::Quit.into();
+  let orig_event2 = clone_ui_event(&event2).into();
+
+  let result = event1.chain_opt(Some(event2));
+  let expected = MetaEvent::Chain(orig_event1, Box::new(orig_event2));
+
+  assert!(compare_meta_events(&result, &expected));
+}
+
+#[test]
 fn option_and_option_chain() {
   let result = (None as Option<Event>).chain(None as Option<Event>);
   assert!(result.is_none());
@@ -374,10 +393,11 @@ fn chain_event_dispatch() {
 
 static mut HOOK_COUNT: u64 = 0;
 
-fn count_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) {
+fn count_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<MetaEvent> {
   unsafe {
     HOOK_COUNT += 1;
   }
+  None
 }
 
 #[test]
@@ -427,4 +447,32 @@ fn hook_events_handler() {
   ui.handle(event).unwrap();
 
   assert_eq!(unsafe { HOOK_COUNT }, 1);
+}
+
+
+fn quit_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<MetaEvent> {
+  Some(UiEvent::Quit.into())
+}
+
+fn swallowing_event_handler(_widget: Id, _event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+  None
+}
+
+
+#[test]
+fn hook_events_with_return() {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w = ui.add_widget(r, &mut |id, _cap| {
+    Box::new(TestWidget::with_handler(id, swallowing_event_handler))
+  });
+
+  ui.focus(w);
+  ui.hook_events(w, Some(&quit_event_hook));
+
+  let event = Event::KeyDown(Key::Char(' '));
+  let result = ui.handle(event);
+
+  assert!(compare_ui_events(&result.unwrap(), &UiEvent::Quit.into()));
 }

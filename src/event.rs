@@ -146,6 +146,14 @@ pub trait EventChain {
   fn chain<E>(self, event: E) -> MetaEvent
   where
     E: Into<MetaEvent>;
+
+  /// Chain together an event with an optional event.
+  ///
+  /// This method returns the chain of the first event with the second
+  /// one, if present, or otherwise just returns the first one.
+  fn chain_opt<E>(self, event: Option<E>) -> MetaEvent
+  where
+    E: Into<MetaEvent>;
 }
 
 impl<ES> EventChain for ES
@@ -165,6 +173,16 @@ where
       },
     }
   }
+
+  fn chain_opt<E>(self, event: Option<E>) -> MetaEvent
+  where
+    E: Into<MetaEvent>,
+  {
+    match event {
+      Some(event) => self.chain(event),
+      None => self.into(),
+    }
+  }
 }
 
 
@@ -172,6 +190,11 @@ where
 pub trait OptionChain {
   /// Chain an optional event with another optional event.
   fn chain<E>(self, event: Option<E>) -> Option<MetaEvent>
+  where
+    E: Into<MetaEvent>;
+
+  /// Chain an optional event with the given event.
+  fn opt_chain<E>(self, event: E) -> MetaEvent
   where
     E: Into<MetaEvent>;
 }
@@ -185,18 +208,23 @@ where
     E: Into<MetaEvent>,
   {
     match self {
-      Some(e1) => {
-        match event {
-          Some(e2) => Some(e1.chain(e2)),
-          None => Some(e1.into()),
-        }
-      },
+      Some(e1) => Some(e1.chain_opt(event)),
       None => {
         match event {
           Some(e2) => Some(e2.into()),
           None => None,
         }
       },
+    }
+  }
+
+  fn opt_chain<E>(self, event: E) -> MetaEvent
+  where
+    E: Into<MetaEvent>,
+  {
+    match self {
+      Some(e1) => e1.chain(event),
+      None => event.into(),
     }
   }
 }
