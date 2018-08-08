@@ -147,18 +147,23 @@ pub fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
 }
 
 #[allow(unused)]
-pub fn unwrap_custom<T>(event: UiEvent) -> Box<T>
+pub fn unwrap_custom<T>(event: MetaEvent) -> Box<T>
 where
   T: 'static,
 {
   match event {
-    UiEvent::Event(event) => {
+    MetaEvent::UiEvent(event) => {
       match event {
-        Event::Custom(data) => data.downcast::<T>().unwrap(),
+        UiEvent::Event(event) => {
+          match event {
+            Event::Custom(data) => data.downcast::<T>().unwrap(),
+            _ => panic!("Unexpected event: {:?}", event),
+          }
+        },
         _ => panic!("Unexpected event: {:?}", event),
       }
     },
-    _ => panic!("Unexpected event: {:?}", event),
+    MetaEvent::Chain(_, _) => panic!("Unexpected event: {:?}", event),
   }
 }
 

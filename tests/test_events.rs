@@ -171,7 +171,7 @@ fn events_bubble_up_when_unhandled() {
   let result = ui.handle(clone_event(&event));
   // An unhandled event should just be returned after every widget
   // forwarded it.
-  assert!(compare_ui_events(&result.unwrap(), &event.into()));
+  assert!(compare_meta_events(&result.unwrap(), &event.into()));
 }
 
 #[test]
@@ -188,7 +188,7 @@ fn targeted_event_returned_on_no_focus() {
   ui.hide(w);
 
   let result = ui.handle(clone_event(&event));
-  assert!(compare_ui_events(&result.unwrap(), &event.into()));
+  assert!(compare_meta_events(&result.unwrap(), &event.into()));
 }
 
 fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<MetaEvent> {
@@ -340,7 +340,7 @@ fn quit_event() {
   });
 
   let result = ui.handle(UiEvent::Quit);
-  assert!(compare_ui_events(&result.unwrap(), &UiEvent::Quit));
+  assert!(compare_meta_events(&result.unwrap(), &UiEvent::Quit.into()));
 }
 
 
@@ -387,8 +387,8 @@ fn chain_event_dispatch() {
   ui.focus(w1);
 
   let event = Event::Custom(Box::new(1u64));
-  let result = ui.handle(event).unwrap();
-  assert_eq!(*unwrap_custom::<u64>(result), 8);
+  let result = ui.handle(event).unwrap().into_last();
+  assert_eq!(*unwrap_custom::<u64>(result.into()), 8);
 }
 
 static mut HOOK_COUNT: u64 = 0;
@@ -474,5 +474,5 @@ fn hook_events_with_return() {
   let event = Event::KeyDown(Key::Char(' '));
   let result = ui.handle(event);
 
-  assert!(compare_ui_events(&result.unwrap(), &UiEvent::Quit.into()));
+  assert!(compare_meta_events(&result.unwrap(), &UiEvent::Quit.into()));
 }

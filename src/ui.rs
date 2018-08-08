@@ -429,7 +429,7 @@ impl Ui {
   /// This function performs the initial determination of which widget
   /// is supposed to handle the given event and then passes it down to
   /// the actual event handler.
-  pub fn handle<E>(&mut self, event: E) -> Option<UiEvent>
+  pub fn handle<E>(&mut self, event: E) -> Option<MetaEvent>
   where
     E: Into<UiEvent>,
   {
@@ -455,10 +455,7 @@ impl Ui {
     };
 
     let event = meta_event.opt_chain(ui_event);
-
-    self.handle_meta_event(idx, event).and_then(
-      |x| Some(x.into_last()),
-    )
+    self.handle_meta_event(idx, event)
   }
 
   /// Bubble up an event until it is handled by some `Widget`.

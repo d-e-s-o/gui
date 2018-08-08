@@ -1,6 +1,6 @@
 [package]
 name = "gui-derive"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 authors = ["Daniel Mueller <deso@posteo.net>"]
 license = "GPL-3.0+"
 homepage = "https://crates.io/crates/gui-derive"
@@ -15,7 +15,7 @@ Custom derive macros for the gui crate.
 proc-macro = true
 
 [dependencies.gui]
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 path = ".."
 
 [dependencies.quote]

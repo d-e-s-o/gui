@@ -106,9 +106,7 @@ pub enum MetaEvent {
   UiEvent(UiEvent),
   /// A chain of events.
   ///
-  /// The events will be processed in the order they are chained. Only
-  /// the result of the event handler for the last event will be
-  /// propagated to the caller.
+  /// The events will be processed in the order they are chained.
   Chain(UiEvent, Box<MetaEvent>),
 }
 
