@@ -211,28 +211,6 @@ fn focus_makes_widget_visible() {
   assert!(ui.is_displayed(widget));
 }
 
-#[test]
-fn last_focused() {
-  let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let c = ui.add_widget(root, &mut |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w = ui.add_widget(c, &mut |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-
-  assert!(ui.is_focused(root));
-  assert!(ui.last_focused().is_none());
-
-  ui.focus(c);
-  assert_eq!(ui.last_focused().unwrap(), root);
-
-  ui.focus(w);
-  assert_eq!(ui.last_focused().unwrap(), c);
-}
-
 
 fn counting_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
   Some(

@@ -153,9 +153,6 @@ pub trait Cap {
   /// Retrieve the currently focused widget.
   fn focused(&self) -> Option<Id>;
 
-  /// Retrieve the last focused widget.
-  fn last_focused(&self) -> Option<Id>;
-
   /// Focus a widget.
   ///
   /// The focused widget is the one receiving certain types of events
@@ -246,7 +243,6 @@ pub struct Ui {
   widgets: Vec<(WidgetData, Option<Box<Widget>>)>,
   hooked: HashSet<Index>,
   focused: Option<Index>,
-  last_focused: Option<Index>,
 }
 
 // Clippy raises a false alert due to the generic type used but not
@@ -263,7 +259,6 @@ impl Ui {
       widgets: Default::default(),
       hooked: Default::default(),
       focused: None,
-      last_focused: None,
     };
 
     let id = ui._add_widget(None, new_root_widget);
@@ -354,8 +349,6 @@ impl Ui {
     // We want to provide the invariant that a focused widget needs to
     // be visible.
     self.show(idx);
-
-    self.last_focused = self.focused;
     self.focused = Some(idx)
   }
 
@@ -581,11 +574,6 @@ impl Cap for Ui {
   /// Retrieve the currently focused widget.
   fn focused(&self) -> Option<Id> {
     self.focused.and_then(|x| Some(Id::new(x.idx, self)))
-  }
-
-  /// Retrieve the last focused widget.
-  fn last_focused(&self) -> Option<Id> {
-    self.last_focused.and_then(|x| Some(Id::new(x.idx, self)))
   }
 
   /// Focus a widget.
