@@ -162,19 +162,18 @@ fn visibility_fun() {
 }
 
 #[test]
-fn initial_focus() {
+fn no_initial_focus() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
-  // The widget created first should receive the focus and stay
-  // focused until directed otherwise.
-  assert!(ui.is_focused(root));
+  // No widget has the input focus by default.
+  assert!(ui.focused().is_none());
 
   let _ = ui.add_widget(root, &mut |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  assert!(ui.is_focused(root));
+  assert!(ui.focused().is_none());
 }
 
 #[test]
@@ -337,6 +336,7 @@ fn event_based_widget_creation() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
     Box::new(TestWidget::with_handler(id, create_handler))
   });
+  ui.focus(root);
 
   assert_eq!(ui.children(root).count(), 0);
 

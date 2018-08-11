@@ -288,12 +288,6 @@ impl Ui {
       self.widgets[parent_idx.idx].0.children.push(id)
     }
 
-    // If no widget has the focus we focus the newly created widget but
-    // then the focus stays unless explicitly changed.
-    if self.focused.is_none() {
-      self.focus(idx);
-    }
-
     let widget = new_widget(id, self);
     // Replace our placeholder with the actual widget we just created.
     // Note that because we store the children separately as part of an
