@@ -76,6 +76,45 @@ fn correct_ids() {
 }
 
 #[test]
+fn creation_order_is_child_order() {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w1 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w11 = ui.add_widget(w1, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w12 = ui.add_widget(w1, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w2 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w21 = ui.add_widget(w2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  let mut it = ui.children(root);
+  assert_eq!(*it.next().unwrap(), w1);
+  assert_eq!(*it.next().unwrap(), w2);
+  assert!(it.next().is_none());
+
+  let mut it = ui.children(w1);
+  assert_eq!(*it.next().unwrap(), w11);
+  assert_eq!(*it.next().unwrap(), w12);
+  assert!(it.next().is_none());
+
+  let mut it = ui.children(w11);
+  assert!(it.next().is_none());
+
+  let mut it = ui.children(w2);
+  assert_eq!(*it.next().unwrap(), w21);
+  assert!(it.next().is_none());
+}
+
+#[test]
 #[cfg(debug_assertions)]
 #[should_panic(expected = "The given Id belongs to a different Ui")]
 fn share_ids_between_ui_objects() {
@@ -208,6 +247,160 @@ fn focus_makes_widget_visible() {
   // again.
   ui.focus(widget);
   assert!(ui.is_displayed(widget));
+}
+
+#[test]
+fn focus_changes_child_order() {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w1 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w11 = ui.add_widget(w1, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w2 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w21 = ui.add_widget(w2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w22 = ui.add_widget(w2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w23 = ui.add_widget(w2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  ui.focus(w1);
+  {
+    let mut it = ui.children(root);
+    assert_eq!(*it.next().unwrap(), w1);
+    assert_eq!(*it.next().unwrap(), w2);
+    assert!(it.next().is_none());
+  }
+
+  ui.focus(w22);
+  {
+    let mut it = ui.children(root);
+    assert_eq!(*it.next().unwrap(), w2);
+    assert_eq!(*it.next().unwrap(), w1);
+    assert!(it.next().is_none());
+
+    let mut it = ui.children(w2);
+    assert_eq!(*it.next().unwrap(), w22);
+    assert_eq!(*it.next().unwrap(), w21);
+    assert_eq!(*it.next().unwrap(), w23);
+    assert!(it.next().is_none());
+  }
+
+  ui.focus(w11);
+  {
+    let mut it = ui.children(root);
+    assert_eq!(*it.next().unwrap(), w1);
+    assert_eq!(*it.next().unwrap(), w2);
+    assert!(it.next().is_none());
+
+    let mut it = ui.children(w1);
+    assert_eq!(*it.next().unwrap(), w11);
+    assert!(it.next().is_none());
+  }
+}
+
+#[test]
+fn repeated_show_preserves_order() {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w1 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w11 = ui.add_widget(w1, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w2 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w21 = ui.add_widget(w2, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  // By default all widgets are visible. Make sure that issuing a show
+  // does not change the order of children. It should be a no-op.
+  let before = ui.children(root).cloned().collect::<Vec<_>>();
+
+  ui.show(w11);
+  let after = ui.children(root).cloned().collect::<Vec<_>>();
+  assert_eq!(before, after);
+
+  ui.show(w21);
+  let after = ui.children(root).cloned().collect::<Vec<_>>();
+  assert_eq!(before, after);
+}
+
+#[test]
+fn hide_changes_child_order() {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w1 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w2 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w3 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w4 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  ui.hide(w2);
+  {
+    let mut it = ui.children(root);
+    assert_eq!(*it.next().unwrap(), w1);
+    assert_eq!(*it.next().unwrap(), w3);
+    assert_eq!(*it.next().unwrap(), w4);
+    assert_eq!(*it.next().unwrap(), w2);
+    assert!(it.next().is_none());
+  }
+
+  ui.hide(w3);
+  {
+    let mut it = ui.children(root);
+    assert_eq!(*it.next().unwrap(), w1);
+    assert_eq!(*it.next().unwrap(), w4);
+    assert_eq!(*it.next().unwrap(), w3);
+    assert_eq!(*it.next().unwrap(), w2);
+    assert!(it.next().is_none());
+  }
+}
+
+#[test]
+fn repeated_hide_preserves_order() {
+  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let _ = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w2 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w3 = ui.add_widget(root, &mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+
+  ui.hide(w2);
+  ui.hide(w3);
+
+  let before = ui.children(root).cloned().collect::<Vec<_>>();
+  ui.hide(w2);
+
+  let after = ui.children(root).cloned().collect::<Vec<_>>();
+  assert_eq!(before, after);
 }
 
 

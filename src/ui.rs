@@ -318,7 +318,19 @@ impl Ui {
     self.widgets[idx.idx].0.children.iter()
   }
 
-  fn show(&mut self, idx: Index) {
+  /// Show the widget with the given `Index` and recursively all its parents.
+  ///
+  /// Note that the given reordering function needs to be idempotent
+  /// with respect to repeated reordering of the same widgets.
+  fn show<F>(&mut self, idx: Index, reorder_fn: F)
+  where
+    F: Fn(&mut Ui, Index),
+  {
+    // Always run before making the widget visible. The reorder function
+    // may check for visibility internally and relies in the value being
+    // that before the change.
+    reorder_fn(self, idx);
+
     let parent_idx = {
       let data = &mut self.widgets[idx.idx].0;
       data.visible = true;
@@ -326,7 +338,72 @@ impl Ui {
     };
 
     if let Some(parent_idx) = parent_idx {
-      self.show(parent_idx)
+      self.show(parent_idx, reorder_fn)
+    }
+  }
+
+  /// Reorder the widget with the given `Index` as the last visible one.
+  fn reorder<F>(&mut self, idx: Index, new_idx_fn: F)
+  where
+    F: FnOnce(&Ui, &Vec<Id>) -> usize,
+  {
+    // Non-lexical lifetimes I need you, now!
+    if let Some(parent_idx) = self.widgets[idx.idx].0.parent_idx {
+      // First retrieve the index of the widget we are interested in in
+      // its parent's list of children.
+      let cur_idx = {
+        let children = &self.widgets[parent_idx.idx].0.children;
+        let id = Id::new(idx.idx, self);
+        children.iter().position(|x| *x == id).unwrap()
+      };
+
+      // Now remove said widget from the list of children.
+      let id = self.widgets[parent_idx.idx].0.children.remove(cur_idx);
+      // Next find the spot where to insert the widget as the first
+      // hidden child.
+      let new_idx = new_idx_fn(self, &self.widgets[parent_idx.idx].0.children);
+      // And reinsert it at this spot.
+      self.widgets[parent_idx.idx].0.children.insert(new_idx, id)
+    } else {
+      // No parent. Nothing to do.
+    }
+  }
+
+  /// Reorder the widget with the given `Index` as the last visible one.
+  fn reorder_as_focused(&mut self, idx: Index) {
+    // Reordering to the top is an idempotent operations already, but it
+    // potentially involves allocation and deallocation and so don't do
+    // it unless necessary.
+    if !self.is_top_most_child(idx) {
+      self.reorder(idx, |_, _| 0);
+    }
+  }
+
+  /// Reorder the widget with the given `Index` as the last visible one.
+  fn reorder_as_visible(&mut self, idx: Index) {
+    // In order to appear idempotent, only reorder the given widget in
+    // the parent's list of children if it is not already visible.
+    if !self.is_visible(idx) {
+      self.reorder(idx, |ui, children| {
+        children
+          .iter()
+          .rev()
+          .position(|x| Cap::is_visible(ui, *x))
+          .and_then(|x| Some(x + 1))
+          .unwrap_or_else(|| children.len())
+      })
+    }
+  }
+
+  /// Reorder the widget with the given `Index` as the first hidden one.
+  fn reorder_as_hidden(&mut self, idx: Index) {
+    if self.is_visible(idx) {
+      self.reorder(idx, |ui, children| {
+        children
+          .iter()
+          .position(|x| !Cap::is_visible(ui, *x))
+          .unwrap_or_else(|| children.len())
+      })
     }
   }
 
@@ -339,11 +416,22 @@ impl Ui {
     data.visible && data.parent_idx.map_or(true, |x| self.is_displayed(x))
   }
 
+  fn is_top_most_child(&self, idx: Index) -> bool {
+    let parent_idx = self.widgets[idx.idx].0.parent_idx;
+
+    if let Some(parent_idx) = parent_idx {
+      let children = &self.widgets[parent_idx.idx].0.children;
+      children[0].idx == idx
+    } else {
+      true
+    }
+  }
+
   fn focus(&mut self, idx: Index) {
     // We want to provide the invariant that a focused widget needs to
     // be visible.
-    self.show(idx);
-    self.focused = Some(idx)
+    self.show(idx, Ui::reorder_as_focused);
+    self.focused = Some(idx);
   }
 
   fn with<F, R>(&mut self, idx: Index, with_widget: F) -> R
@@ -542,7 +630,7 @@ impl Cap for Ui {
   /// Show a widget, i.e., set its and its parents' visibility flag.
   fn show(&mut self, widget: Id) {
     let idx = self.validate(widget);
-    self.show(idx)
+    self.show(idx, Ui::reorder_as_visible);
   }
 
   /// Hide a widget, i.e., unset its visibility flag.
@@ -552,7 +640,8 @@ impl Cap for Ui {
     }
 
     let idx = self.validate(widget);
-    self.widgets[idx.idx].0.visible = false
+    self.reorder_as_hidden(idx);
+    self.widgets[idx.idx].0.visible = false;
   }
 
   /// Check whether a widget has its visibility flag set.
@@ -581,6 +670,7 @@ impl Cap for Ui {
     let idx = self.validate(widget);
     let result = self.focused == Some(idx);
     debug_assert!(result && self.is_displayed(idx) || !result);
+    debug_assert!(result && self.is_top_most_child(idx) || !result);
     result
   }
 
