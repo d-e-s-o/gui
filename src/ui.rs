@@ -468,7 +468,7 @@ impl Ui {
       // TODO: Ideally we would want to go without the recursion stuff we
       //       have. This may not be possible (efficiently) with safe
       //       Rust, though. Not sure.
-      let bbox = widget.render(renderer, bbox);
+      let bbox = widget.render(renderer, bbox, self);
 
       for child_id in self.children(idx).rev() {
         let child_idx = self.validate(*child_id);

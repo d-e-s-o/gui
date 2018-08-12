@@ -48,7 +48,7 @@ impl Placeholder {
 }
 
 impl Renderable for Placeholder {
-  fn render(&self, _renderer: &Renderer, _bbox: BBox) -> BBox {
+  fn render(&self, _renderer: &Renderer, _bbox: BBox, _cap: &Cap) -> BBox {
     unreachable!()
   }
 }

@@ -18,11 +18,17 @@
 // *************************************************************************
 
 use BBox;
+use Cap;
 use Renderer;
 
 
 /// A trait representing a renderable object.
 pub trait Renderable {
   /// Render the renderable object.
-  fn render(&self, renderer: &Renderer, bbox: BBox) -> BBox;
+  ///
+  /// This method just forwards the call to the given `Renderer`,
+  /// supplying a trait object of the actual widget. The renderer is
+  /// advised to honor the given `BBox` and is free to inquire
+  /// additional state using the supplied `Cap`.
+  fn render(&self, renderer: &Renderer, bbox: BBox, cap: &Cap) -> BBox;
 }

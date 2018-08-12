@@ -17,6 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use Cap;
 use Widget;
 
 
@@ -83,7 +84,7 @@ pub trait Renderer {
   /// #   fn renderable_area(&self) -> BBox {
   /// #     Default::default()
   /// #   }
-  /// fn render(&self, widget: &Widget, bbox: BBox) -> BBox {
+  /// fn render(&self, widget: &Widget, bbox: BBox, cap: &Cap) -> BBox {
   ///   if let Some(widget1) = widget.downcast_ref::<ConcreteWidget1>() {
   ///     self.render_concrete_widget1(widget1, bbox)
   ///   } else if let Some(widget2) = widget.downcast_ref::<ConcreteWidget1>() {
@@ -97,7 +98,7 @@ pub trait Renderer {
   /// ```
   // TODO: Ideally we would like to have a double dispatch mechanism for
   //       determining the object to render.
-  fn render(&self, object: &Widget, bbox: BBox) -> BBox;
+  fn render(&self, object: &Widget, bbox: BBox, cap: &Cap) -> BBox;
 
   /// Perform some post-render step.
   fn post_render(&self) {}
