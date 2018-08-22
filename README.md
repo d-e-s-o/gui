@@ -17,19 +17,30 @@ typically seen in a UI. The infrastructure for dispatching events to
 widgets is an example. To make proper use of it, the functionality
 provided by this crate needs to be glued with the underlying system.
 
+**gui** is used for exploring parts of the design space for user
+interface architecture using [Rust][rust-lang]. Design of UI systems in
+Rust is generally considered hard and to a large degree an unsolved
+problem, although there are various promising designs out there.
+
 
 Status
 ------
 
-The crate is to be considered an experiment more than anything else. It
-is used for exploring parts of the design space for user interface
-architecture using [Rust][rust-lang]. Design of UI systems in Rust is
-generally considered hard and to a large degree an unsolved problem,
-although there are various promising designs out there.
+The crate is under active development, and while its core has been
+reasonably stable for a while, changes should be anticipated in the
+future. In its current state mouse support of any kind is missing.
 
 Given this current state, changes in API design are to be expected.
+
+
+Example Usage
+-------------
+
+The [notnow][notnow] program is relying on the **gui** crate for the
+creation of its terminal based UI. The basic workings can be seen there.
 
 [gtk]: https://www.gtk.org
 [qt]: https://www.qt.io
 [wxwidgets]: https://wxwidgets.org
 [rust-lang]: https://www.rust-lang.org
+[notnow]: https://crates.io/crates/notnow
