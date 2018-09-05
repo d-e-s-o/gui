@@ -1,6 +1,9 @@
 gui
 ===
 
+- [Documentation][docs-rs]
+- [Changelog](CHANGELOG.md)
+
 **gui** (short for **g**eneric **u**ser **i**nterface) is a crate
 providing basic user interface functionality. It strives to be
 as independent as possible of the underlying system architecture. That
@@ -39,6 +42,7 @@ Example Usage
 The [notnow][notnow] program is relying on the **gui** crate for the
 creation of its terminal based UI. The basic workings can be seen there.
 
+[docs-rs]: https://docs.rs/crate/gui
 [gtk]: https://www.gtk.org
 [qt]: https://www.qt.io
 [wxwidgets]: https://wxwidgets.org
