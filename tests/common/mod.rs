@@ -19,6 +19,7 @@
 
 extern crate gui;
 
+use std::any::Any;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt::Result;
@@ -32,21 +33,70 @@ use gui::MetaEvent;
 use gui::UiEvent;
 
 
-type HandlerBox = Box<Fn(Id, Event, &mut Cap) -> Option<MetaEvent>>;
+struct Handler<T>(T);
 
-struct Handler(HandlerBox);
-
-impl Debug for Handler {
+impl<T> Debug for Handler<T> {
   fn fmt(&self, f: &mut Formatter) -> Result {
     write!(f, "common::Handler")
   }
 }
 
-impl Deref for Handler {
-  type Target = HandlerBox;
+impl<T> Deref for Handler<T> {
+  type Target = T;
 
   fn deref(&self) -> &Self::Target {
     &self.0
+  }
+}
+
+type EventFn = Fn(Id, Event, &mut Cap) -> Option<MetaEvent>;
+type CustomFn = Fn(Id, Box<Any>, &mut Cap) -> Option<MetaEvent>;
+
+type EventHandler = Handler<Box<EventFn>>;
+type CustomHandler = Handler<Box<CustomFn>>;
+
+
+#[derive(Debug)]
+pub struct TestWidgetBuilder {
+  event_handler: Option<EventHandler>,
+  custom_handler: Option<CustomHandler>,
+}
+
+#[allow(unused)]
+impl TestWidgetBuilder {
+  /// Create a new `TestWidgetBuilder` object.
+  pub fn new() -> Self {
+    Self {
+      event_handler: None,
+      custom_handler: None,
+    }
+  }
+
+  /// Set a handler for `Handleable::handle`.
+  pub fn event_handler<F>(mut self, handler: F) -> Self
+  where
+    F: 'static + Fn(Id, Event, &mut Cap) -> Option<MetaEvent>,
+  {
+    self.event_handler = Some(Handler(Box::new(handler)));
+    self
+  }
+
+  /// Set a handler for `Handleable::handle_custom`.
+  pub fn custom_handler<F>(mut self, handler: F) -> Self
+  where
+    F: 'static + Fn(Id, Box<Any>, &mut Cap) -> Option<MetaEvent>,
+  {
+    self.custom_handler = Some(Handler(Box::new(handler)));
+    self
+  }
+
+  /// Build the `TestWidget` object.
+  pub fn build(self, id: Id) -> TestWidget {
+    TestWidget {
+      id: id,
+      event_handler: self.event_handler,
+      custom_handler: self.custom_handler,
+    }
   }
 }
 
@@ -54,38 +104,40 @@ impl Deref for Handler {
 #[derive(Debug, GuiWidget)]
 pub struct TestWidget {
   id: Id,
-  handler: Option<Handler>,
+  event_handler: Option<EventHandler>,
+  custom_handler: Option<CustomHandler>,
 }
 
 impl TestWidget {
   pub fn new(id: Id) -> Self {
     TestWidget {
       id: id,
-      handler: None,
-    }
-  }
-
-  #[allow(unused)]
-  pub fn with_handler<F>(id: Id, handler: F) -> Self
-  where
-    F: 'static + Fn(Id, Event, &mut Cap) -> Option<MetaEvent>,
-  {
-    TestWidget {
-      id: id,
-      handler: Some(Handler(Box::new(handler))),
+      event_handler: None,
+      custom_handler: None,
     }
   }
 }
 
 impl Handleable for TestWidget {
   fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
-    match self.handler.take() {
+    match self.event_handler.take() {
       Some(handler) => {
         let event = handler(self.id, event, cap);
-        self.handler = Some(handler);
+        self.event_handler = Some(handler);
         event
       },
       None => Some(event.into()),
+    }
+  }
+
+  fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<MetaEvent> {
+    match self.custom_handler.take() {
+      Some(handler) => {
+        let event = handler(self.id, event, cap);
+        self.custom_handler = Some(handler);
+        event
+      },
+      None => Some(UiEvent::Custom(event).into()),
     }
   }
 }
@@ -96,7 +148,6 @@ pub fn clone_event(event: &Event) -> Event {
   match *event {
     Event::KeyUp(key) => Event::KeyUp(key),
     Event::KeyDown(key) => Event::KeyDown(key),
-    Event::Custom(_) => panic!("Cannot clone custom event"),
   }
 }
 
@@ -115,7 +166,6 @@ pub fn compare_events(event1: &Event, event2: &Event) -> bool {
         _ => false,
       }
     },
-    Event::Custom(_) => panic!("Cannot compare custom events"),
   }
 }
 
@@ -124,7 +174,8 @@ pub fn clone_ui_event(event: &UiEvent) -> UiEvent {
   match *event {
     UiEvent::Event(ref event) => UiEvent::Event(clone_event(event)),
     UiEvent::Quit => UiEvent::Quit,
-    UiEvent::Custom(_, _) => panic!("Cannot clone custom event"),
+    UiEvent::Custom(_) |
+    UiEvent::Directed(_, _) => panic!("Cannot clone custom event"),
   }
 }
 
@@ -142,7 +193,8 @@ pub fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
         _ => false,
       }
     },
-    UiEvent::Custom(_, _) => panic!("Cannot compare custom events"),
+    UiEvent::Custom(_) |
+    UiEvent::Directed(_, _) => panic!("Cannot compare custom events"),
   }
 }
 
@@ -154,12 +206,8 @@ where
   match event {
     MetaEvent::UiEvent(event) => {
       match event {
-        UiEvent::Event(event) => {
-          match event {
-            Event::Custom(data) => data.downcast::<T>().unwrap(),
-            _ => panic!("Unexpected event: {:?}", event),
-          }
-        },
+        UiEvent::Custom(event) => event.downcast::<T>().unwrap(),
+        UiEvent::Directed(_, event) => event.downcast::<T>().unwrap(),
         _ => panic!("Unexpected event: {:?}", event),
       }
     },

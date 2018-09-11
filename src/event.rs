@@ -71,8 +71,6 @@ pub enum Event {
   /// this widget to decide whether the event gets propagated further
   /// up.
   KeyUp(Key),
-  /// A custom event that can contain arbitrary data.
-  Custom(Box<Any>),
 }
 
 
@@ -82,11 +80,13 @@ pub enum UiEvent {
   /// An `Event` that can be handled by a `Handleable`.
   Event(Event),
   /// A custom event that can contain arbitrary data.
+  Custom(Box<Any>),
+  /// A custom event directed to a certain widget.
   ///
-  /// Custom events are destined for a particular widget, described by
-  /// the given `Id`. That is the only widget that will receive the
+  /// This custom event is destined for a particular widget, described
+  /// by the given `Id`. That is the only widget that will receive the
   /// event.
-  Custom(Id, Box<Any>),
+  Directed(Id, Box<Any>),
   /// A request to quit the application has been made.
   Quit,
 }

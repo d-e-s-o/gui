@@ -17,6 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use std::any::Any;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -522,7 +523,8 @@ impl Ui {
     let idx = match ui_event {
       // All currently defined "ordinary" events go to the currently
       // focused widget.
-      UiEvent::Event(_) => self.focused,
+      UiEvent::Event(_) |
+      UiEvent::Custom(_) => self.focused,
       // All others either carry an explicit target with them (e.g.,
       // some custom event) or have no target at all (for example the
       // Quit event).
@@ -569,6 +571,22 @@ impl Ui {
     }
   }
 
+  /// Handle a custom event.
+  fn handle_custom_event(&mut self, idx: Index, event: Box<Any>) -> Option<MetaEvent> {
+    let (meta_event, parent_idx) = self.with(idx, |ui, mut widget| {
+      let meta_event = widget.handle_custom(event, ui);
+      let parent_idx = ui.widgets[idx.idx].0.parent_idx;
+      (widget, (meta_event, parent_idx))
+    });
+
+    if let Some(meta_event) = meta_event {
+      self.handle_meta_event(parent_idx, meta_event)
+    } else {
+      // The event got handled.
+      None
+    }
+  }
+
   /// Handle a `UiEvent`.
   fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent) -> Option<MetaEvent> {
     match event {
@@ -584,10 +602,16 @@ impl Ui {
           Some(event.into())
         }
       },
-      UiEvent::Custom(id, any) => {
-        let event = Event::Custom(any);
+      UiEvent::Custom(event) => {
+        if let Some(idx) = idx {
+          self.handle_custom_event(idx, event)
+        } else {
+          Some(UiEvent::Custom(event).into())
+        }
+      },
+      UiEvent::Directed(id, event) => {
         let idx = self.validate(id);
-        self.handle_event(idx, event)
+        self.handle_custom_event(idx, event)
       },
       UiEvent::Quit => Some(UiEvent::Quit.into()),
     }

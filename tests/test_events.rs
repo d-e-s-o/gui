@@ -26,6 +26,7 @@ extern crate gui_derive;
 
 mod common;
 
+use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -46,6 +47,7 @@ use common::clone_ui_event;
 use common::compare_meta_events;
 use common::compare_ui_events;
 use common::TestWidget;
+use common::TestWidgetBuilder;
 use common::unwrap_custom;
 
 
@@ -216,14 +218,16 @@ fn event_handling_with_focus() {
     Box::new(TestWidget::new(id))
   });
   let w1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, |_s, e, c| {
-      key_handler(e, c, None)
-    }))
+    let widget = TestWidgetBuilder::new()
+      .event_handler(|_s, e, c| key_handler(e, c, None))
+      .build(id);
+    Box::new(widget)
   });
   let w2 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, move |_s, e, c| {
-      key_handler(e, c, Some(w1))
-    }))
+    let widget = TestWidgetBuilder::new()
+      .event_handler(move |_s, e, c| key_handler(e, c, Some(w1)))
+      .build(id);
+    Box::new(widget)
   });
 
   ui.focus(w2);
@@ -237,69 +241,75 @@ fn event_handling_with_focus() {
   assert!(ui.is_focused(w1));
 }
 
-fn custom_undirected_response_handler(_: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
-  Some(
-    match event {
-      Event::Custom(e) => {
-        let value = *e.downcast::<u64>().unwrap();
-        Event::Custom(Box::new(value + 1))
-      },
-      _ => event,
-    }.into(),
-  )
+fn custom_undirected_response_handler(_: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+  let value = *event.downcast::<u64>().unwrap();
+  Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
 #[test]
 fn custom_undirected_response_event() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_undirected_response_handler)
+      .build(id);
+    Box::new(widget)
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_undirected_response_handler)
+      .build(id);
+    Box::new(widget)
   });
   let w1 = ui.add_widget(c1, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_undirected_response_handler)
+      .build(id);
+    Box::new(widget)
   });
 
   // We focus the widget we just created, which means that the event
   // will travel through the widget and all its parents.
   ui.focus(w1);
 
-  let event = Event::Custom(Box::new(42u64));
+  let event = UiEvent::Custom(Box::new(42u64));
   let result = ui.handle(event).unwrap();
   // We expect three increments, one from each of the widgets.
   assert_eq!(*unwrap_custom::<u64>(result), 45);
 }
 
-fn custom_directed_response_handler(_: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
-  match event {
-    Event::Custom(data) => {
-      let cell = *data.downcast::<Rc<RefCell<u64>>>().unwrap();
-      let value = *cell.borrow();
-      cell.replace(value + 1);
-      None
-    },
-    _ => Some(event.into()),
-  }
+fn custom_directed_response_handler(_: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+  let cell = *event.downcast::<Rc<RefCell<u64>>>().unwrap();
+  let value = *cell.borrow();
+  cell.replace(value + 1);
+  None
 }
 
 #[test]
 fn custom_directed_response_event() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_directed_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_directed_response_handler)
+      .build(id);
+    Box::new(widget)
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_directed_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_directed_response_handler)
+      .build(id);
+    Box::new(widget)
   });
   let w1 = ui.add_widget(c1, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_directed_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_directed_response_handler)
+      .build(id);
+    Box::new(widget)
   });
 
   ui.focus(w1);
 
   let cell = RefCell::new(1337u64);
   let rc = Rc::new(cell);
-  let event = Event::Custom(Box::new(Rc::clone(&rc)));
+  let event = UiEvent::Custom(Box::new(Rc::clone(&rc)));
 
   let result = ui.handle(event);
   assert!(result.is_none());
@@ -311,18 +321,27 @@ fn custom_directed_response_event() {
 #[test]
 fn direct_custom_event() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_undirected_response_handler)
+      .build(id);
+    Box::new(widget)
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_undirected_response_handler)
+      .build(id);
+    Box::new(widget)
   });
   let w1 = ui.add_widget(c1, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, custom_undirected_response_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(custom_undirected_response_handler)
+      .build(id);
+    Box::new(widget)
   });
 
   ui.focus(c1);
 
-  let event = UiEvent::Custom(w1, Box::new(10u64));
+  let event = UiEvent::Directed(w1, Box::new(10u64));
   let result = ui.handle(event).unwrap();
   assert_eq!(*unwrap_custom::<u64>(result), 13);
 }
@@ -346,47 +365,46 @@ fn quit_event() {
 
 static mut ACCUMULATOR: u64 = 0;
 
-fn accumulating_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
-  match event {
-    Event::Custom(data) => {
-      let value = *data.downcast::<u64>().unwrap();
+fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+  let value = *event.downcast::<u64>().unwrap();
 
-      unsafe {
-        ACCUMULATOR += value;
-        Some(Event::Custom(Box::new(ACCUMULATOR)).into())
-      }
-    },
-    _ => Some(event.into()),
+  unsafe {
+    ACCUMULATOR += value;
+    Some(UiEvent::Custom(Box::new(ACCUMULATOR)).into())
   }
 }
 
-fn chaining_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
-  match event {
-    Event::Custom(data) => {
-      let value = data.downcast::<u64>().unwrap();
-      let event1 = Event::Custom(Box::new(*value));
-      let event2 = Event::Custom(Box::new(*value + 1));
-      Some(event1.chain(event2))
-    },
-    _ => Some(event.into()),
-  }
+fn chaining_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+  let value = event.downcast::<u64>().unwrap();
+  let event1 = UiEvent::Custom(Box::new(*value));
+  let event2 = UiEvent::Custom(Box::new(*value + 1));
+  Some(event1.chain(event2))
 }
 
 #[test]
 fn chain_event_dispatch() {
   let (mut ui, r) = Ui::new(&mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, accumulating_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(accumulating_handler)
+      .build(id);
+    Box::new(widget)
   });
   let c1 = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, chaining_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(chaining_handler)
+      .build(id);
+    Box::new(widget)
   });
   let w1 = ui.add_widget(c1, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, chaining_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(chaining_handler)
+      .build(id);
+    Box::new(widget)
   });
 
   ui.focus(w1);
 
-  let event = Event::Custom(Box::new(1u64));
+  let event = UiEvent::Custom(Box::new(1u64));
   let result = ui.handle(event).unwrap().into_last();
   assert_eq!(*unwrap_custom::<u64>(result.into()), 8);
 }
@@ -465,7 +483,10 @@ fn hook_events_with_return() {
     Box::new(TestWidget::new(id))
   });
   let w = ui.add_widget(r, &mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, swallowing_event_handler))
+    let widget = TestWidgetBuilder::new()
+      .event_handler(swallowing_event_handler)
+      .build(id);
+    Box::new(widget)
   });
 
   ui.focus(w);

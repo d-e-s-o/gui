@@ -25,6 +25,8 @@ extern crate gui_derive;
 
 mod common;
 
+use std::any::Any;
+
 use gui::Cap;
 use gui::Event;
 use gui::Handleable;
@@ -32,10 +34,10 @@ use gui::Id;
 use gui::Key;
 use gui::MetaEvent;
 use gui::Ui;
-#[cfg(debug_assertions)]
 use gui::UiEvent;
 
 use common::TestWidget;
+use common::TestWidgetBuilder;
 use common::unwrap_custom;
 
 
@@ -132,7 +134,7 @@ fn share_ids_between_ui_objects() {
   // `widget` is registered to `ui1` and so using it in the context of
   // `ui2` is not as intended. On debug builds we have special detection
   // in place to provide a meaningful error, that should trigger here.
-  ui2.handle(UiEvent::Custom(widget, Box::new(())));
+  ui2.handle(UiEvent::Directed(widget, Box::new(())));
 }
 
 #[test]
@@ -404,16 +406,9 @@ fn repeated_hide_preserves_order() {
 }
 
 
-fn counting_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
-  Some(
-    match event {
-      Event::Custom(e) => {
-        let value = *e.downcast::<u64>().unwrap();
-        Event::Custom(Box::new(value + 1))
-      },
-      _ => event,
-    }.into(),
-  )
+fn counting_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+  let value = *event.downcast::<u64>().unwrap();
+  Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
 
@@ -430,7 +425,10 @@ struct CreatingWidget {
 impl CreatingWidget {
   pub fn new(id: Id, cap: &mut Cap) -> Self {
     let child = cap.add_widget(id, &mut |id, _cap| {
-      Box::new(TestWidget::with_handler(id, counting_handler))
+      let widget = TestWidgetBuilder::new()
+        .custom_handler(counting_handler)
+        .build(id);
+      Box::new(widget)
     });
     // Focus the "last" widget. Doing so allows us to send an event to
     // all widgets.
@@ -449,7 +447,7 @@ impl CreatingWidget {
 }
 
 impl Handleable for CreatingWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
+  fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<MetaEvent> {
     counting_handler(self.id, event, cap)
   }
 }
@@ -463,7 +461,7 @@ fn recursive_widget_creation() {
     Box::new(CreatingWidget::new(id, cap))
   });
 
-  let event = Event::Custom(Box::new(0u64));
+  let event = UiEvent::Custom(Box::new(0u64));
   let result = ui.handle(event).unwrap();
   // We expect three increments. Note that we have four widgets in
   // total, but we cannot easily have the event reach all four of them
@@ -527,7 +525,10 @@ fn create_handler(widget: Id, event: Event, cap: &mut Cap) -> Option<MetaEvent> 
 #[test]
 fn event_based_widget_creation() {
   let (mut ui, root) = Ui::new(&mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, create_handler))
+    let widget = TestWidgetBuilder::new()
+      .event_handler(create_handler)
+      .build(id);
+    Box::new(widget)
   });
   ui.focus(root);
 
@@ -542,7 +543,7 @@ fn event_based_widget_creation() {
 }
 
 
-fn recursive_operations_handler(widget: Id, _event: Event, cap: &mut Cap) -> Option<MetaEvent> {
+fn recursive_operations_handler(widget: Id, _event: Box<Any>, cap: &mut Cap) -> Option<MetaEvent> {
   // Check that we can use the supplied `Cap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);
@@ -554,8 +555,11 @@ fn recursive_operations_handler(widget: Id, _event: Event, cap: &mut Cap) -> Opt
 #[test]
 fn recursive_widget_operations() {
   let (mut ui, _) = Ui::new(&mut |id, _cap| {
-    Box::new(TestWidget::with_handler(id, recursive_operations_handler))
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(recursive_operations_handler)
+      .build(id);
+    Box::new(widget)
   });
 
-  ui.handle(Event::Custom(Box::new(())));
+  ui.handle(UiEvent::Custom(Box::new(())));
 }

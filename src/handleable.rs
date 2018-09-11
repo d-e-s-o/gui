@@ -17,9 +17,12 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use std::any::Any;
+
 use Cap;
 use Event;
 use MetaEvent;
+use UiEvent;
 
 
 /// A trait representing an object capable of handling events.
@@ -35,5 +38,11 @@ pub trait Handleable {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())
+  }
+
+  /// Handle a custom event.
+  #[allow(unused_variables)]
+  fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<MetaEvent> {
+    Some(UiEvent::Custom(event).into())
   }
 }
