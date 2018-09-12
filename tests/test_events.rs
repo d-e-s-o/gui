@@ -410,7 +410,7 @@ fn chain_event_dispatch() {
 
 static mut HOOK_COUNT: u64 = 0;
 
-fn count_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<MetaEvent> {
+fn count_event_hook(_widget: &mut Widget, _event: Event, _cap: &Cap) -> Option<MetaEvent> {
   unsafe {
     HOOK_COUNT += 1;
   }
@@ -467,7 +467,7 @@ fn hook_events_handler() {
 }
 
 
-fn quit_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<MetaEvent> {
+fn quit_event_hook(_widget: &mut Widget, _event: Event, _cap: &Cap) -> Option<MetaEvent> {
   Some(UiEvent::Quit.into())
 }
 

@@ -105,7 +105,7 @@ type NewWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
-type EventHookFn = &'static Fn(&mut Widget, &Event, &Cap) -> Option<MetaEvent>;
+type EventHookFn = &'static Fn(&mut Widget, Event, &Cap) -> Option<MetaEvent>;
 
 
 /// A capability allowing for various widget related operations.
@@ -480,7 +480,7 @@ impl Ui {
   }
 
   /// Invoke all registered event hooks for the given event.
-  fn invoke_event_hooks(&mut self, event: &Event) -> Option<MetaEvent> {
+  fn invoke_event_hooks(&mut self, event: Event) -> Option<MetaEvent> {
     let mut result = None;
 
     // TODO: Is there a way to avoid this clone?
@@ -511,10 +511,10 @@ impl Ui {
   {
     let ui_event = event.into();
 
-    let meta_event = if let UiEvent::Event(event) = &ui_event {
+    let meta_event = if let UiEvent::Event(event) = ui_event {
       // Invoke the hooks before passing the event to the widgets on the
       // "official" route.
-      self.invoke_event_hooks(&event)
+      self.invoke_event_hooks(event)
     } else {
       None
     };
