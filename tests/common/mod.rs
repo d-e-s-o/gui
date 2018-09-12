@@ -143,36 +143,9 @@ impl Handleable for TestWidget {
 }
 
 
-#[allow(unused)]
-pub fn clone_event(event: &Event) -> Event {
-  match *event {
-    Event::KeyUp(key) => Event::KeyUp(key),
-    Event::KeyDown(key) => Event::KeyDown(key),
-  }
-}
-
-#[allow(unused)]
-pub fn compare_events(event1: &Event, event2: &Event) -> bool {
-  match *event1 {
-    Event::KeyUp(key1) => {
-      match *event2 {
-        Event::KeyUp(key2) => key1 == key2,
-        _ => false,
-      }
-    },
-    Event::KeyDown(key1) => {
-      match *event2 {
-        Event::KeyDown(key2) => key1 == key2,
-        _ => false,
-      }
-    },
-  }
-}
-
-
 pub fn clone_ui_event(event: &UiEvent) -> UiEvent {
   match *event {
-    UiEvent::Event(ref event) => UiEvent::Event(clone_event(event)),
+    UiEvent::Event(event) => UiEvent::Event(event),
     UiEvent::Quit => UiEvent::Quit,
     UiEvent::Custom(_) |
     UiEvent::Directed(_, _) => panic!("Cannot clone custom event"),
@@ -183,7 +156,7 @@ pub fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
   match *event1 {
     UiEvent::Event(ref event1) => {
       match *event2 {
-        UiEvent::Event(ref event2) => compare_events(event1, event2),
+        UiEvent::Event(ref event2) => event1 == event2,
         _ => false,
       }
     },

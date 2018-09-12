@@ -57,7 +57,7 @@ pub enum Key {
 
 
 /// An event that can be handled by a `Handleable`.
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Event {
   /// A key was pressed.
   ///

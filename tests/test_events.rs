@@ -41,7 +41,6 @@ use gui::Ui;
 use gui::UiEvent;
 use gui::Widget;
 
-use common::clone_event;
 use common::clone_meta_event;
 use common::clone_ui_event;
 use common::compare_meta_events;
@@ -54,7 +53,7 @@ use common::unwrap_custom;
 #[test]
 fn convert_event_into() {
   let event = Event::KeyDown(Key::Char(' '));
-  let orig_event = clone_event(&event);
+  let orig_event = event;
   let ui_event = UiEvent::from(event);
 
   assert!(compare_ui_events(&ui_event, &UiEvent::Event(orig_event)));
@@ -170,7 +169,7 @@ fn events_bubble_up_when_unhandled() {
   let event = Event::KeyUp(Key::Char(' '));
   ui.focus(w1);
 
-  let result = ui.handle(clone_event(&event));
+  let result = ui.handle(event);
   // An unhandled event should just be returned after every widget
   // forwarded it.
   assert!(compare_meta_events(&result.unwrap(), &event.into()));
@@ -189,7 +188,7 @@ fn targeted_event_returned_on_no_focus() {
   ui.focus(w);
   ui.hide(w);
 
-  let result = ui.handle(clone_event(&event));
+  let result = ui.handle(event);
   assert!(compare_meta_events(&result.unwrap(), &event.into()));
 }
 
