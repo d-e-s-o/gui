@@ -4,6 +4,11 @@ Unreleased
   renamed former `gui::UiEvent::Custom` into `gui::UiEvent::Directed`
 - Adjusted signature of event hook functions to take event by value, not
   reference (made possible because `gui::Event` is now copyable)
+- Added support for "returnable" events, i.e., a variant of a custom
+  event that is guaranteed to be returned to the sending widget (after
+  potential modification by the destination widget)
+  - Handling of custom events changed to using two new methods in the
+    `Handleable` trait: `handle_custom` and `handle_custom_ref`
 
 
 0.1.1

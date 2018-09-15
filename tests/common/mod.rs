@@ -51,15 +51,18 @@ impl<T> Deref for Handler<T> {
 
 type EventFn = Fn(Id, Event, &mut Cap) -> Option<MetaEvent>;
 type CustomFn = Fn(Id, Box<Any>, &mut Cap) -> Option<MetaEvent>;
+type CustomRefFn = Fn(Id, &mut Any, &mut Cap) -> Option<MetaEvent>;
 
 type EventHandler = Handler<Box<EventFn>>;
 type CustomHandler = Handler<Box<CustomFn>>;
+type CustomRefHandler = Handler<Box<CustomRefFn>>;
 
 
 #[derive(Debug)]
 pub struct TestWidgetBuilder {
   event_handler: Option<EventHandler>,
   custom_handler: Option<CustomHandler>,
+  custom_ref_handler: Option<CustomRefHandler>,
 }
 
 #[allow(unused)]
@@ -69,6 +72,7 @@ impl TestWidgetBuilder {
     Self {
       event_handler: None,
       custom_handler: None,
+      custom_ref_handler: None,
     }
   }
 
@@ -90,12 +94,22 @@ impl TestWidgetBuilder {
     self
   }
 
+  /// Set a handler for `Handleable::handle_custom_ref`.
+  pub fn custom_ref_handler<F>(mut self, handler: F) -> Self
+  where
+    F: 'static + Fn(Id, &mut Any, &mut Cap) -> Option<MetaEvent>,
+  {
+    self.custom_ref_handler = Some(Handler(Box::new(handler)));
+    self
+  }
+
   /// Build the `TestWidget` object.
   pub fn build(self, id: Id) -> TestWidget {
     TestWidget {
       id: id,
       event_handler: self.event_handler,
       custom_handler: self.custom_handler,
+      custom_ref_handler: self.custom_ref_handler,
     }
   }
 }
@@ -106,6 +120,7 @@ pub struct TestWidget {
   id: Id,
   event_handler: Option<EventHandler>,
   custom_handler: Option<CustomHandler>,
+  custom_ref_handler: Option<CustomRefHandler>,
 }
 
 impl TestWidget {
@@ -114,6 +129,7 @@ impl TestWidget {
       id: id,
       event_handler: None,
       custom_handler: None,
+      custom_ref_handler: None,
     }
   }
 }
@@ -140,6 +156,17 @@ impl Handleable for TestWidget {
       None => Some(UiEvent::Custom(event).into()),
     }
   }
+
+  fn handle_custom_ref(&mut self, event: &mut Any, cap: &mut Cap) -> Option<MetaEvent> {
+    match self.custom_ref_handler.take() {
+      Some(handler) => {
+        let event = handler(self.id, event, cap);
+        self.custom_ref_handler = Some(handler);
+        event
+      },
+      None => None,
+    }
+  }
 }
 
 
@@ -148,7 +175,8 @@ pub fn clone_ui_event(event: &UiEvent) -> UiEvent {
     UiEvent::Event(event) => UiEvent::Event(event),
     UiEvent::Quit => UiEvent::Quit,
     UiEvent::Custom(_) |
-    UiEvent::Directed(_, _) => panic!("Cannot clone custom event"),
+    UiEvent::Directed(_, _) |
+    UiEvent::Returnable(_, _, _) => panic!("Cannot clone custom event"),
   }
 }
 
@@ -167,7 +195,8 @@ pub fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
       }
     },
     UiEvent::Custom(_) |
-    UiEvent::Directed(_, _) => panic!("Cannot compare custom events"),
+    UiEvent::Directed(_, _) |
+    UiEvent::Returnable(_, _, _) => panic!("Cannot compare custom events"),
   }
 }
 

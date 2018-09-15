@@ -74,6 +74,30 @@ pub enum Event {
 }
 
 
+/// An event type containing custom and arbitrary data.
+///
+/// Custom events are the means for transferring arbitrary data between
+/// widgets.
+#[derive(Debug)]
+pub enum CustomEvent<'evnt> {
+  /// An event that is sent in full to another widget.
+  ///
+  /// Ownership of the event is transferred to a widget. Custom events
+  /// of this type are considered the safe default. They represent a
+  /// unidirectional message from one widget to another.
+  Owned(Box<Any>),
+  /// A mutable reference to an event that is sent to another widget.
+  ///
+  /// Ownership of an event of this type will eventually be transferred
+  /// back to the originating widget. Custom events of this type are
+  /// used for messages for which a response is expected or which
+  /// transfer state that eventually has to end up back at the sender.
+  /// The callee is free to modify the event in any way, but the `Ui`
+  /// proper ensures that it will be returned to the sender.
+  Borrowed(&'evnt mut Any),
+}
+
+
 /// An event that the `Ui` can process.
 #[derive(Debug)]
 pub enum UiEvent {
@@ -87,6 +111,11 @@ pub enum UiEvent {
   /// by the given `Id`. That is the only widget that will receive the
   /// event.
   Directed(Id, Box<Any>),
+  /// A custom event that is guaranteed to be returned back to the
+  /// issuer. The first `Id` represents the source (i.e., the widget the
+  /// event will be returned to), while the second one identifies the
+  /// destination (the widget actually "handling" the event).
+  Returnable(Id, Id, Box<Any>),
   /// A request to quit the application has been made.
   Quit,
 }

@@ -17,7 +17,6 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use std::any::Any;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -31,6 +30,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 use BBox;
+use CustomEvent;
 use Event;
 use MetaEvent;
 use OptionChain;
@@ -572,9 +572,12 @@ impl Ui {
   }
 
   /// Handle a custom event.
-  fn handle_custom_event(&mut self, idx: Index, event: Box<Any>) -> Option<MetaEvent> {
+  fn handle_custom_event(&mut self, idx: Index, event: CustomEvent) -> Option<MetaEvent> {
     let (meta_event, parent_idx) = self.with(idx, |ui, mut widget| {
-      let meta_event = widget.handle_custom(event, ui);
+      let meta_event = match event {
+        CustomEvent::Owned(event) => widget.handle_custom(event, ui),
+        CustomEvent::Borrowed(event) => widget.handle_custom_ref(event, ui),
+      };
       let parent_idx = ui.widgets[idx.idx].0.parent_idx;
       (widget, (meta_event, parent_idx))
     });
@@ -604,6 +607,7 @@ impl Ui {
       },
       UiEvent::Custom(event) => {
         if let Some(idx) = idx {
+          let event = CustomEvent::Owned(event);
           self.handle_custom_event(idx, event)
         } else {
           Some(UiEvent::Custom(event).into())
@@ -611,7 +615,25 @@ impl Ui {
       },
       UiEvent::Directed(id, event) => {
         let idx = self.validate(id);
+        let event = CustomEvent::Owned(event);
         self.handle_custom_event(idx, event)
+      },
+      UiEvent::Returnable(src, dst, mut any) => {
+        // First let the widget handle the event.
+        let meta_event1 = {
+          let mut event = CustomEvent::Borrowed(any.as_mut());
+          let idx = self.validate(dst);
+          self.handle_custom_event(idx, event)
+        };
+
+        // Then pass the event back to the widget that originally
+        // emitted it.
+        let meta_event2 = {
+          let event = CustomEvent::Owned(any);
+          let idx = self.validate(src);
+          self.handle_custom_event(idx, event)
+        };
+        meta_event1.chain(meta_event2)
       },
       UiEvent::Quit => Some(UiEvent::Quit.into()),
     }

@@ -496,3 +496,44 @@ fn hook_events_with_return() {
 
   assert!(compare_meta_events(&result.unwrap(), &UiEvent::Quit.into()));
 }
+
+
+fn returned_event_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+  let value = *event.downcast::<u64>().unwrap();
+  Some(UiEvent::Custom(Box::new(value + 1)).into())
+}
+
+fn returnable_event_handler(_widget: Id, event: &mut Any, _cap: &mut Cap) -> Option<MetaEvent> {
+  match event.downcast_mut::<u64>() {
+    Some(value) => *value *= 2,
+    None => panic!("encountered unexpected custom event"),
+  };
+  None
+}
+
+
+#[test]
+fn custom_returnable_events() {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w1 = ui.add_widget(r, &mut |id, _cap| {
+    let widget = TestWidgetBuilder::new()
+      .custom_handler(returned_event_handler)
+      .build(id);
+    Box::new(widget)
+  });
+  let w2 = ui.add_widget(r, &mut |id, _cap| {
+    let widget = TestWidgetBuilder::new()
+      .custom_ref_handler(returnable_event_handler)
+      .build(id);
+    Box::new(widget)
+  });
+
+  let src = w1;
+  let dst = w2;
+  let event = UiEvent::Returnable(src, dst, Box::new(10u64));
+  let result = ui.handle(event).unwrap();
+
+  assert_eq!(*unwrap_custom::<u64>(result), 21);
+}

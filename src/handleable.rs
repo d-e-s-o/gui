@@ -45,4 +45,10 @@ pub trait Handleable {
   fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<MetaEvent> {
     Some(UiEvent::Custom(event).into())
   }
+
+  /// Handle a custom event without transferring ownership of it.
+  #[allow(unused_variables)]
+  fn handle_custom_ref(&mut self, event: &mut Any, cap: &mut Cap) -> Option<MetaEvent> {
+    None
+  }
 }
