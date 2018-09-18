@@ -128,86 +128,78 @@ impl From<Event> for UiEvent {
 }
 
 
-/// An event potentially comprising multiple `UiEvent` objects.
+/// An event potentially comprising multiple event objects.
 #[derive(Debug)]
-pub enum ChainEvent {
-  /// An event handleable by a `Ui`.
-  Event(UiEvent),
+pub enum ChainEvent<E> {
+  /// An arbitrary event.
+  Event(E),
   /// A chain of events.
   ///
   /// The events will be processed in the order they are chained.
-  Chain(UiEvent, Box<ChainEvent>),
+  Chain(E, Box<ChainEvent<E>>),
 }
 
-impl ChainEvent {
-  /// Convert this `ChainEvent` into the last `UiEvent` it comprises.
-  pub fn into_last(self) -> UiEvent {
+impl<E> ChainEvent<E> {
+  /// Convert this `ChainEvent` into the last event it comprises.
+  pub fn into_last(self) -> E {
     match self {
-      ChainEvent::Event(ui_event) => ui_event,
+      ChainEvent::Event(event) => event,
       ChainEvent::Chain(_, meta_event) => meta_event.into_last(),
     }
   }
 }
 
-/// A convenience conversion from `Event` to `ChainEvent`.
-impl From<Event> for ChainEvent {
-  fn from(event: Event) -> Self {
+
+/// An event potentially comprising multiple `UiEvent` objects.
+pub type MetaEvent = ChainEvent<UiEvent>;
+
+/// A convenience conversion from a single event into a `MetaEvent`.
+impl<E> From<E> for MetaEvent
+where
+  E: Into<UiEvent>,
+{
+  fn from(event: E) -> Self {
     ChainEvent::Event(event.into())
   }
 }
 
-/// A convenience conversion from `UiEvent` to `ChainEvent`.
-impl From<UiEvent> for ChainEvent {
-  fn from(event: UiEvent) -> Self {
-    ChainEvent::Event(event)
-  }
-}
-
-
-/// An event potentially comprising multiple `UiEvent` objects.
-pub type MetaEvent = ChainEvent;
-
 
 /// A trait for chaining of events.
-pub trait EventChain {
+pub trait EventChain<ED> {
   /// Chain together two events.
   ///
   /// The given event will effectively be appended to the current one
   /// and, hence, be handled after the first one got processed.
-  fn chain<E>(self, event: E) -> ChainEvent
+  fn chain<ES>(self, event: ES) -> ChainEvent<ED>
   where
-    E: Into<ChainEvent>;
+    ES: Into<ChainEvent<ED>>;
 
   /// Chain together an event with an optional event.
   ///
   /// This method returns the chain of the first event with the second
   /// one, if present, or otherwise just returns the first one.
-  fn chain_opt<E>(self, event: Option<E>) -> ChainEvent
+  fn chain_opt<ES>(self, event: Option<ES>) -> ChainEvent<ED>
   where
-    E: Into<ChainEvent>;
+    ES: Into<ChainEvent<ED>>;
 }
 
-impl<ES> EventChain for ES
+impl<ES, ED> EventChain<ED> for ES
 where
-  ES: Into<ChainEvent>,
+  ES: Into<ChainEvent<ED>>,
 {
-  fn chain<E>(self, event: E) -> ChainEvent
+  fn chain<E>(self, event: E) -> ChainEvent<ED>
   where
-    E: Into<ChainEvent>
+    E: Into<ChainEvent<ED>>,
   {
     match self.into() {
-      ChainEvent::Event(ui_event) => {
-        ChainEvent::Chain(ui_event, Box::new(event.into()))
-      },
-      ChainEvent::Chain(ui_event, meta_event) => {
-        ChainEvent::Chain(ui_event, Box::new(meta_event.chain(event)))
-      },
+      ChainEvent::Event(e) => ChainEvent::Chain(e, Box::new(event.into())),
+      ChainEvent::Chain(e, meta_event) => ChainEvent::Chain(e, Box::new(meta_event.chain(event))),
     }
   }
 
-  fn chain_opt<E>(self, event: Option<E>) -> ChainEvent
+  fn chain_opt<E>(self, event: Option<E>) -> ChainEvent<ED>
   where
-    E: Into<ChainEvent>,
+    E: Into<ChainEvent<ED>>,
   {
     match event {
       Some(event) => self.chain(event),
@@ -218,25 +210,28 @@ where
 
 
 /// A trait for chaining of optional events.
-pub trait OptionChain {
+pub trait OptionChain<ES, ED>
+where
+  ES: Into<ChainEvent<ED>>,
+{
   /// Chain an optional event with another optional event.
-  fn chain<E>(self, event: Option<E>) -> Option<ChainEvent>
+  fn chain<E>(self, event: Option<E>) -> Option<ChainEvent<ED>>
   where
-    E: Into<ChainEvent>;
+    E: Into<ChainEvent<ED>>;
 
   /// Chain an optional event with the given event.
-  fn opt_chain<E>(self, event: E) -> ChainEvent
+  fn opt_chain<E>(self, event: E) -> ChainEvent<ED>
   where
-    E: Into<ChainEvent>;
+    E: Into<ChainEvent<ED>>;
 }
 
-impl<ES> OptionChain for Option<ES>
+impl<ES, ED> OptionChain<ES, ED> for Option<ES>
 where
-  ES: Into<ChainEvent>,
+  ES: Into<ChainEvent<ED>>,
 {
-  fn chain<E>(self, event: Option<E>) -> Option<ChainEvent>
+  fn chain<E>(self, event: Option<E>) -> Option<ChainEvent<ED>>
   where
-    E: Into<ChainEvent>,
+    E: Into<ChainEvent<ED>>,
   {
     match self {
       Some(e1) => Some(e1.chain_opt(event)),
@@ -249,9 +244,9 @@ where
     }
   }
 
-  fn opt_chain<E>(self, event: E) -> ChainEvent
+  fn opt_chain<E>(self, event: E) -> ChainEvent<ED>
   where
-    E: Into<ChainEvent>,
+    E: Into<ChainEvent<ED>>,
   {
     match self {
       Some(e1) => e1.chain(event),
