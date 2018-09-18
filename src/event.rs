@@ -163,17 +163,17 @@ impl<E> ChainEvent<E> {
   pub fn into_last(self) -> E {
     match self {
       ChainEvent::Event(event) => event,
-      ChainEvent::Chain(_, meta_event) => meta_event.into_last(),
+      ChainEvent::Chain(_, chain) => chain.into_last(),
     }
   }
 }
 
 
 /// An event potentially comprising multiple `UiEvent` objects.
-pub type MetaEvent = ChainEvent<UiEvent>;
+pub type UiEvents = ChainEvent<UiEvent>;
 
-/// A convenience conversion from a single event into a `MetaEvent`.
-impl<E> From<E> for MetaEvent
+/// A convenience conversion from a single event into a chain of `UiEvent` objects.
+impl<E> From<E> for UiEvents
 where
   E: Into<UiEvent>,
 {
@@ -226,7 +226,7 @@ where
   {
     match self.into() {
       ChainEvent::Event(e) => ChainEvent::Chain(e, Box::new(event.into())),
-      ChainEvent::Chain(e, meta_event) => ChainEvent::Chain(e, Box::new(meta_event.chain(event))),
+      ChainEvent::Chain(e, chain) => ChainEvent::Chain(e, Box::new(chain.chain(event))),
     }
   }
 

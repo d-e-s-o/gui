@@ -32,9 +32,9 @@ use gui::Event;
 use gui::Handleable;
 use gui::Id;
 use gui::Key;
-use gui::MetaEvent;
 use gui::Ui;
 use gui::UiEvent;
+use gui::UiEvents;
 
 use common::TestWidget;
 use common::TestWidgetBuilder;
@@ -406,7 +406,7 @@ fn repeated_hide_preserves_order() {
 }
 
 
-fn counting_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+fn counting_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
@@ -447,7 +447,7 @@ impl CreatingWidget {
 }
 
 impl Handleable for CreatingWidget {
-  fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<MetaEvent> {
+  fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<UiEvents> {
     counting_handler(self.id, event, cap)
   }
 }
@@ -504,7 +504,7 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(widget: Id, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
+fn create_handler(widget: Id, event: Event, cap: &mut Cap) -> Option<UiEvents> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -543,7 +543,7 @@ fn event_based_widget_creation() {
 }
 
 
-fn recursive_operations_handler(widget: Id, _event: Box<Any>, cap: &mut Cap) -> Option<MetaEvent> {
+fn recursive_operations_handler(widget: Id, _event: Box<Any>, cap: &mut Cap) -> Option<UiEvents> {
   // Check that we can use the supplied `Cap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);

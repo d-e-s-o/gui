@@ -33,11 +33,11 @@ use BBox;
 use ChainEvent;
 use CustomEvent;
 use Event;
-use MetaEvent;
 use OptionChain;
 use Placeholder;
 use Renderer;
 use UiEvent;
+use UiEvents;
 use UnhandledEvent;
 use UnhandledEvents;
 use Widget;
@@ -108,7 +108,7 @@ type NewWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
-type EventHookFn = &'static Fn(&mut Widget, Event, &Cap) -> Option<MetaEvent>;
+type EventHookFn = &'static Fn(&mut Widget, Event, &Cap) -> Option<UiEvents>;
 
 
 /// A capability allowing for various widget related operations.
@@ -483,7 +483,7 @@ impl Ui {
   }
 
   /// Invoke all registered event hooks for the given event.
-  fn invoke_event_hooks(&mut self, event: Event) -> Option<MetaEvent> {
+  fn invoke_event_hooks(&mut self, event: Event) -> Option<UiEvents> {
     let mut result = None;
 
     // TODO: Is there a way to avoid this clone?
@@ -514,7 +514,7 @@ impl Ui {
   {
     let ui_event = event.into();
 
-    let meta_event = if let UiEvent::Event(event) = ui_event {
+    let ui_events = if let UiEvent::Event(event) = ui_event {
       // Invoke the hooks before passing the event to the widgets on the
       // "official" route.
       self.invoke_event_hooks(event)
@@ -534,8 +534,8 @@ impl Ui {
       _ => None,
     };
 
-    let event = meta_event.opt_chain(ui_event);
-    self.handle_meta_event(idx, event)
+    let events = ui_events.opt_chain(ui_event);
+    self.handle_ui_events(idx, events)
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
@@ -548,45 +548,45 @@ impl Ui {
     // widget's handle method uses the provided `Cap` object. All
     // the methods of this object are carefully chosen in a way to
     // not call into the widget itself.
-    let (meta_event, parent_idx) = self.with(idx, |ui, mut widget| {
-      let meta_event = widget.handle(event, ui);
+    let (events, parent_idx) = self.with(idx, |ui, mut widget| {
+      let events = widget.handle(event, ui);
       let parent_idx = ui.widgets[idx.idx].0.parent_idx;
-      (widget, (meta_event, parent_idx))
+      (widget, (events, parent_idx))
     });
 
-    if let Some(meta_event) = meta_event {
-      self.handle_meta_event(parent_idx, meta_event)
+    if let Some(events) = events {
+      self.handle_ui_events(parent_idx, events)
     } else {
       // The event got handled.
       None
     }
   }
 
-  /// Handle a `MetaEvent`.
-  fn handle_meta_event(&mut self, idx: Option<Index>, event: MetaEvent) -> Option<UnhandledEvents> {
-    match event {
-      ChainEvent::Event(ui_event) => self.handle_ui_event(idx, ui_event),
-      ChainEvent::Chain(ui_event, meta_event) => {
+  /// Handle a chain of `UiEvent` objects.
+  fn handle_ui_events(&mut self, idx: Option<Index>, events: UiEvents) -> Option<UnhandledEvents> {
+    match events {
+      ChainEvent::Event(event) => self.handle_ui_event(idx, event),
+      ChainEvent::Chain(event, chain) => {
         self
-          .handle_ui_event(idx, ui_event)
-          .chain(self.handle_meta_event(idx, *meta_event))
+          .handle_ui_event(idx, event)
+          .chain(self.handle_ui_events(idx, *chain))
       },
     }
   }
 
   /// Handle a custom event.
   fn handle_custom_event(&mut self, idx: Index, event: CustomEvent) -> Option<UnhandledEvents> {
-    let (meta_event, parent_idx) = self.with(idx, |ui, mut widget| {
-      let meta_event = match event {
+    let (events, parent_idx) = self.with(idx, |ui, mut widget| {
+      let events = match event {
         CustomEvent::Owned(event) => widget.handle_custom(event, ui),
         CustomEvent::Borrowed(event) => widget.handle_custom_ref(event, ui),
       };
       let parent_idx = ui.widgets[idx.idx].0.parent_idx;
-      (widget, (meta_event, parent_idx))
+      (widget, (events, parent_idx))
     });
 
-    if let Some(meta_event) = meta_event {
-      self.handle_meta_event(parent_idx, meta_event)
+    if let Some(events) = events {
+      self.handle_ui_events(parent_idx, events)
     } else {
       // The event got handled.
       None
@@ -623,7 +623,7 @@ impl Ui {
       },
       UiEvent::Returnable(src, dst, mut any) => {
         // First let the widget handle the event.
-        let meta_event1 = {
+        let events1 = {
           let mut event = CustomEvent::Borrowed(any.as_mut());
           let idx = self.validate(dst);
           self.handle_custom_event(idx, event)
@@ -631,12 +631,12 @@ impl Ui {
 
         // Then pass the event back to the widget that originally
         // emitted it.
-        let meta_event2 = {
+        let events2 = {
           let event = CustomEvent::Owned(any);
           let idx = self.validate(src);
           self.handle_custom_event(idx, event)
         };
-        meta_event1.chain(meta_event2)
+        events1.chain(events2)
       },
       UiEvent::Quit => Some(UnhandledEvent::Quit.into()),
     }

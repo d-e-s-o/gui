@@ -36,10 +36,10 @@ use gui::Event;
 use gui::EventChain;
 use gui::Id;
 use gui::Key;
-use gui::MetaEvent;
 use gui::OptionChain;
 use gui::Ui;
 use gui::UiEvent;
+use gui::UiEvents;
 use gui::UnhandledEvent;
 use gui::UnhandledEvents;
 use gui::Widget;
@@ -49,7 +49,7 @@ use common::TestWidgetBuilder;
 use common::unwrap_custom;
 
 
-fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
+fn compare_ui_event(event1: &UiEvent, event2: &UiEvent) -> bool {
   match *event1 {
     UiEvent::Event(ref event1) => {
       match *event2 {
@@ -69,19 +69,19 @@ fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
   }
 }
 
-fn compare_meta_events(event1: &MetaEvent, event2: &MetaEvent) -> bool {
+fn compare_ui_events(event1: &UiEvents, event2: &UiEvents) -> bool {
   match *event1 {
     ChainEvent::Event(ref event1) => {
       match *event2 {
-        ChainEvent::Event(ref event2) => compare_ui_events(event1, event2),
+        ChainEvent::Event(ref event2) => compare_ui_event(event1, event2),
         _ => false,
       }
     },
-    ChainEvent::Chain(ref event1, ref meta1) => {
+    ChainEvent::Chain(ref event1, ref chain1) => {
       match *event2 {
-        ChainEvent::Chain(ref event2, ref meta2) => {
-          compare_ui_events(event1, event2) &&
-          compare_meta_events(meta1, meta2)
+        ChainEvent::Chain(ref event2, ref chain2) => {
+          compare_ui_event(event1, event2) &&
+          compare_ui_events(chain1, chain2)
         },
         _ => false,
       }
@@ -134,11 +134,11 @@ fn convert_event_into() {
   let orig_event = event;
   let ui_event = UiEvent::from(event);
 
-  assert!(compare_ui_events(&ui_event, &UiEvent::Event(orig_event)));
+  assert!(compare_ui_event(&ui_event, &UiEvent::Event(orig_event)));
 }
 
 #[test]
-fn chain_meta_event() {
+fn chain_event() {
   let event1 = Event::KeyUp(Key::Char('a'));
   let orig_event1 = event1;
   let event2 = UiEvent::Quit;
@@ -150,11 +150,11 @@ fn chain_meta_event() {
     Box::new(orig_event2.into()),
   );
 
-  assert!(compare_meta_events(&event, &expected));
+  assert!(compare_ui_events(&event, &expected));
 }
 
 #[test]
-fn chain_meta_event_chain() {
+fn chain_event_chain() {
   let event1 = Event::KeyUp(Key::Char('a'));
   let orig_event1 = event1;
   let event2 = Event::KeyUp(Key::Char('z'));
@@ -174,7 +174,7 @@ fn chain_meta_event_chain() {
     ),
   );
 
-  assert!(compare_meta_events(&event, &expected));
+  assert!(compare_ui_events(&event, &expected));
 }
 
 #[test]
@@ -183,7 +183,7 @@ fn event_and_option_chain() {
   let orig_event = event;
   let result = event.chain_opt(None as Option<Event>);
 
-  assert!(compare_meta_events(&result, &orig_event.into()));
+  assert!(compare_ui_events(&result, &orig_event.into()));
 
   let event1 = Event::KeyDown(Key::Right);
   let orig_event1 = event1;
@@ -196,7 +196,7 @@ fn event_and_option_chain() {
     Box::new(orig_event2.into())
   );
 
-  assert!(compare_meta_events(&result, &expected));
+  assert!(compare_ui_events(&result, &expected));
 }
 
 #[test]
@@ -208,13 +208,13 @@ fn option_and_option_chain() {
   let orig_event = event;
   let result = (None as Option<Event>).chain(Some(event));
 
-  assert!(compare_meta_events(&result.unwrap(), &orig_event.into()));
+  assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
 
   let event = Event::KeyDown(Key::Char('u'));
   let orig_event = event;
   let result = Some(event).chain(None as Option<Event>);
 
-  assert!(compare_meta_events(&result.unwrap(), &orig_event.into()));
+  assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
 
   let event1 = Event::KeyDown(Key::End);
   let orig_event1 = event1;
@@ -227,7 +227,7 @@ fn option_and_option_chain() {
     Box::new(orig_event2.into())
   );
 
-  assert!(compare_meta_events(&result.unwrap(), &expected));
+  assert!(compare_ui_events(&result.unwrap(), &expected));
 }
 
 #[test]
@@ -241,7 +241,7 @@ fn last_event_in_chain() {
     Box::new(event2.into())
   );
 
-  assert!(compare_ui_events(&event_chain.into_last(), &orig_event2.into()));
+  assert!(compare_ui_event(&event_chain.into_last(), &orig_event2.into()));
 }
 
 #[test]
@@ -287,7 +287,7 @@ fn targeted_event_returned_on_no_focus() {
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
-fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<MetaEvent> {
+fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<UiEvents> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -335,7 +335,7 @@ fn event_handling_with_focus() {
   assert!(ui.is_focused(w1));
 }
 
-fn custom_undirected_response_handler(_: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+fn custom_undirected_response_handler(_: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
@@ -371,7 +371,7 @@ fn custom_undirected_response_event() {
   assert_eq!(*unwrap_custom::<u64>(result), 45);
 }
 
-fn custom_directed_response_handler(_: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+fn custom_directed_response_handler(_: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
   let cell = *event.downcast::<Rc<RefCell<u64>>>().unwrap();
   let value = *cell.borrow();
   cell.replace(value + 1);
@@ -460,7 +460,7 @@ fn quit_event() {
 
 static mut ACCUMULATOR: u64 = 0;
 
-fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
 
   unsafe {
@@ -469,7 +469,7 @@ fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<
   }
 }
 
-fn chaining_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+fn chaining_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
   let value = event.downcast::<u64>().unwrap();
   let event1 = UiEvent::Custom(Box::new(*value));
   let event2 = UiEvent::Custom(Box::new(*value + 1));
@@ -506,7 +506,7 @@ fn chain_event_dispatch() {
 
 static mut HOOK_COUNT: u64 = 0;
 
-fn count_event_hook(_widget: &mut Widget, _event: Event, _cap: &Cap) -> Option<MetaEvent> {
+fn count_event_hook(_widget: &mut Widget, _event: Event, _cap: &Cap) -> Option<UiEvents> {
   unsafe {
     HOOK_COUNT += 1;
   }
@@ -563,11 +563,11 @@ fn hook_events_handler() {
 }
 
 
-fn quit_event_hook(_widget: &mut Widget, _event: Event, _cap: &Cap) -> Option<MetaEvent> {
+fn quit_event_hook(_widget: &mut Widget, _event: Event, _cap: &Cap) -> Option<UiEvents> {
   Some(UiEvent::Quit.into())
 }
 
-fn swallowing_event_handler(_widget: Id, _event: Event, _cap: &mut Cap) -> Option<MetaEvent> {
+fn swallowing_event_handler(_widget: Id, _event: Event, _cap: &mut Cap) -> Option<UiEvents> {
   None
 }
 
@@ -595,12 +595,12 @@ fn hook_events_with_return() {
 }
 
 
-fn returned_event_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<MetaEvent> {
+fn returned_event_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
-fn returnable_event_handler(_widget: Id, event: &mut Any, _cap: &mut Cap) -> Option<MetaEvent> {
+fn returnable_event_handler(_widget: Id, event: &mut Any, _cap: &mut Cap) -> Option<UiEvents> {
   match event.downcast_mut::<u64>() {
     Some(value) => *value *= 2,
     None => panic!("encountered unexpected custom event"),

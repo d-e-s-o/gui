@@ -12,6 +12,7 @@ Unreleased
 - Introduced new event type for unhandled events: `UnhandledEvent`
   - Changed return type of `Ui::handle` from `Option<MetaEvent>` to
     `Option<UnhandledEvent>`
+- Renamed `MetaEvent` to `UiEvents`
 
 
 0.1.1

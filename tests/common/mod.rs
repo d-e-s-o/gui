@@ -30,8 +30,8 @@ use gui::ChainEvent;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
-use gui::MetaEvent;
 use gui::UiEvent;
+use gui::UiEvents;
 use gui::UnhandledEvent;
 use gui::UnhandledEvents;
 
@@ -52,9 +52,9 @@ impl<T> Deref for Handler<T> {
   }
 }
 
-type EventFn = Fn(Id, Event, &mut Cap) -> Option<MetaEvent>;
-type CustomFn = Fn(Id, Box<Any>, &mut Cap) -> Option<MetaEvent>;
-type CustomRefFn = Fn(Id, &mut Any, &mut Cap) -> Option<MetaEvent>;
+type EventFn = Fn(Id, Event, &mut Cap) -> Option<UiEvents>;
+type CustomFn = Fn(Id, Box<Any>, &mut Cap) -> Option<UiEvents>;
+type CustomRefFn = Fn(Id, &mut Any, &mut Cap) -> Option<UiEvents>;
 
 type EventHandler = Handler<Box<EventFn>>;
 type CustomHandler = Handler<Box<CustomFn>>;
@@ -82,7 +82,7 @@ impl TestWidgetBuilder {
   /// Set a handler for `Handleable::handle`.
   pub fn event_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, Event, &mut Cap) -> Option<MetaEvent>,
+    F: 'static + Fn(Id, Event, &mut Cap) -> Option<UiEvents>,
   {
     self.event_handler = Some(Handler(Box::new(handler)));
     self
@@ -91,7 +91,7 @@ impl TestWidgetBuilder {
   /// Set a handler for `Handleable::handle_custom`.
   pub fn custom_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, Box<Any>, &mut Cap) -> Option<MetaEvent>,
+    F: 'static + Fn(Id, Box<Any>, &mut Cap) -> Option<UiEvents>,
   {
     self.custom_handler = Some(Handler(Box::new(handler)));
     self
@@ -100,7 +100,7 @@ impl TestWidgetBuilder {
   /// Set a handler for `Handleable::handle_custom_ref`.
   pub fn custom_ref_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, &mut Any, &mut Cap) -> Option<MetaEvent>,
+    F: 'static + Fn(Id, &mut Any, &mut Cap) -> Option<UiEvents>,
   {
     self.custom_ref_handler = Some(Handler(Box::new(handler)));
     self
@@ -138,7 +138,7 @@ impl TestWidget {
 }
 
 impl Handleable for TestWidget {
-  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<MetaEvent> {
+  fn handle(&mut self, event: Event, cap: &mut Cap) -> Option<UiEvents> {
     match self.event_handler.take() {
       Some(handler) => {
         let event = handler(self.id, event, cap);
@@ -149,7 +149,7 @@ impl Handleable for TestWidget {
     }
   }
 
-  fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<MetaEvent> {
+  fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<UiEvents> {
     match self.custom_handler.take() {
       Some(handler) => {
         let event = handler(self.id, event, cap);
@@ -160,7 +160,7 @@ impl Handleable for TestWidget {
     }
   }
 
-  fn handle_custom_ref(&mut self, event: &mut Any, cap: &mut Cap) -> Option<MetaEvent> {
+  fn handle_custom_ref(&mut self, event: &mut Any, cap: &mut Cap) -> Option<UiEvents> {
     match self.custom_ref_handler.take() {
       Some(handler) => {
         let event = handler(self.id, event, cap);
