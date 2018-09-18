@@ -47,16 +47,6 @@ use common::TestWidgetBuilder;
 use common::unwrap_custom;
 
 
-fn clone_ui_event(event: &UiEvent) -> UiEvent {
-  match *event {
-    UiEvent::Event(event) => UiEvent::Event(event),
-    UiEvent::Quit => UiEvent::Quit,
-    UiEvent::Custom(_) |
-    UiEvent::Directed(_, _) |
-    UiEvent::Returnable(_, _, _) => panic!("Cannot clone custom event"),
-  }
-}
-
 fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
   match *event1 {
     UiEvent::Event(ref event1) => {
@@ -74,17 +64,6 @@ fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
     UiEvent::Custom(_) |
     UiEvent::Directed(_, _) |
     UiEvent::Returnable(_, _, _) => panic!("Cannot compare custom events"),
-  }
-}
-
-fn clone_meta_event(event: &MetaEvent) -> MetaEvent {
-  match *event {
-    ChainEvent::Event(ref event) => {
-      ChainEvent::Event(clone_ui_event(event))
-    },
-    ChainEvent::Chain(ref event, ref meta) => {
-      ChainEvent::Chain(clone_ui_event(event), Box::new(clone_meta_event(meta)))
-    },
   }
 }
 
@@ -120,14 +99,15 @@ fn convert_event_into() {
 
 #[test]
 fn chain_meta_event() {
-  let event1 = UiEvent::Event(Event::KeyUp(Key::Char('a')));
-  let event2 = UiEvent::Quit.into();
-  let orig_event1 = clone_ui_event(&event1);
-  let orig_event2 = clone_meta_event(&event2);
+  let event1 = Event::KeyUp(Key::Char('a'));
+  let orig_event1 = event1;
+  let event2 = UiEvent::Quit;
+  let orig_event2 = UiEvent::Quit;
+
   let event = event1.chain(event2);
   let expected = ChainEvent::Chain(
-    orig_event1,
-    Box::new(orig_event2),
+    orig_event1.into(),
+    Box::new(orig_event2.into()),
   );
 
   assert!(compare_meta_events(&event, &expected));
@@ -135,18 +115,22 @@ fn chain_meta_event() {
 
 #[test]
 fn chain_meta_event_chain() {
-  let event1 = Event::KeyUp(Key::Char('a')).into();
-  let orig_event1 = clone_ui_event(&event1);
-  let event2 = Event::KeyUp(Key::Char('z')).into();
-  let orig_event2 = clone_ui_event(&event2);
-  let event3 = UiEvent::Quit.into();
-  let orig_event3 = clone_meta_event(&event3);
-  let event_chain = ChainEvent::Chain(event1, Box::new(event2.into()));
+  let event1 = Event::KeyUp(Key::Char('a'));
+  let orig_event1 = event1;
+  let event2 = Event::KeyUp(Key::Char('z'));
+  let orig_event2 = event2;
+  let event3 = UiEvent::Quit;
+  let orig_event3 = UiEvent::Quit;
+
+  let event_chain = ChainEvent::Chain(event1.into(), Box::new(event2.into()));
   let event = event_chain.chain(event3);
   let expected = ChainEvent::Chain(
-    orig_event1,
+    orig_event1.into(),
     Box::new(
-      ChainEvent::Chain(orig_event2, Box::new(orig_event3))
+      ChainEvent::Chain(
+        orig_event2.into(),
+        Box::new(orig_event3.into())
+      )
     ),
   );
 
@@ -155,19 +139,22 @@ fn chain_meta_event_chain() {
 
 #[test]
 fn event_and_option_chain() {
-  let event = Event::KeyDown(Key::Esc).into();
-  let orig_event = clone_ui_event(&event).into();
+  let event = Event::KeyDown(Key::Esc);
+  let orig_event = event;
   let result = event.chain_opt(None as Option<Event>);
 
-  assert!(compare_meta_events(&result, &orig_event));
+  assert!(compare_meta_events(&result, &orig_event.into()));
 
-  let event1 = Event::KeyDown(Key::Right).into();
-  let orig_event1 = clone_ui_event(&event1).into();
-  let event2 = UiEvent::Quit.into();
-  let orig_event2 = clone_ui_event(&event2).into();
+  let event1 = Event::KeyDown(Key::Right);
+  let orig_event1 = event1;
+  let event2 = UiEvent::Quit;
+  let orig_event2 = UiEvent::Quit;
 
   let result = event1.chain_opt(Some(event2));
-  let expected = ChainEvent::Chain(orig_event1, Box::new(orig_event2));
+  let expected = ChainEvent::Chain(
+    orig_event1.into(),
+    Box::new(orig_event2.into())
+  );
 
   assert!(compare_meta_events(&result, &expected));
 }
@@ -177,37 +164,44 @@ fn option_and_option_chain() {
   let result = (None as Option<Event>).chain(None as Option<Event>);
   assert!(result.is_none());
 
-  let event = Event::KeyDown(Key::PageDown).into();
-  let orig_event = clone_ui_event(&event).into();
+  let event = Event::KeyDown(Key::PageDown);
+  let orig_event = event;
   let result = (None as Option<Event>).chain(Some(event));
 
-  assert!(compare_meta_events(&result.unwrap(), &orig_event));
+  assert!(compare_meta_events(&result.unwrap(), &orig_event.into()));
 
-  let event = Event::KeyDown(Key::Char('u')).into();
-  let orig_event = clone_ui_event(&event).into();
+  let event = Event::KeyDown(Key::Char('u'));
+  let orig_event = event;
   let result = Some(event).chain(None as Option<Event>);
 
-  assert!(compare_meta_events(&result.unwrap(), &orig_event));
+  assert!(compare_meta_events(&result.unwrap(), &orig_event.into()));
 
-  let event1 = Event::KeyDown(Key::End).into();
-  let orig_event1 = clone_ui_event(&event1).into();
-  let event2 = Event::KeyUp(Key::Char('u')).into();
-  let orig_event2 = clone_ui_event(&event2).into();
+  let event1 = Event::KeyDown(Key::End);
+  let orig_event1 = event1;
+  let event2 = Event::KeyUp(Key::Char('u'));
+  let orig_event2 = event2;
 
   let result = Some(event1).chain(Some(event2));
-  let expected = ChainEvent::Chain(orig_event1, Box::new(orig_event2));
+  let expected = ChainEvent::Chain(
+    orig_event1.into(),
+    Box::new(orig_event2.into())
+  );
 
   assert!(compare_meta_events(&result.unwrap(), &expected));
 }
 
 #[test]
 fn last_event_in_chain() {
-  let event1 = Event::KeyUp(Key::Char('a')).into();
-  let event2 = Event::KeyUp(Key::Char('z')).into();
-  let orig_event2 = clone_ui_event(&event2);
-  let event_chain = ChainEvent::Chain(event1, Box::new(event2.into()));
+  let event1 = Event::KeyUp(Key::Char('a'));
+  let event2 = Event::KeyUp(Key::Char('z'));
+  let orig_event2 = event2;
 
-  assert!(compare_ui_events(&event_chain.into_last(), &orig_event2));
+  let event_chain = ChainEvent::Chain(
+    event1.into(),
+    Box::new(event2.into())
+  );
+
+  assert!(compare_ui_events(&event_chain.into_last(), &orig_event2.into()));
 }
 
 #[test]
