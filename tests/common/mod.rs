@@ -170,37 +170,6 @@ impl Handleable for TestWidget {
   }
 }
 
-
-pub fn clone_ui_event(event: &UiEvent) -> UiEvent {
-  match *event {
-    UiEvent::Event(event) => UiEvent::Event(event),
-    UiEvent::Quit => UiEvent::Quit,
-    UiEvent::Custom(_) |
-    UiEvent::Directed(_, _) |
-    UiEvent::Returnable(_, _, _) => panic!("Cannot clone custom event"),
-  }
-}
-
-pub fn compare_ui_events(event1: &UiEvent, event2: &UiEvent) -> bool {
-  match *event1 {
-    UiEvent::Event(ref event1) => {
-      match *event2 {
-        UiEvent::Event(ref event2) => event1 == event2,
-        _ => false,
-      }
-    },
-    UiEvent::Quit => {
-      match *event2 {
-        UiEvent::Quit => true,
-        _ => false,
-      }
-    },
-    UiEvent::Custom(_) |
-    UiEvent::Directed(_, _) |
-    UiEvent::Returnable(_, _, _) => panic!("Cannot compare custom events"),
-  }
-}
-
 #[allow(unused)]
 pub fn unwrap_custom<T>(event: MetaEvent) -> Box<T>
 where
@@ -215,39 +184,5 @@ where
       }
     },
     ChainEvent::Chain(_, _) => panic!("Unexpected event: {:?}", event),
-  }
-}
-
-
-#[allow(unused)]
-pub fn clone_meta_event(event: &MetaEvent) -> MetaEvent {
-  match *event {
-    ChainEvent::Event(ref event) => {
-      ChainEvent::Event(clone_ui_event(event))
-    },
-    ChainEvent::Chain(ref event, ref meta) => {
-      ChainEvent::Chain(clone_ui_event(event), Box::new(clone_meta_event(meta)))
-    },
-  }
-}
-
-#[allow(unused)]
-pub fn compare_meta_events(event1: &MetaEvent, event2: &MetaEvent) -> bool {
-  match *event1 {
-    ChainEvent::Event(ref event1) => {
-      match *event2 {
-        ChainEvent::Event(ref event2) => compare_ui_events(event1, event2),
-        _ => false,
-      }
-    },
-    ChainEvent::Chain(ref event1, ref meta1) => {
-      match *event2 {
-        ChainEvent::Chain(ref event2, ref meta2) => {
-          compare_ui_events(event1, event2) &&
-          compare_meta_events(meta1, meta2)
-        },
-        _ => false,
-      }
-    },
   }
 }
