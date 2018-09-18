@@ -132,7 +132,7 @@ impl From<Event> for UiEvent {
 #[derive(Debug)]
 pub enum MetaEvent {
   /// An event handleable by a `Ui`.
-  UiEvent(UiEvent),
+  Event(UiEvent),
   /// A chain of events.
   ///
   /// The events will be processed in the order they are chained.
@@ -143,7 +143,7 @@ impl MetaEvent {
   /// Convert this `MetaEvent` into the last `UiEvent` it comprises.
   pub fn into_last(self) -> UiEvent {
     match self {
-      MetaEvent::UiEvent(ui_event) => ui_event,
+      MetaEvent::Event(ui_event) => ui_event,
       MetaEvent::Chain(_, meta_event) => meta_event.into_last(),
     }
   }
@@ -152,14 +152,14 @@ impl MetaEvent {
 /// A convenience conversion from `Event` to `MetaEvent`.
 impl From<Event> for MetaEvent {
   fn from(event: Event) -> Self {
-    MetaEvent::UiEvent(event.into())
+    MetaEvent::Event(event.into())
   }
 }
 
 /// A convenience conversion from `UiEvent` to `MetaEvent`.
 impl From<UiEvent> for MetaEvent {
   fn from(event: UiEvent) -> Self {
-    MetaEvent::UiEvent(event)
+    MetaEvent::Event(event)
   }
 }
 
@@ -192,7 +192,7 @@ where
     E: Into<MetaEvent>
   {
     match self.into() {
-      MetaEvent::UiEvent(ui_event) => {
+      MetaEvent::Event(ui_event) => {
         MetaEvent::Chain(ui_event, Box::new(event.into()))
       },
       MetaEvent::Chain(ui_event, meta_event) => {

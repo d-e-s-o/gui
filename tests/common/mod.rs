@@ -206,7 +206,7 @@ where
   T: 'static,
 {
   match event {
-    MetaEvent::UiEvent(event) => {
+    MetaEvent::Event(event) => {
       match event {
         UiEvent::Custom(event) => event.downcast::<T>().unwrap(),
         UiEvent::Directed(_, event) => event.downcast::<T>().unwrap(),
@@ -221,8 +221,8 @@ where
 #[allow(unused)]
 pub fn clone_meta_event(event: &MetaEvent) -> MetaEvent {
   match *event {
-    MetaEvent::UiEvent(ref event) => {
-      MetaEvent::UiEvent(clone_ui_event(event))
+    MetaEvent::Event(ref event) => {
+      MetaEvent::Event(clone_ui_event(event))
     },
     MetaEvent::Chain(ref event, ref meta) => {
       MetaEvent::Chain(clone_ui_event(event), Box::new(clone_meta_event(meta)))
@@ -233,9 +233,9 @@ pub fn clone_meta_event(event: &MetaEvent) -> MetaEvent {
 #[allow(unused)]
 pub fn compare_meta_events(event1: &MetaEvent, event2: &MetaEvent) -> bool {
   match *event1 {
-    MetaEvent::UiEvent(ref event1) => {
+    MetaEvent::Event(ref event1) => {
       match *event2 {
-        MetaEvent::UiEvent(ref event2) => compare_ui_events(event1, event2),
+        MetaEvent::Event(ref event2) => compare_ui_events(event1, event2),
         _ => false,
       }
     },

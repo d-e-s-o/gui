@@ -562,7 +562,7 @@ impl Ui {
   /// Handle a `MetaEvent`.
   fn handle_meta_event(&mut self, idx: Option<Index>, event: MetaEvent) -> Option<MetaEvent> {
     match event {
-      MetaEvent::UiEvent(ui_event) => self.handle_ui_event(idx, ui_event),
+      MetaEvent::Event(ui_event) => self.handle_ui_event(idx, ui_event),
       MetaEvent::Chain(ui_event, meta_event) => {
         self
           .handle_ui_event(idx, ui_event)
