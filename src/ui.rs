@@ -30,6 +30,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 use BBox;
+use ChainEvent;
 use CustomEvent;
 use Event;
 use MetaEvent;
@@ -562,8 +563,8 @@ impl Ui {
   /// Handle a `MetaEvent`.
   fn handle_meta_event(&mut self, idx: Option<Index>, event: MetaEvent) -> Option<MetaEvent> {
     match event {
-      MetaEvent::Event(ui_event) => self.handle_ui_event(idx, ui_event),
-      MetaEvent::Chain(ui_event, meta_event) => {
+      ChainEvent::Event(ui_event) => self.handle_ui_event(idx, ui_event),
+      ChainEvent::Chain(ui_event, meta_event) => {
         self
           .handle_ui_event(idx, ui_event)
           .chain(self.handle_meta_event(idx, *meta_event))

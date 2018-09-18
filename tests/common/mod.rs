@@ -26,6 +26,7 @@ use std::fmt::Result;
 use std::ops::Deref;
 
 use gui::Cap;
+use gui::ChainEvent;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
@@ -206,14 +207,14 @@ where
   T: 'static,
 {
   match event {
-    MetaEvent::Event(event) => {
+    ChainEvent::Event(event) => {
       match event {
         UiEvent::Custom(event) => event.downcast::<T>().unwrap(),
         UiEvent::Directed(_, event) => event.downcast::<T>().unwrap(),
         _ => panic!("Unexpected event: {:?}", event),
       }
     },
-    MetaEvent::Chain(_, _) => panic!("Unexpected event: {:?}", event),
+    ChainEvent::Chain(_, _) => panic!("Unexpected event: {:?}", event),
   }
 }
 
@@ -221,11 +222,11 @@ where
 #[allow(unused)]
 pub fn clone_meta_event(event: &MetaEvent) -> MetaEvent {
   match *event {
-    MetaEvent::Event(ref event) => {
-      MetaEvent::Event(clone_ui_event(event))
+    ChainEvent::Event(ref event) => {
+      ChainEvent::Event(clone_ui_event(event))
     },
-    MetaEvent::Chain(ref event, ref meta) => {
-      MetaEvent::Chain(clone_ui_event(event), Box::new(clone_meta_event(meta)))
+    ChainEvent::Chain(ref event, ref meta) => {
+      ChainEvent::Chain(clone_ui_event(event), Box::new(clone_meta_event(meta)))
     },
   }
 }
@@ -233,15 +234,15 @@ pub fn clone_meta_event(event: &MetaEvent) -> MetaEvent {
 #[allow(unused)]
 pub fn compare_meta_events(event1: &MetaEvent, event2: &MetaEvent) -> bool {
   match *event1 {
-    MetaEvent::Event(ref event1) => {
+    ChainEvent::Event(ref event1) => {
       match *event2 {
-        MetaEvent::Event(ref event2) => compare_ui_events(event1, event2),
+        ChainEvent::Event(ref event2) => compare_ui_events(event1, event2),
         _ => false,
       }
     },
-    MetaEvent::Chain(ref event1, ref meta1) => {
+    ChainEvent::Chain(ref event1, ref meta1) => {
       match *event2 {
-        MetaEvent::Chain(ref event2, ref meta2) => {
+        ChainEvent::Chain(ref event2, ref meta2) => {
           compare_ui_events(event1, event2) &&
           compare_meta_events(meta1, meta2)
         },

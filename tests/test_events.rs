@@ -31,6 +31,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use gui::Cap;
+use gui::ChainEvent;
 use gui::Event;
 use gui::EventChain;
 use gui::Id;
@@ -66,7 +67,7 @@ fn chain_meta_event() {
   let orig_event1 = clone_ui_event(&event1);
   let orig_event2 = clone_meta_event(&event2);
   let event = event1.chain(event2);
-  let expected = MetaEvent::Chain(
+  let expected = ChainEvent::Chain(
     orig_event1,
     Box::new(orig_event2),
   );
@@ -82,12 +83,12 @@ fn chain_meta_event_chain() {
   let orig_event2 = clone_ui_event(&event2);
   let event3 = UiEvent::Quit.into();
   let orig_event3 = clone_meta_event(&event3);
-  let event_chain = MetaEvent::Chain(event1, Box::new(event2.into()));
+  let event_chain = ChainEvent::Chain(event1, Box::new(event2.into()));
   let event = event_chain.chain(event3);
-  let expected = MetaEvent::Chain(
+  let expected = ChainEvent::Chain(
     orig_event1,
     Box::new(
-      MetaEvent::Chain(orig_event2, Box::new(orig_event3))
+      ChainEvent::Chain(orig_event2, Box::new(orig_event3))
     ),
   );
 
@@ -108,7 +109,7 @@ fn event_and_option_chain() {
   let orig_event2 = clone_ui_event(&event2).into();
 
   let result = event1.chain_opt(Some(event2));
-  let expected = MetaEvent::Chain(orig_event1, Box::new(orig_event2));
+  let expected = ChainEvent::Chain(orig_event1, Box::new(orig_event2));
 
   assert!(compare_meta_events(&result, &expected));
 }
@@ -136,7 +137,7 @@ fn option_and_option_chain() {
   let orig_event2 = clone_ui_event(&event2).into();
 
   let result = Some(event1).chain(Some(event2));
-  let expected = MetaEvent::Chain(orig_event1, Box::new(orig_event2));
+  let expected = ChainEvent::Chain(orig_event1, Box::new(orig_event2));
 
   assert!(compare_meta_events(&result.unwrap(), &expected));
 }
@@ -146,7 +147,7 @@ fn last_event_in_chain() {
   let event1 = Event::KeyUp(Key::Char('a')).into();
   let event2 = Event::KeyUp(Key::Char('z')).into();
   let orig_event2 = clone_ui_event(&event2);
-  let event_chain = MetaEvent::Chain(event1, Box::new(event2.into()));
+  let event_chain = ChainEvent::Chain(event1, Box::new(event2.into()));
 
   assert!(compare_ui_events(&event_chain.into_last(), &orig_event2));
 }
