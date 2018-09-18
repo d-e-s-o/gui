@@ -32,6 +32,8 @@ use gui::Handleable;
 use gui::Id;
 use gui::MetaEvent;
 use gui::UiEvent;
+use gui::UnhandledEvent;
+use gui::UnhandledEvents;
 
 
 struct Handler<T>(T);
@@ -171,18 +173,17 @@ impl Handleable for TestWidget {
 }
 
 #[allow(unused)]
-pub fn unwrap_custom<T>(event: MetaEvent) -> Box<T>
+pub fn unwrap_custom<T>(events: UnhandledEvents) -> Box<T>
 where
   T: 'static,
 {
-  match event {
+  match events {
     ChainEvent::Event(event) => {
       match event {
-        UiEvent::Custom(event) => event.downcast::<T>().unwrap(),
-        UiEvent::Directed(_, event) => event.downcast::<T>().unwrap(),
+        UnhandledEvent::Custom(event) => event.downcast::<T>().unwrap(),
         _ => panic!("Unexpected event: {:?}", event),
       }
     },
-    ChainEvent::Chain(_, _) => panic!("Unexpected event: {:?}", event),
+    ChainEvent::Chain(_, _) => panic!("Unexpected event: {:?}", events),
   }
 }

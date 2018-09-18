@@ -40,6 +40,8 @@ use gui::MetaEvent;
 use gui::OptionChain;
 use gui::Ui;
 use gui::UiEvent;
+use gui::UnhandledEvent;
+use gui::UnhandledEvents;
 use gui::Widget;
 
 use common::TestWidget;
@@ -80,6 +82,44 @@ fn compare_meta_events(event1: &MetaEvent, event2: &MetaEvent) -> bool {
         ChainEvent::Chain(ref event2, ref meta2) => {
           compare_ui_events(event1, event2) &&
           compare_meta_events(meta1, meta2)
+        },
+        _ => false,
+      }
+    },
+  }
+}
+
+fn compare_unhandled(event1: &UnhandledEvent, event2: &UnhandledEvent) -> bool {
+  match *event1 {
+    UnhandledEvent::Event(ref event1) => {
+      match *event2 {
+        UnhandledEvent::Event(ref event2) => event1 == event2,
+        _ => false,
+      }
+    },
+    UnhandledEvent::Quit => {
+      match *event2 {
+        UnhandledEvent::Quit => true,
+        _ => false,
+      }
+    },
+    UnhandledEvent::Custom(_) => panic!("Cannot compare custom events"),
+  }
+}
+
+fn compare_unhandled_events(events1: &UnhandledEvents, events2: &UnhandledEvents) -> bool {
+  match *events1 {
+    ChainEvent::Event(ref event1) => {
+      match *events2 {
+        ChainEvent::Event(ref event2) => compare_unhandled(event1, event2),
+        _ => false,
+      }
+    },
+    ChainEvent::Chain(ref event1, ref unhandled1) => {
+      match *events2 {
+        ChainEvent::Chain(ref event2, ref unhandled2) => {
+          compare_unhandled(event1, event2) &&
+          compare_unhandled_events(unhandled1, unhandled2)
         },
         _ => false,
       }
@@ -223,9 +263,10 @@ fn events_bubble_up_when_unhandled() {
   ui.focus(w1);
 
   let result = ui.handle(event);
+  let expected = UnhandledEvent::Event(event).into();
   // An unhandled event should just be returned after every widget
   // forwarded it.
-  assert!(compare_meta_events(&result.unwrap(), &event.into()));
+  assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
 #[test]
@@ -242,7 +283,8 @@ fn targeted_event_returned_on_no_focus() {
   ui.hide(w);
 
   let result = ui.handle(event);
-  assert!(compare_meta_events(&result.unwrap(), &event.into()));
+  let expected = UnhandledEvent::Event(event).into();
+  assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
 fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<MetaEvent> {
@@ -411,7 +453,8 @@ fn quit_event() {
   });
 
   let result = ui.handle(UiEvent::Quit);
-  assert!(compare_meta_events(&result.unwrap(), &UiEvent::Quit.into()));
+  let expected = UnhandledEvent::Quit.into();
+  assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
 
@@ -546,8 +589,9 @@ fn hook_events_with_return() {
 
   let event = Event::KeyDown(Key::Char(' '));
   let result = ui.handle(event);
+  let expected = UnhandledEvent::Quit.into();
 
-  assert!(compare_meta_events(&result.unwrap(), &UiEvent::Quit.into()));
+  assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
 

@@ -9,6 +9,9 @@ Unreleased
   potential modification by the destination widget)
   - Handling of custom events changed to using two new methods in the
     `Handleable` trait: `handle_custom` and `handle_custom_ref`
+- Introduced new event type for unhandled events: `UnhandledEvent`
+  - Changed return type of `Ui::handle` from `Option<MetaEvent>` to
+    `Option<UnhandledEvent>`
 
 
 0.1.1

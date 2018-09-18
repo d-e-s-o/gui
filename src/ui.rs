@@ -38,6 +38,8 @@ use OptionChain;
 use Placeholder;
 use Renderer;
 use UiEvent;
+use UnhandledEvent;
+use UnhandledEvents;
 use Widget;
 
 
@@ -506,7 +508,7 @@ impl Ui {
   /// This function performs the initial determination of which widget
   /// is supposed to handle the given event and then passes it down to
   /// the actual event handler.
-  pub fn handle<E>(&mut self, event: E) -> Option<MetaEvent>
+  pub fn handle<E>(&mut self, event: E) -> Option<UnhandledEvents>
   where
     E: Into<UiEvent>,
   {
@@ -537,7 +539,7 @@ impl Ui {
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
-  fn handle_event(&mut self, idx: Index, event: Event) -> Option<MetaEvent> {
+  fn handle_event(&mut self, idx: Index, event: Event) -> Option<UnhandledEvents> {
     // To enable a mutable borrow of the Ui as well as the widget we
     // temporarily remove the widget from the internally used
     // vector. This means that now we would panic if we were to
@@ -561,7 +563,7 @@ impl Ui {
   }
 
   /// Handle a `MetaEvent`.
-  fn handle_meta_event(&mut self, idx: Option<Index>, event: MetaEvent) -> Option<MetaEvent> {
+  fn handle_meta_event(&mut self, idx: Option<Index>, event: MetaEvent) -> Option<UnhandledEvents> {
     match event {
       ChainEvent::Event(ui_event) => self.handle_ui_event(idx, ui_event),
       ChainEvent::Chain(ui_event, meta_event) => {
@@ -573,7 +575,7 @@ impl Ui {
   }
 
   /// Handle a custom event.
-  fn handle_custom_event(&mut self, idx: Index, event: CustomEvent) -> Option<MetaEvent> {
+  fn handle_custom_event(&mut self, idx: Index, event: CustomEvent) -> Option<UnhandledEvents> {
     let (meta_event, parent_idx) = self.with(idx, |ui, mut widget| {
       let meta_event = match event {
         CustomEvent::Owned(event) => widget.handle_custom(event, ui),
@@ -592,7 +594,7 @@ impl Ui {
   }
 
   /// Handle a `UiEvent`.
-  fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent) -> Option<MetaEvent> {
+  fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent) -> Option<UnhandledEvents> {
     match event {
       UiEvent::Event(event) => {
         if let Some(idx) = idx {
@@ -603,7 +605,7 @@ impl Ui {
           // root widget which does not contain a parent or we were trying
           // to send an event to the focused widget and no widget had the
           // focus. In any case, return the event as-is.
-          Some(event.into())
+          Some(UnhandledEvent::Event(event).into())
         }
       },
       UiEvent::Custom(event) => {
@@ -611,7 +613,7 @@ impl Ui {
           let event = CustomEvent::Owned(event);
           self.handle_custom_event(idx, event)
         } else {
-          Some(UiEvent::Custom(event).into())
+          Some(UnhandledEvent::Custom(event).into())
         }
       },
       UiEvent::Directed(id, event) => {
@@ -636,7 +638,7 @@ impl Ui {
         };
         meta_event1.chain(meta_event2)
       },
-      UiEvent::Quit => Some(UiEvent::Quit.into()),
+      UiEvent::Quit => Some(UnhandledEvent::Quit.into()),
     }
   }
 }

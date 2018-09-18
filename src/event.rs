@@ -128,6 +128,25 @@ impl From<Event> for UiEvent {
 }
 
 
+/// An event that the `Ui` did not process.
+///
+/// An unhandled event comprises the variants of a `UiEvent` that are
+/// not concerned with addressing.
+// Note that we do not provide a conversion from `UiEvent` because
+// conversion should only happen from within the `Ui` proper and after
+// making sure that `UiEvent` variants dealing solely with addressing
+// are no longer present.
+#[derive(Debug)]
+pub enum UnhandledEvent {
+  /// An `Event` that can be handled by a `Handleable`.
+  Event(Event),
+  /// A custom event that can contain arbitrary data.
+  Custom(Box<Any>),
+  /// A request to quit the application has been made.
+  Quit,
+}
+
+
 /// An event potentially comprising multiple event objects.
 #[derive(Debug)]
 pub enum ChainEvent<E> {
@@ -157,6 +176,20 @@ pub type MetaEvent = ChainEvent<UiEvent>;
 impl<E> From<E> for MetaEvent
 where
   E: Into<UiEvent>,
+{
+  fn from(event: E) -> Self {
+    ChainEvent::Event(event.into())
+  }
+}
+
+
+/// An event potentially comprising multiple `UnhandledEvent` objects.
+pub type UnhandledEvents = ChainEvent<UnhandledEvent>;
+
+/// A convenience conversion from a single event into a chain of `UnhandledEvent` objects.
+impl<E> From<E> for UnhandledEvents
+where
+  E: Into<UnhandledEvent>,
 {
   fn from(event: E) -> Self {
     ChainEvent::Event(event.into())
