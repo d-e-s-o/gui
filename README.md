@@ -35,6 +35,10 @@ future. In its current state mouse support of any kind is missing.
 
 Given this current state, changes in API design are to be expected.
 
+The **gui** crate typically compiles with the most recent version of
+stable Rust. On compile errors please try upgrading to a more recent
+version first.
+
 
 Example Usage
 -------------
