@@ -31,6 +31,7 @@
   unstable_features,
   unused_import_braces,
   unused_qualifications,
+  unused_results,
   warnings,
 )]
 

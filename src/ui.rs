@@ -493,7 +493,7 @@ impl Ui {
           Some(hook_fn) => {
             let event = hook_fn.0(widget.as_mut(), event, ui);
             let prev = result.take();
-            replace(&mut result, prev.chain(event));
+            let _ = replace(&mut result, prev.chain(event));
           },
           None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
         };

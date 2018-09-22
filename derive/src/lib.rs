@@ -29,6 +29,7 @@
   unstable_features,
   unused_import_braces,
   unused_qualifications,
+  unused_results,
   warnings,
 )]
 
@@ -194,7 +195,7 @@ fn parse_gui_attributes(list: &Punctuated<NestedMeta, Comma>) -> Result<New> {
   // ignore other (faulty) attributes, so as to inform the user about
   // any errors early on.
   for item in list {
-    parse_gui_attribute(item)?;
+    let _ = parse_gui_attribute(item)?;
   }
   if !list.is_empty() {
     Ok(New::Default)
@@ -243,7 +244,7 @@ fn check_struct_fields(fields: &Fields) -> Result<()> {
   let id = ("id", "::gui::Id");
 
   for (req_field, req_type) in &[id] {
-    fields
+    let _ = fields
       .iter()
       .find(|field| {
         if let Some(ref ident) = field.ident {
