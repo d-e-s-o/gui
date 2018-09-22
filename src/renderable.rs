@@ -30,5 +30,5 @@ pub trait Renderable {
   /// supplying a trait object of the actual widget. The renderer is
   /// advised to honor the given `BBox` and is free to inquire
   /// additional state using the supplied `Cap`.
-  fn render(&self, renderer: &Renderer, bbox: BBox, cap: &Cap) -> BBox;
+  fn render(&self, renderer: &dyn Renderer, bbox: BBox, cap: &dyn Cap) -> BBox;
 }

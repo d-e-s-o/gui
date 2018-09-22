@@ -85,7 +85,7 @@ pub enum CustomEvent<'evnt> {
   /// Ownership of the event is transferred to a widget. Custom events
   /// of this type are considered the safe default. They represent a
   /// unidirectional message from one widget to another.
-  Owned(Box<Any>),
+  Owned(Box<dyn Any>),
   /// A mutable reference to an event that is sent to another widget.
   ///
   /// Ownership of an event of this type will eventually be transferred
@@ -94,7 +94,7 @@ pub enum CustomEvent<'evnt> {
   /// transfer state that eventually has to end up back at the sender.
   /// The callee is free to modify the event in any way, but the `Ui`
   /// proper ensures that it will be returned to the sender.
-  Borrowed(&'evnt mut Any),
+  Borrowed(&'evnt mut dyn Any),
 }
 
 
@@ -104,18 +104,18 @@ pub enum UiEvent {
   /// An `Event` that can be handled by a `Handleable`.
   Event(Event),
   /// A custom event that can contain arbitrary data.
-  Custom(Box<Any>),
+  Custom(Box<dyn Any>),
   /// A custom event directed to a certain widget.
   ///
   /// This custom event is destined for a particular widget, described
   /// by the given `Id`. That is the only widget that will receive the
   /// event.
-  Directed(Id, Box<Any>),
+  Directed(Id, Box<dyn Any>),
   /// A custom event that is guaranteed to be returned back to the
   /// issuer. The first `Id` represents the source (i.e., the widget the
   /// event will be returned to), while the second one identifies the
   /// destination (the widget actually "handling" the event).
-  Returnable(Id, Id, Box<Any>),
+  Returnable(Id, Id, Box<dyn Any>),
   /// A request to quit the application has been made.
   Quit,
 }
@@ -141,7 +141,7 @@ pub enum UnhandledEvent {
   /// An `Event` that can be handled by a `Handleable`.
   Event(Event),
   /// A custom event that can contain arbitrary data.
-  Custom(Box<Any>),
+  Custom(Box<dyn Any>),
   /// A request to quit the application has been made.
   Quit,
 }

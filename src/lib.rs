@@ -23,6 +23,7 @@
   redundant_field_names,
 )]
 #![deny(
+  bare_trait_objects,
   missing_debug_implementations,
   missing_docs,
   unstable_features,

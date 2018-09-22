@@ -36,7 +36,7 @@ pub trait Widget: Handleable + Renderable + Object + Debug + 'static {
   fn type_id(&self) -> TypeId;
 }
 
-impl Widget {
+impl dyn Widget {
   /// Check if the widget is of type `T`.
   pub fn is<T: Widget>(&self) -> bool {
     let t = TypeId::of::<T>();
@@ -48,7 +48,7 @@ impl Widget {
   /// Downcast the widget reference to type `T`.
   pub fn downcast_ref<T: Widget>(&self) -> Option<&T> {
     if self.is::<T>() {
-      unsafe { Some(&*(self as *const Widget as *const T)) }
+      unsafe { Some(&*(self as *const dyn Widget as *const T)) }
     } else {
       None
     }
@@ -57,7 +57,7 @@ impl Widget {
   /// Downcast the widget reference to type `T`.
   pub fn downcast_mut<T: Widget>(&mut self) -> Option<&mut T> {
     if self.is::<T>() {
-      unsafe { Some(&mut *(self as *mut Widget as *mut T)) }
+      unsafe { Some(&mut *(self as *mut dyn Widget as *mut T)) }
     } else {
       None
     }

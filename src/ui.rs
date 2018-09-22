@@ -104,11 +104,11 @@ pub type ChildIter<'widget> = Iter<'widget, Id>;
 //       solution but is a nightly-only API. For now, users are advised
 //       to use an Option as one of the parameters and panic if None is
 //       supplied.
-type NewWidgetFn<'f> = &'f mut FnMut(Id, &mut Cap) -> Box<Widget>;
+type NewWidgetFn<'f> = &'f mut dyn FnMut(Id, &mut dyn Cap) -> Box<dyn Widget>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
-type EventHookFn = &'static Fn(&mut Widget, Event, &Cap) -> Option<UiEvents>;
+type EventHookFn = &'static dyn Fn(&mut dyn Widget, Event, &dyn Cap) -> Option<UiEvents>;
 
 
 /// A capability allowing for various widget related operations.
@@ -244,7 +244,7 @@ impl Debug for EventHook {
 pub struct Ui {
   #[cfg(debug_assertions)]
   id: usize,
-  widgets: Vec<(WidgetData, Option<Box<Widget>>)>,
+  widgets: Vec<(WidgetData, Option<Box<dyn Widget>>)>,
   hooked: HashSet<Index>,
   focused: Option<Index>,
 }
@@ -311,7 +311,7 @@ impl Ui {
   }
 
   /// Lookup a widget from an `Index`.
-  fn lookup(&self, idx: Index) -> &Widget {
+  fn lookup(&self, idx: Index) -> &dyn Widget {
     match &self.widgets[idx.idx].1 {
       Some(widget) => widget.as_ref(),
       None => panic!("Widget {} is currently taken", idx),
@@ -440,7 +440,7 @@ impl Ui {
 
   fn with<F, R>(&mut self, idx: Index, with_widget: F) -> R
   where
-    F: FnOnce(&mut Ui, Box<Widget>) -> (Box<Widget>, R),
+    F: FnOnce(&mut Ui, Box<dyn Widget>) -> (Box<dyn Widget>, R),
   {
     match self.widgets[idx.idx].1.take() {
       Some(widget) => {
@@ -453,7 +453,7 @@ impl Ui {
   }
 
   /// Render the `Ui` with the given `Renderer`.
-  pub fn render(&self, renderer: &Renderer) {
+  pub fn render(&self, renderer: &dyn Renderer) {
     // We cannot simply iterate through all widgets in `self.widgets`
     // when rendering, because we need to take parent-child
     // relationships into account in case widgets cover each other.
@@ -467,7 +467,7 @@ impl Ui {
   }
 
   /// Recursively render the given widget and its children.
-  fn render_all(&self, idx: Index, widget: &Widget, renderer: &Renderer, bbox: BBox) {
+  fn render_all(&self, idx: Index, widget: &dyn Widget, renderer: &dyn Renderer, bbox: BBox) {
     if self.is_visible(idx) {
       // TODO: Ideally we would want to go without the recursion stuff we
       //       have. This may not be possible (efficiently) with safe

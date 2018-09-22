@@ -48,7 +48,7 @@ impl Placeholder {
 }
 
 impl Renderable for Placeholder {
-  fn render(&self, _renderer: &Renderer, _bbox: BBox, _cap: &Cap) -> BBox {
+  fn render(&self, _renderer: &dyn Renderer, _bbox: BBox, _cap: &dyn Cap) -> BBox {
     unreachable!()
   }
 }
@@ -60,7 +60,7 @@ impl Object for Placeholder {
 }
 
 impl Handleable for Placeholder {
-  fn handle(&mut self, _event: Event, _cap: &mut Cap) -> Option<UiEvents> {
+  fn handle(&mut self, _event: Event, _cap: &mut dyn Cap) -> Option<UiEvents> {
     unreachable!()
   }
 }
