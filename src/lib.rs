@@ -24,6 +24,7 @@
 )]
 #![deny(
   bare_trait_objects,
+  elided_lifetimes_in_paths,
   missing_debug_implementations,
   missing_docs,
   unstable_features,

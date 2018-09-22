@@ -21,6 +21,7 @@
 //       is that this lint seemingly flags a problem with the imported
 //       crates, which is not what we want.
 #![deny(
+  elided_lifetimes_in_paths,
   missing_debug_implementations,
   unsafe_code,
   unstable_features,
@@ -69,7 +70,7 @@ enum Error {
 }
 
 impl Display for Error {
-  fn fmt(&self, f: &mut Formatter) -> FmtResult {
+  fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
     match *self {
       Error::Error(ref e) => write!(f, "{}", e),
       Error::LexError(ref e) => write!(f, "{:?}", e),

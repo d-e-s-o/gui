@@ -61,7 +61,7 @@ impl Index {
 
 impl Display for Index {
   /// Format the `Index` into the given formatter.
-  fn fmt(&self, f: &mut Formatter) -> Result {
+  fn fmt(&self, f: &mut Formatter<'_>) -> Result {
     write!(f, "{}", self.idx)
   }
 }
@@ -88,7 +88,7 @@ impl Id {
 
 impl Display for Id {
   /// Format the `Id` into the given formatter.
-  fn fmt(&self, f: &mut Formatter) -> Result {
+  fn fmt(&self, f: &mut Formatter<'_>) -> Result {
     write!(f, "{}", self.idx)
   }
 }
@@ -114,11 +114,11 @@ type EventHookFn = &'static dyn Fn(&mut dyn Widget, Event, &dyn Cap) -> Option<U
 /// A capability allowing for various widget related operations.
 pub trait Cap {
   /// Add a widget to the `Ui` represented by the capability.
-  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn) -> Id;
+  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_>) -> Id;
 
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
-  fn children(&self, widget: Id) -> ChildIter;
+  fn children(&self, widget: Id) -> ChildIter<'_>;
 
   /// Retrieve the `Id` of the root widget.
   fn root_id(&self) -> Id;
@@ -233,7 +233,7 @@ impl WidgetData {
 struct EventHook(EventHookFn);
 
 impl Debug for EventHook {
-  fn fmt(&self, f: &mut Formatter) -> Result {
+  fn fmt(&self, f: &mut Formatter<'_>) -> Result {
     write!(f, "{:p}", self.0)
   }
 }
@@ -256,7 +256,7 @@ pub struct Ui {
 impl Ui {
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
-  pub fn new(new_root_widget: NewWidgetFn) -> (Self, Id) {
+  pub fn new(new_root_widget: NewWidgetFn<'_>) -> (Self, Id) {
     let mut ui = Ui {
       #[cfg(debug_assertions)]
       id: get_next_ui_id(),
@@ -271,7 +271,7 @@ impl Ui {
   }
 
   /// Add a widget to the `Ui`.
-  fn _add_widget(&mut self, parent_idx: Option<Index>, new_widget: NewWidgetFn) -> Id {
+  fn _add_widget(&mut self, parent_idx: Option<Index>, new_widget: NewWidgetFn<'_>) -> Id {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
 
@@ -318,7 +318,7 @@ impl Ui {
     }
   }
 
-  fn children(&self, idx: Index) -> ChildIter {
+  fn children(&self, idx: Index) -> ChildIter<'_> {
     self.widgets[idx.idx].0.children.iter()
   }
 
@@ -575,7 +575,7 @@ impl Ui {
   }
 
   /// Handle a custom event.
-  fn handle_custom_event(&mut self, idx: Index, event: CustomEvent) -> Option<UnhandledEvents> {
+  fn handle_custom_event(&mut self, idx: Index, event: CustomEvent<'_>) -> Option<UnhandledEvents> {
     let (events, parent_idx) = self.with(idx, |ui, mut widget| {
       let events = match event {
         CustomEvent::Owned(event) => widget.handle_custom(event, ui),
@@ -645,14 +645,14 @@ impl Ui {
 
 impl Cap for Ui {
   /// Add a widget to the `Ui`.
-  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn) -> Id {
+  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_>) -> Id {
     let parent_idx = self.validate(parent);
     self._add_widget(Some(parent_idx), &mut |id, cap| new_widget(id, cap))
   }
 
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
-  fn children(&self, widget: Id) -> ChildIter {
+  fn children(&self, widget: Id) -> ChildIter<'_> {
     self.children(self.validate(widget))
   }
 
