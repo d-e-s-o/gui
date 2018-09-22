@@ -29,18 +29,18 @@ use std::sync::atomic::AtomicUsize;
 #[cfg(debug_assertions)]
 use std::sync::atomic::Ordering;
 
-use BBox;
-use ChainEvent;
-use CustomEvent;
-use Event;
-use OptionChain;
-use Placeholder;
-use Renderer;
-use UiEvent;
-use UiEvents;
-use UnhandledEvent;
-use UnhandledEvents;
-use Widget;
+use crate::BBox;
+use crate::ChainEvent;
+use crate::CustomEvent;
+use crate::Event;
+use crate::OptionChain;
+use crate::Placeholder;
+use crate::Renderer;
+use crate::UiEvent;
+use crate::UiEvents;
+use crate::UnhandledEvent;
+use crate::UnhandledEvents;
+use crate::Widget;
 
 
 /// An `Index` is our internal representation of an `Id`. `Id`s can
@@ -95,7 +95,7 @@ impl Display for Id {
 
 
 /// An iterator over the children of a widget.
-pub type ChildIter<'widget> = Iter<'widget, Id>;
+pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
 // TODO: Ideally we would want to use FnOnce here, in case callers need
 //       to move data into a widget. We cannot do so with a reference

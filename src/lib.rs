@@ -23,10 +23,11 @@
   redundant_field_names,
 )]
 #![deny(
-  bare_trait_objects,
-  elided_lifetimes_in_paths,
+  future_incompatible,
   missing_debug_implementations,
   missing_docs,
+  rust_2018_compatibility,
+  rust_2018_idioms,
   unstable_features,
   unused_import_braces,
   unused_qualifications,

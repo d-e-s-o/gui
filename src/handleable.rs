@@ -19,10 +19,10 @@
 
 use std::any::Any;
 
-use Cap;
-use Event;
-use UiEvent;
-use UiEvents;
+use crate::Cap;
+use crate::Event;
+use crate::UiEvent;
+use crate::UiEvents;
 
 
 /// A trait representing an object capable of handling events.

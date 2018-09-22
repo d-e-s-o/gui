@@ -21,8 +21,10 @@
 //       is that this lint seemingly flags a problem with the imported
 //       crates, which is not what we want.
 #![deny(
-  elided_lifetimes_in_paths,
+  future_incompatible,
   missing_debug_implementations,
+  rust_2018_compatibility,
+  rust_2018_idioms,
   unsafe_code,
   unstable_features,
   unused_import_braces,

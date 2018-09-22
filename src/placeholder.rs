@@ -19,28 +19,28 @@
 
 use std::any::TypeId;
 
-use BBox;
-use Cap;
-use Event;
-use Handleable;
-use Id;
-use Object;
-use Renderable;
-use Renderer;
-use UiEvents;
-use Widget;
+use crate::BBox;
+use crate::Cap;
+use crate::Event;
+use crate::Handleable;
+use crate::Id;
+use crate::Object;
+use crate::Renderable;
+use crate::Renderer;
+use crate::UiEvents;
+use crate::Widget;
 
 
 /// This class is a dummy implementation of a container style `Widget`.
 /// Objects of it are used internally in the `Ui` class to allow for
 /// dynamic widget creation.
 #[derive(Debug)]
-pub struct Placeholder {
+pub(crate) struct Placeholder {
   children: Vec<Id>,
 }
 
 impl Placeholder {
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Placeholder {
       children: Vec::new(),
     }

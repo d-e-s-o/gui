@@ -17,7 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use Id;
+use crate::Id;
 
 
 /// An `Object` represents a first-class entity in a UI.

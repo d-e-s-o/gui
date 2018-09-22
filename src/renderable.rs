@@ -17,9 +17,9 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use BBox;
-use Cap;
-use Renderer;
+use crate::BBox;
+use crate::Cap;
+use crate::Renderer;
 
 
 /// A trait representing a renderable object.

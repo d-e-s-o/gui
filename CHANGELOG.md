@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Enabled Rust 2018 edition lints
+
+
 0.2.0
 -----
 - Moved `Custom` event variant from `gui::Event` into `gui::UiEvent` and

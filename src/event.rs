@@ -19,7 +19,7 @@
 
 use std::any::Any;
 
-use Id;
+use crate::Id;
 
 
 /// An object representing a key on the key board.
@@ -79,7 +79,7 @@ pub enum Event {
 /// Custom events are the means for transferring arbitrary data between
 /// widgets.
 #[derive(Debug)]
-pub enum CustomEvent<'evnt> {
+pub(crate) enum CustomEvent<'evnt> {
   /// An event that is sent in full to another widget.
   ///
   /// Ownership of the event is transferred to a widget. Custom events

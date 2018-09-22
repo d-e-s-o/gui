@@ -20,9 +20,9 @@
 use std::any::TypeId;
 use std::fmt::Debug;
 
-use Handleable;
-use Object;
-use Renderable;
+use crate::Handleable;
+use crate::Object;
+use crate::Renderable;
 
 
 /// A widget as used by a `Ui`.

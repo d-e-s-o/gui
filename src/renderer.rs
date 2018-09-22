@@ -17,8 +17,8 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use Cap;
-use Widget;
+use crate::Cap;
+use crate::Widget;
 
 
 /// A bounding box representing the area that a widget may occupy. A
