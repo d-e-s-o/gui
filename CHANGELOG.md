@@ -1,5 +1,7 @@
 Unreleased
 ----------
+- Usage of event hooks no longer induces an unnecessary clone of a
+  `HashSet` every time an event is handled
 - Enabled Rust 2018 edition lints
 - Enabled `unused-results` lint
 

@@ -17,7 +17,6 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -46,7 +45,7 @@ use crate::Widget;
 /// An `Index` is our internal representation of an `Id`. `Id`s can
 /// belong to different `Ui` objects and a validation step converts them
 /// into an `Index`.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
 struct Index {
   idx: usize,
 }
@@ -245,7 +244,7 @@ pub struct Ui {
   #[cfg(debug_assertions)]
   id: usize,
   widgets: Vec<(WidgetData, Option<Box<dyn Widget>>)>,
-  hooked: HashSet<Index>,
+  hooked: Vec<Index>,
   focused: Option<Index>,
 }
 
@@ -486,8 +485,15 @@ impl Ui {
   fn invoke_event_hooks(&mut self, event: Event) -> Option<UiEvents> {
     let mut result = None;
 
-    // TODO: Is there a way to avoid this clone?
-    for idx in self.hooked.clone() {
+    // Note that we deliberately iterate over the vector by means of
+    // indices. We cannot acquire an immutable reference to it because
+    // we require a mutable one to self below. By using indices for the
+    // iteration we side step this problem. That is safe, though,
+    // because a widget cannot modify the event hooks from the hook
+    // function, because we only provide it with an immutable `Cap`.
+    for i in 0..self.hooked.len() {
+      let idx = self.hooked[i];
+
       self.with(idx, |ui, mut widget| {
         match &ui.widgets[idx.idx].0.event_hook {
           Some(hook_fn) => {
@@ -727,12 +733,21 @@ impl Cap for Ui {
   fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn>) -> Option<EventHookFn> {
     let idx = self.validate(widget);
     let data = &mut self.widgets[idx.idx].0;
+    let result = self.hooked.binary_search(&idx);
 
-    debug_assert_eq!(self.hooked.get(&idx).is_some(), data.event_hook.is_some());
+    debug_assert_eq!(result.is_ok(), data.event_hook.is_some());
 
     let _ = match hook_fn {
-      Some(_) => self.hooked.insert(idx),
-      None => self.hooked.remove(&idx),
+      Some(_) => {
+        if let Err(i) = result {
+          self.hooked.insert(i, idx);
+        }
+      },
+      None => {
+        if let Ok(i) = result {
+          let _ = self.hooked.remove(i);
+        }
+      },
     };
 
     let prev_hook = data.event_hook.take();
