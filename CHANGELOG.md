@@ -2,6 +2,10 @@ Unreleased
 ----------
 - Usage of event hooks no longer induces an unnecessary clone of a
   `HashSet` every time an event is handled
+- Hook emitted events are now delivered to the destination widget after
+  the source event was delivered
+  - Order was left unspecified beforehand, but was happening in reverse
+    (i.e., hook emitted events arrived before the source event did)
 - Enabled Rust 2018 edition lints
 - Enabled `unused-results` lint
 

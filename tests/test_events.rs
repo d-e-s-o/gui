@@ -595,6 +595,49 @@ fn hook_events_with_return() {
 }
 
 
+fn emitting_event_hook(_widget: &mut Widget, event: Event, _cap: &Cap) -> Option<UiEvents> {
+  assert_eq!(event, Event::KeyDown(Key::Char('y')));
+
+  Some(Event::KeyDown(Key::Char('z')).into())
+}
+
+static mut FIRST: bool = true;
+
+fn checking_event_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<UiEvents> {
+  unsafe {
+    if FIRST {
+      assert_eq!(event, Event::KeyDown(Key::Char('y')));
+    } else {
+      assert_eq!(event, Event::KeyDown(Key::Char('z')));
+    };
+
+    FIRST = false;
+  }
+
+  None
+}
+
+#[test]
+fn hook_emitted_event_order() {
+  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+    Box::new(TestWidget::new(id))
+  });
+  let w = ui.add_widget(r, &mut |id, _cap| {
+    let widget = TestWidgetBuilder::new()
+      .event_handler(checking_event_handler)
+      .build(id);
+    Box::new(widget)
+  });
+
+  ui.focus(w);
+  ui.hook_events(w, Some(&emitting_event_hook));
+
+  let event = Event::KeyDown(Key::Char('y'));
+  let result = ui.handle(event);
+  assert!(result.is_none())
+}
+
+
 fn returned_event_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())

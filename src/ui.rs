@@ -32,6 +32,7 @@ use crate::BBox;
 use crate::ChainEvent;
 use crate::CustomEvent;
 use crate::Event;
+use crate::EventChain;
 use crate::OptionChain;
 use crate::Placeholder;
 use crate::Renderer;
@@ -174,6 +175,10 @@ pub trait Cap {
   /// through the `Ui::handle` method. For such events, the event hook
   /// handler gets to inspect the event before any widget gets a chance
   /// to handle it "officially" through the `Handleable::handle` method.
+  ///
+  /// Event hook handlers are allowed to emit events on its own, just as
+  /// "normal" event handlers. It is guaranteed that these emitted
+  /// events will reach the widget after the event that was hooked.
   ///
   /// Note that event hook functions are only able to inspect events and
   /// not change or discard them. That restriction prevents conflicts
@@ -540,7 +545,9 @@ impl Ui {
       _ => None,
     };
 
-    let events = ui_events.opt_chain(ui_event);
+    // Note that we guarantee that the event as it came in is received
+    // by the widget before additional events as emitted by the hook.
+    let events = ui_event.chain_opt(ui_events);
     self.handle_ui_events(idx, events)
   }
 
