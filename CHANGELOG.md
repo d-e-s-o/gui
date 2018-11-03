@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.2.1
+-----
 - Usage of event hooks no longer induces an unnecessary clone of a
   `HashSet` every time an event is handled
 - Hook emitted events are now delivered to the destination widget after

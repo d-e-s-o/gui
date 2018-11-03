@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.2.1
+-----
 - Enabled Rust 2018 edition lints
 - Enabled `unused-results` lint
 
