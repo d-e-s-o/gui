@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Added categories to `Cargo.toml`
+
+
 0.2.1
 -----
 - Enabled Rust 2018 edition lints

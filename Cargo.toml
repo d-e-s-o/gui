@@ -6,6 +6,7 @@ license = "GPL-3.0+"
 homepage = "https://crates.io/crates/gui"
 repository = "https://github.com/d-e-s-o/gui.git"
 readme = "README.md"
+categories = ["gui", "command-line-utilities", "command-line-interface", "rendering"]
 keywords = ["gui", "ui"]
 description = """
 A generic UI library/framework.
