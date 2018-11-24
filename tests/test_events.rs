@@ -216,6 +216,12 @@ fn option_and_option_chain() {
 
   assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
 
+  let event = Event::KeyDown(Key::Esc);
+  let orig_event = event;
+  let result = (None as Option<Event>).opt_chain(event);
+
+  assert!(compare_ui_events(&result, &orig_event.into()));
+
   let event1 = Event::KeyDown(Key::End);
   let orig_event1 = event1;
   let event2 = Event::KeyUp(Key::Char('u'));
