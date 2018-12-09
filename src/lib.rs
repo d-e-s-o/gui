@@ -18,9 +18,7 @@
 // *************************************************************************
 
 #![allow(
-  unknown_lints,
-  block_in_if_condition_stmt,
-  redundant_field_names,
+  clippy::redundant_field_names,
 )]
 #![deny(
   missing_copy_implementations,

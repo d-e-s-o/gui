@@ -253,13 +253,10 @@ pub struct Ui {
   focused: Option<Index>,
 }
 
-// Clippy raises a false alert due to the generic type used but not
-// implementing Default.
-// See https://github.com/rust-lang-nursery/rust-clippy/issues/2226
-#[allow(new_without_default_derive)]
 impl Ui {
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
+  #[allow(clippy::new_ret_no_self)]
   pub fn new(new_root_widget: NewWidgetFn<'_>) -> (Self, Id) {
     let mut ui = Ui {
       #[cfg(debug_assertions)]
@@ -744,7 +741,7 @@ impl Cap for Ui {
 
     debug_assert_eq!(result.is_ok(), data.event_hook.is_some());
 
-    let _ = match hook_fn {
+    match hook_fn {
       Some(_) => {
         if let Err(i) = result {
           self.hooked.insert(i, idx);

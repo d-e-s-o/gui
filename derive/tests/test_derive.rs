@@ -17,6 +17,10 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+#![allow(
+  clippy::redundant_field_names,
+)]
+
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
