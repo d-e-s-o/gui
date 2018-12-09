@@ -21,7 +21,10 @@
 //       is that this lint seemingly flags a problem with the imported
 //       crates, which is not what we want.
 #![deny(
+  missing_copy_implementations,
   missing_debug_implementations,
+  trivial_casts,
+  trivial_numeric_casts,
   unsafe_code,
   unstable_features,
   unused_import_braces,
