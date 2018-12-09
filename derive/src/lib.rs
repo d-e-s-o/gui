@@ -21,16 +21,17 @@
 //       is that this lint seemingly flags a problem with the imported
 //       crates, which is not what we want.
 #![deny(
-  future_incompatible,
   missing_debug_implementations,
-  rust_2018_compatibility,
-  rust_2018_idioms,
   unsafe_code,
   unstable_features,
   unused_import_braces,
   unused_qualifications,
   unused_results,
-  warnings,
+)]
+#![warn(
+  future_incompatible,
+  rust_2018_compatibility,
+  rust_2018_idioms,
 )]
 
 //! A crate providing custom derive functionality for the `gui` crate.

@@ -17,9 +17,6 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-#![allow(unknown_lints)]
-#![deny(warnings)]
-
 mod common;
 
 use std::any::Any;

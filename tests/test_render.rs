@@ -17,8 +17,6 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-#![deny(warnings)]
-
 mod common;
 
 use std::cell::Cell;

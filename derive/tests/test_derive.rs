@@ -17,8 +17,6 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-#![deny(warnings)]
-
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
