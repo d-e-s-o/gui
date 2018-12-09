@@ -19,10 +19,6 @@
 
 #![deny(warnings)]
 
-extern crate gui;
-#[macro_use]
-extern crate gui_derive;
-
 mod common;
 
 use std::any::Any;
@@ -35,10 +31,12 @@ use gui::Key;
 use gui::Ui;
 use gui::UiEvent;
 use gui::UiEvents;
+use gui_derive::GuiHandleable;
+use gui_derive::GuiWidget;
 
-use common::TestWidget;
-use common::TestWidgetBuilder;
-use common::unwrap_custom;
+use crate::common::TestWidget;
+use crate::common::TestWidgetBuilder;
+use crate::common::unwrap_custom;
 
 
 #[test]

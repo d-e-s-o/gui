@@ -19,10 +19,6 @@
 
 #![deny(warnings)]
 
-extern crate gui;
-#[macro_use]
-extern crate gui_derive;
-
 mod common;
 
 use std::cell::Cell;
@@ -35,7 +31,7 @@ use gui::Renderer;
 use gui::Ui;
 use gui::Widget;
 
-use common::TestWidget;
+use crate::common::TestWidget;
 
 
 #[derive(Debug)]

@@ -58,10 +58,9 @@ pub trait Renderer {
   /// actual widget type to render by the `Renderer` itself, should that
   /// be necessary. A simplified implementation could look as follows:
   /// ```rust
-  /// # extern crate gui;
-  /// # #[macro_use]
-  /// # extern crate gui_derive;
   /// # use gui::{BBox, Cap, Id, Renderer, Widget};
+  /// # use gui_derive::GuiHandleable;
+  /// # use gui_derive::GuiWidget;
   /// # #[derive(Debug, GuiWidget, GuiHandleable)]
   /// # struct ConcreteWidget1 {
   /// #   id: Id,

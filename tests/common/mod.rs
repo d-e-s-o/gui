@@ -17,8 +17,6 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-extern crate gui;
-
 use std::any::Any;
 use std::fmt::Debug;
 use std::fmt::Formatter;
@@ -34,6 +32,7 @@ use gui::UiEvent;
 use gui::UiEvents;
 use gui::UnhandledEvent;
 use gui::UnhandledEvents;
+use gui_derive::GuiWidget;
 
 
 struct Handler<T>(T);

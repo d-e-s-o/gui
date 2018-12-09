@@ -1,5 +1,6 @@
 Unreleased
 ----------
+- Adjusted crate to use Rust Edition 2018
 - Added categories to `Cargo.toml`
 
 

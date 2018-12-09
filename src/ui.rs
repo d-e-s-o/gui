@@ -637,7 +637,7 @@ impl Ui {
       UiEvent::Returnable(src, dst, mut any) => {
         // First let the widget handle the event.
         let events1 = {
-          let mut event = CustomEvent::Borrowed(any.as_mut());
+          let event = CustomEvent::Borrowed(any.as_mut());
           let idx = self.validate(dst);
           self.handle_custom_event(idx, event)
         };

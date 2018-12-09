@@ -19,10 +19,6 @@
 
 #![deny(warnings)]
 
-extern crate gui;
-#[macro_use]
-extern crate gui_derive;
-
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -30,6 +26,8 @@ use gui::Cap;
 use gui::Handleable;
 use gui::Id;
 use gui::Ui;
+use gui_derive::GuiHandleable;
+use gui_derive::GuiWidget;
 
 
 #[derive(Debug, GuiWidget, GuiHandleable)]

@@ -20,10 +20,6 @@
 #![allow(unknown_lints)]
 #![deny(warnings)]
 
-extern crate gui;
-#[macro_use]
-extern crate gui_derive;
-
 mod common;
 
 use std::any::Any;
@@ -44,9 +40,9 @@ use gui::UnhandledEvent;
 use gui::UnhandledEvents;
 use gui::Widget;
 
-use common::TestWidget;
-use common::TestWidgetBuilder;
-use common::unwrap_custom;
+use crate::common::TestWidget;
+use crate::common::TestWidgetBuilder;
+use crate::common::unwrap_custom;
 
 
 fn compare_ui_event(event1: &UiEvent, event2: &UiEvent) -> bool {

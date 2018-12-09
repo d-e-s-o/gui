@@ -36,9 +36,6 @@
 //! A crate providing custom derive functionality for the `gui` crate.
 
 extern crate proc_macro;
-#[macro_use]
-extern crate quote;
-extern crate syn;
 
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -47,6 +44,7 @@ use std::fmt::Result as FmtResult;
 use proc_macro::LexError;
 use proc_macro::TokenStream;
 use quote::__rt::TokenStream as Tokens;
+use quote::quote;
 use syn::Attribute;
 use syn::Data;
 use syn::DeriveInput;
@@ -115,7 +113,6 @@ type Result<T> = std::result::Result<T, Error>;
 /// This macro roughly expands to the following code:
 ///
 /// ```rust
-/// # extern crate gui;
 /// # use std::any::TypeId;
 /// # #[derive(Debug)]
 /// # struct TestWidget {
@@ -352,9 +349,7 @@ fn expand_widget_trait(input: &DeriveInput) -> Tokens {
 /// This macro roughly expands to the following code:
 ///
 /// ```rust
-/// # extern crate gui;
-/// # #[macro_use]
-/// # extern crate gui_derive;
+/// # use gui_derive::GuiWidget;
 /// # #[derive(Debug, GuiWidget)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
