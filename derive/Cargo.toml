@@ -24,6 +24,6 @@ path = ".."
 version = "0.6"
 
 [dependencies.syn]
-version = "0.14"
+version = "0.15"
 default-features = false
 features = ["derive", "parsing", "printing"]

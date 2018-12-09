@@ -4,6 +4,7 @@ Unreleased
 - Removed `#![deny(warnings)]` attribute and demoted lints prone to
   future changes from `deny` to `warn`
 - Added categories to `Cargo.toml`
+- Bumped `syn` dependency to `0.15`
 
 
 0.2.1
