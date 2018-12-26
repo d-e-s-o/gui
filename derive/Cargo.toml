@@ -13,6 +13,9 @@ description = """
 Custom derive macros for the gui crate.
 """
 
+[badges]
+gitlab = { repository = "d-e-s-o/gui", branch = "devel" }
+
 [lib]
 proc-macro = true
 

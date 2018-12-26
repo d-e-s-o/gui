@@ -1,3 +1,5 @@
+[![pipeline](https://gitlab.com/d-e-s-o/gui/badges/devel/pipeline.svg)](https://gitlab.com/d-e-s-o/gui/commits/devel)
+
 gui
 ===
 
