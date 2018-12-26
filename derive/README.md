@@ -1,4 +1,7 @@
 [![pipeline](https://gitlab.com/d-e-s-o/gui/badges/devel/pipeline.svg)](https://gitlab.com/d-e-s-o/gui/commits/devel)
+[![crates.io](https://img.shields.io/crates/v/gui-derive.svg)](https://crates.io/crates/gui-derive)
+[![Docs](https://docs.rs/gui-derive/badge.svg)](https://docs.rs/gui-derive)
+[![rustc](https://img.shields.io/badge/rustc-1.31+-blue.svg)](https://blog.rust-lang.org/2018/12/06/Rust-1.31-and-rust-2018.html)
 
 gui-derive
 ==========

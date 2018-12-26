@@ -5,7 +5,9 @@ Unreleased
   future changes from `deny` to `warn`
 - Enabled CI pipeline comprising building, testing, and linting of the
   project
-  - Added badge indicating pipeline status
+- Added badges indicating pipeline status, current `crates.io` published
+  version of the crate, current `docs.rs` published version of the
+  documentation, and minimum version of `rustc` required
 - Added categories to `Cargo.toml`
 - Bumped `syn` dependency to `0.15`
 
