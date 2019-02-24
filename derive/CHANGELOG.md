@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Downgraded dependency to `gui` to a dev-dependency
+
+
 0.2.2
 -----
 - Adjusted crate to use Rust Edition 2018

@@ -19,10 +19,6 @@ gitlab = { repository = "d-e-s-o/gui", branch = "devel" }
 [lib]
 proc-macro = true
 
-[dependencies.gui]
-version = "0.2"
-path = ".."
-
 [dependencies.quote]
 version = "0.6"
 
@@ -30,3 +26,7 @@ version = "0.6"
 version = "0.15"
 default-features = false
 features = ["derive", "parsing", "printing"]
+
+[dev-dependencies.gui]
+version = "0.2"
+path = ".."
