@@ -1,7 +1,7 @@
 // lib.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -70,3 +70,13 @@ pub use self::ui::Cap;
 pub use self::ui::Id;
 pub use self::ui::Ui;
 pub use self::widget::Widget;
+
+/// A module providing custom derive functionality for `gui` related
+/// traits.
+///
+/// The module merely re-reports the procedural macros provided by the
+/// `gui_derive` crate.
+#[cfg(feature = "derive")]
+pub mod derive {
+  pub use gui_derive::*;
+}

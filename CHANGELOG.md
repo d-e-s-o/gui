@@ -1,3 +1,9 @@
+Unreleased
+----------
+- Introduced 'derive' feature pulling in and re-exporting the custom
+  derive functionality provided by `gui-derive`
+
+
 0.2.2
 -----
 - Adjusted crate to use Rust Edition 2018

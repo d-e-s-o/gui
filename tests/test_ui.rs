@@ -1,7 +1,7 @@
 // test_ui.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -28,6 +28,8 @@ mod common;
 use std::any::Any;
 
 use gui::Cap;
+use gui::derive::GuiHandleable;
+use gui::derive::GuiWidget;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
@@ -35,8 +37,6 @@ use gui::Key;
 use gui::Ui;
 use gui::UiEvent;
 use gui::UiEvents;
-use gui_derive::GuiHandleable;
-use gui_derive::GuiWidget;
 
 use crate::common::TestWidget;
 use crate::common::TestWidgetBuilder;

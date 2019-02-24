@@ -19,6 +19,11 @@ members = ["derive"]
 [badges]
 gitlab = { repository = "d-e-s-o/gui", branch = "devel" }
 
-[dev-dependencies.gui-derive]
+[features]
+default = ["derive"]
+derive = ["gui-derive"]
+
+[dependencies.gui-derive]
 version = "0.2"
+optional = true
 path = "derive"

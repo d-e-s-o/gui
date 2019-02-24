@@ -1,7 +1,7 @@
 // renderer.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -59,8 +59,7 @@ pub trait Renderer {
   /// be necessary. A simplified implementation could look as follows:
   /// ```rust
   /// # use gui::{BBox, Cap, Id, Renderer, Widget};
-  /// # use gui_derive::GuiHandleable;
-  /// # use gui_derive::GuiWidget;
+  /// # use gui::derive::{GuiHandleable, GuiWidget};
   /// # #[derive(Debug, GuiWidget, GuiHandleable)]
   /// # struct ConcreteWidget1 {
   /// #   id: Id,

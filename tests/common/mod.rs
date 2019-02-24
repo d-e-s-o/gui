@@ -1,7 +1,7 @@
 // mod.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -29,6 +29,7 @@ use std::ops::Deref;
 
 use gui::Cap;
 use gui::ChainEvent;
+use gui::derive::GuiWidget;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
@@ -36,7 +37,6 @@ use gui::UiEvent;
 use gui::UiEvents;
 use gui::UnhandledEvent;
 use gui::UnhandledEvents;
-use gui_derive::GuiWidget;
 
 
 struct Handler<T>(T);
