@@ -1,7 +1,7 @@
 // test_derive.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -25,14 +25,14 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use gui::Cap;
+use gui::derive::Handleable;
+use gui::derive::Widget;
 use gui::Handleable;
 use gui::Id;
 use gui::Ui;
-use gui_derive::GuiHandleable;
-use gui_derive::GuiWidget;
 
 
-#[derive(Debug, GuiWidget, GuiHandleable)]
+#[derive(Debug, Widget, Handleable)]
 #[gui(default_new)]
 struct TestWidget {
   id: Id,
@@ -42,7 +42,7 @@ struct TestWidget {
 // Note that the deny(unused_imports) attribute exists for testing
 // purposes.
 #[deny(unused_imports)]
-#[derive(Debug, GuiWidget)]
+#[derive(Debug, Widget)]
 #[gui(default_new)]
 struct TestWidgetCustom {
   id: Id,
@@ -51,7 +51,7 @@ struct TestWidgetCustom {
 impl Handleable for TestWidgetCustom {}
 
 
-#[derive(Debug, GuiWidget, GuiHandleable)]
+#[derive(Debug, Widget, Handleable)]
 struct TestWidgetT<T>
 where
   T: 'static + Debug,

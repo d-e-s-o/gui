@@ -29,7 +29,7 @@ use std::ops::Deref;
 
 use gui::Cap;
 use gui::ChainEvent;
-use gui::derive::GuiWidget;
+use gui::derive::Widget;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
@@ -121,7 +121,7 @@ impl TestWidgetBuilder {
 }
 
 
-#[derive(Debug, GuiWidget)]
+#[derive(Debug, Widget)]
 pub struct TestWidget {
   id: Id,
   event_handler: Option<EventHandler>,

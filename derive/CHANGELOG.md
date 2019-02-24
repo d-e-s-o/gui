@@ -1,5 +1,6 @@
 Unreleased
 ----------
+- Dropped "Gui" prefix from custom derive macros
 - Downgraded dependency to `gui` to a dev-dependency
 
 

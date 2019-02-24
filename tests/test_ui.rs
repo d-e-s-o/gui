@@ -28,8 +28,8 @@ mod common;
 use std::any::Any;
 
 use gui::Cap;
-use gui::derive::GuiHandleable;
-use gui::derive::GuiWidget;
+use gui::derive::Handleable;
+use gui::derive::Widget;
 use gui::Event;
 use gui::Handleable;
 use gui::Id;
@@ -419,7 +419,7 @@ fn need_more(id: Id, cap: &Cap) -> bool {
   cap.parent_id(id).is_none()
 }
 
-#[derive(Debug, GuiWidget)]
+#[derive(Debug, Widget)]
 struct CreatingWidget {
   id: Id,
 }
@@ -475,7 +475,7 @@ fn recursive_widget_creation() {
 #[derive(Debug)]
 struct Moveable {}
 
-#[derive(Debug, GuiWidget, GuiHandleable)]
+#[derive(Debug, Widget, Handleable)]
 struct MovingWidget {
   id: Id,
   object: Moveable,

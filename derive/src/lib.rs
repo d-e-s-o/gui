@@ -1,7 +1,7 @@
 // lib.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -141,7 +141,7 @@ type Result<T> = std::result::Result<T, Error>;
 /// }
 /// # impl gui::Handleable for TestWidget {}
 /// ```
-#[proc_macro_derive(GuiWidget, attributes(gui))]
+#[proc_macro_derive(Widget, attributes(gui))]
 pub fn widget(input: TokenStream) -> TokenStream {
   match expand_widget(input) {
     Ok(tokens) => tokens,
@@ -232,7 +232,7 @@ fn expand_widget_input(new: &New, input: &DeriveInput) -> Result<Tokens> {
       check_struct_fields(&data.fields)?;
       Ok(expand_widget_traits(new, input))
     },
-    _ => Err(Error::from("#[derive(GuiWidget)] is only defined for structs")),
+    _ => Err(Error::from("#[derive(Widget)] is only defined for structs")),
   }
 }
 
@@ -353,15 +353,15 @@ fn expand_widget_trait(input: &DeriveInput) -> Tokens {
 /// This macro roughly expands to the following code:
 ///
 /// ```rust
-/// # use gui_derive::GuiWidget;
-/// # #[derive(Debug, GuiWidget)]
+/// # use gui_derive::Widget;
+/// # #[derive(Debug, Widget)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
 /// # }
 /// impl gui::Handleable for TestWidget {}
 /// # fn main() {}
 /// ```
-#[proc_macro_derive(GuiHandleable)]
+#[proc_macro_derive(Handleable)]
 pub fn handleable(input: TokenStream) -> TokenStream {
   match expand_handleable(input) {
     Ok(tokens) => tokens,
@@ -388,7 +388,7 @@ fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
         impl #impl_generics ::gui::Handleable for #name #ty_generics #where_clause {}
       })
     },
-    _ => Err(Error::from("#[derive(GuiHandleable)] is only defined for structs")),
+    _ => Err(Error::from("#[derive(Handleable)] is only defined for structs")),
   }
 }
 

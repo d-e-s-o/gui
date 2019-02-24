@@ -59,12 +59,12 @@ pub trait Renderer {
   /// be necessary. A simplified implementation could look as follows:
   /// ```rust
   /// # use gui::{BBox, Cap, Id, Renderer, Widget};
-  /// # use gui::derive::{GuiHandleable, GuiWidget};
-  /// # #[derive(Debug, GuiWidget, GuiHandleable)]
+  /// # use gui::derive::{Handleable, Widget};
+  /// # #[derive(Debug, Widget, Handleable)]
   /// # struct ConcreteWidget1 {
   /// #   id: Id,
   /// # }
-  /// # #[derive(Debug, GuiWidget, GuiHandleable)]
+  /// # #[derive(Debug, Widget, Handleable)]
   /// # struct ConcreteWidget2 {
   /// #   id: Id,
   /// # }
