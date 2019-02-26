@@ -60,12 +60,9 @@ use syn::punctuated::Punctuated;
 use syn::token::Comma;
 
 
-/// An enum to decide whether or not to create a default implementation of type::new().
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum New {
-  Default,
-  None,
-}
+/// A type indicating whether or not to create a default implementation of Type::new().
+type New = Option<()>;
+
 
 /// The error type used internally by this module.
 #[derive(Debug)]
@@ -154,7 +151,7 @@ fn expand_widget(input: TokenStream) -> Result<TokenStream> {
     Err("unable to parse input")
   })?;
   let new = parse_widget_attributes(&input.attrs)?;
-  let tokens = expand_widget_input(&new, &input)?;
+  let tokens = expand_widget_input(new, &input)?;
   Ok(tokens.into())
 }
 
@@ -172,7 +169,7 @@ fn parse_widget_attributes(attributes: &[Attribute]) -> Result<New> {
 
   // If no attribute is given we do not create a default implementation
   // of new().
-  Ok(new.map_or(New::None, |x| x))
+  Ok(new)
 }
 
 /// Parse a single item in a #[gui(list...)] attribute list.
@@ -180,7 +177,7 @@ fn parse_gui_attribute(item: &NestedMeta) -> Result<New> {
   match *item {
     NestedMeta::Meta(ref meta_item) => {
       match *meta_item {
-        Meta::Word(ref ident) if ident == "default_new" => Ok(New::Default),
+        Meta::Word(ref ident) if ident == "default_new" => Ok(Some(())),
         _ => Err(Error::from(format!("unsupported attribute: {}", meta_item.name()))),
       }
     },
@@ -199,14 +196,14 @@ fn parse_gui_attributes(list: &Punctuated<NestedMeta, Comma>) -> Result<New> {
     let _ = parse_gui_attribute(item)?;
   }
   if !list.is_empty() {
-    Ok(New::Default)
+    Ok(Some(()))
   } else {
-    Ok(New::None)
+    Ok(None)
   }
 }
 
 /// Parse a single attribute, e.g., #[GuiType = "Widget"].
-fn parse_widget_attribute(attribute: &Attribute) -> Result<Option<New>> {
+fn parse_widget_attribute(attribute: &Attribute) -> Result<New> {
   // We don't care about the other meta data elements, inner/outer,
   // doc/non-doc, it's all fine by us.
 
@@ -216,7 +213,7 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<Option<New>> {
         Meta::List(ref list) if list.ident == "gui" => {
           // Here we have found an attribute of the form #[gui(xxx, yyy,
           // ...)]. Parse the inner list.
-          Ok(Some(parse_gui_attributes(&list.nested)?))
+          parse_gui_attributes(&list.nested)
         },
         _ => Ok(None),
       }
@@ -226,7 +223,7 @@ fn parse_widget_attribute(attribute: &Attribute) -> Result<Option<New>> {
 }
 
 /// Expand the input with the implementation of the required traits.
-fn expand_widget_input(new: &New, input: &DeriveInput) -> Result<Tokens> {
+fn expand_widget_input(new: New, input: &DeriveInput) -> Result<Tokens> {
   match input.data {
     Data::Struct(ref data) => {
       check_struct_fields(&data.fields)?;
@@ -260,7 +257,7 @@ fn check_struct_fields(fields: &Fields) -> Result<()> {
 }
 
 /// Expand the struct input with the implementation of the required traits.
-fn expand_widget_traits(new: &New, input: &DeriveInput) -> Tokens {
+fn expand_widget_traits(new: New, input: &DeriveInput) -> Tokens {
   let new_impl = expand_new_impl(new, input);
   let renderer = expand_renderer_trait(input);
   let object = expand_object_trait(input);
@@ -276,12 +273,12 @@ fn expand_widget_traits(new: &New, input: &DeriveInput) -> Tokens {
 
 
 /// Expand an implementation of Type::new() for the struct.
-fn expand_new_impl(new: &New, input: &DeriveInput) -> Tokens {
+fn expand_new_impl(new: New, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-  match *new {
-    New::Default => {
+  match new {
+    Some(..) => {
       quote! {
         #[allow(dead_code)]
         impl #impl_generics #name #ty_generics #where_clause {
@@ -293,7 +290,7 @@ fn expand_new_impl(new: &New, input: &DeriveInput) -> Tokens {
         }
       }
     },
-    New::None => quote! {},
+    None => quote! {},
   }
 }
 
@@ -405,7 +402,7 @@ mod tests {
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
     let new = parse_widget_attributes(&input.attrs).unwrap();
-    assert_eq!(new, New::None);
+    assert_eq!(new, None);
   }
 
   #[test]
@@ -416,6 +413,6 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    assert_eq!(parse_widget_attributes(&input.attrs).unwrap(), New::Default);
+    assert_eq!(parse_widget_attributes(&input.attrs).unwrap(), Some(()));
   }
 }
