@@ -377,15 +377,18 @@ fn expand_handleable(input: TokenStream) -> Result<TokenStream> {
 /// Expand the input with the implementation of the required traits.
 fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
   match input.data {
-    Data::Struct(_) => {
-      let name = &input.ident;
-      let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-      Ok(quote! {
-        impl #impl_generics ::gui::Handleable for #name #ty_generics #where_clause {}
-      })
-    },
+    Data::Struct(_) => Ok(expand_handleable_trait(input)),
     _ => Err(Error::from("#[derive(Handleable)] is only defined for structs")),
+  }
+}
+
+/// Expand an implementation for the `gui::Handleable` trait.
+fn expand_handleable_trait(input: &DeriveInput) -> Tokens {
+  let name = &input.ident;
+  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+  quote! {
+    impl #impl_generics ::gui::Handleable for #name #ty_generics #where_clause {}
   }
 }
 
