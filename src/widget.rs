@@ -1,7 +1,7 @@
 // widget.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -40,7 +40,7 @@ impl dyn Widget {
   /// Check if the widget is of type `T`.
   pub fn is<T: Widget>(&self) -> bool {
     let t = TypeId::of::<T>();
-    let own_t = self.type_id();
+    let own_t = Widget::type_id(self);
 
     t == own_t
   }

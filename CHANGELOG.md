@@ -1,5 +1,6 @@
 Unreleased
 ----------
+- Added `TypeId` functionality to `Renderable`
 - Introduced 'derive' feature pulling in and re-exporting the custom
   derive functionality provided by `gui-derive`
 

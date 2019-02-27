@@ -1,7 +1,7 @@
 // placeholder.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -48,6 +48,10 @@ impl Placeholder {
 }
 
 impl Renderable for Placeholder {
+  fn type_id(&self) -> TypeId {
+    TypeId::of::<Placeholder>()
+  }
+
   fn render(&self, _renderer: &dyn Renderer, _bbox: BBox, _cap: &dyn Cap) -> BBox {
     unreachable!()
   }

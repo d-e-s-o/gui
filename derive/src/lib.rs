@@ -120,6 +120,9 @@ type Result<T> = std::result::Result<T, Error>;
 /// #   id: gui::Id,
 /// # }
 /// impl gui::Renderable for TestWidget {
+///   fn type_id(&self) -> TypeId {
+///     TypeId::of::<TestWidget>()
+///   }
 ///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox, cap: &gui::Cap) -> gui::BBox {
 ///     renderer.render(self, bbox, cap)
 ///   }
@@ -301,6 +304,10 @@ fn expand_renderer_trait(input: &DeriveInput) -> Tokens {
 
   quote! {
     impl #impl_generics ::gui::Renderable for #name #ty_generics #where_clause {
+      fn type_id(&self) -> ::std::any::TypeId {
+        ::std::any::TypeId::of::<#name #ty_generics>()
+      }
+
       fn render(&self,
                 renderer: &::gui::Renderer,
                 bbox: ::gui::BBox,
