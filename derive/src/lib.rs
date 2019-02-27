@@ -150,16 +150,16 @@ fn expand_widget(input: TokenStream) -> Result<TokenStream> {
   let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
     Err("unable to parse input")
   })?;
-  let new = parse_widget_attributes(&input.attrs)?;
+  let new = parse_attributes(&input.attrs)?;
   let tokens = expand_widget_input(new, &input)?;
   Ok(tokens.into())
 }
 
 /// Parse the macro's attributes.
-fn parse_widget_attributes(attributes: &[Attribute]) -> Result<New> {
+fn parse_attributes(attributes: &[Attribute]) -> Result<New> {
   let new = attributes
     .iter()
-    .map(|attr| parse_widget_attribute(attr))
+    .map(|attr| parse_attribute(attr))
     .fold(Ok(None), |result1, result2| {
       match (result1, result2) {
         (Ok(new1), Ok(new2)) => Ok(new2.or(new1)),
@@ -203,7 +203,7 @@ fn parse_gui_attributes(list: &Punctuated<NestedMeta, Comma>) -> Result<New> {
 }
 
 /// Parse a single attribute, e.g., #[GuiType = "Widget"].
-fn parse_widget_attribute(attribute: &Attribute) -> Result<New> {
+fn parse_attribute(attribute: &Attribute) -> Result<New> {
   // We don't care about the other meta data elements, inner/outer,
   // doc/non-doc, it's all fine by us.
 
@@ -401,7 +401,7 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    let new = parse_widget_attributes(&input.attrs).unwrap();
+    let new = parse_attributes(&input.attrs).unwrap();
     assert_eq!(new, None);
   }
 
@@ -413,6 +413,6 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    assert_eq!(parse_widget_attributes(&input.attrs).unwrap(), Some(()));
+    assert_eq!(parse_attributes(&input.attrs).unwrap(), Some(()));
   }
 }
