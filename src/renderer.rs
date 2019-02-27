@@ -18,7 +18,7 @@
 // *************************************************************************
 
 use crate::Cap;
-use crate::Widget;
+use crate::Renderable;
 
 
 /// A bounding box representing the area that a widget may occupy. A
@@ -54,11 +54,12 @@ pub trait Renderer {
 
   /// Render an object.
   ///
-  /// Objects are represented as `Widget` and need to be cast into the
-  /// actual widget type to render by the `Renderer` itself, should that
-  /// be necessary. A simplified implementation could look as follows:
+  /// Objects are represented as `Renderable` and need to be cast into
+  /// the actual widget type to render by the `Renderer` itself, should
+  /// that be necessary. A simplified implementation could look as
+  /// follows:
   /// ```rust
-  /// # use gui::{BBox, Cap, Id, Renderer, Widget};
+  /// # use gui::{BBox, Cap, Id, Renderer, Renderable};
   /// # use gui::derive::{Handleable, Widget};
   /// # #[derive(Debug, Widget, Handleable)]
   /// # struct ConcreteWidget1 {
@@ -82,13 +83,13 @@ pub trait Renderer {
   /// #   fn renderable_area(&self) -> BBox {
   /// #     Default::default()
   /// #   }
-  /// fn render(&self, widget: &dyn Widget, bbox: BBox, cap: &dyn Cap) -> BBox {
+  /// fn render(&self, widget: &dyn Renderable, bbox: BBox, cap: &dyn Cap) -> BBox {
   ///   if let Some(widget1) = widget.downcast_ref::<ConcreteWidget1>() {
   ///     self.render_concrete_widget1(widget1, bbox)
   ///   } else if let Some(widget2) = widget.downcast_ref::<ConcreteWidget1>() {
   ///     self.render_concrete_widget2(widget2, bbox)
   ///   } else {
-  ///     panic!("Widget {:?} is unknown to the renderer", widget)
+  ///     panic!("Renderable {:?} is unknown to the renderer", widget)
   ///   }
   /// }
   /// # }
@@ -96,7 +97,7 @@ pub trait Renderer {
   /// ```
   // TODO: Ideally we would like to have a double dispatch mechanism for
   //       determining the object to render.
-  fn render(&self, object: &dyn Widget, bbox: BBox, cap: &dyn Cap) -> BBox;
+  fn render(&self, object: &dyn Renderable, bbox: BBox, cap: &dyn Cap) -> BBox;
 
   /// Perform some post-render step.
   fn post_render(&self) {}
