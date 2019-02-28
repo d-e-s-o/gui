@@ -1,7 +1,7 @@
 // test_events.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -505,7 +505,8 @@ fn chain_event_dispatch() {
 
 static mut HOOK_COUNT: u64 = 0;
 
-fn count_event_hook(_widget: &mut Widget, _event: Event, _cap: &Cap) -> Option<UiEvents> {
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn count_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<UiEvents> {
   unsafe {
     HOOK_COUNT += 1;
   }
@@ -562,7 +563,8 @@ fn hook_events_handler() {
 }
 
 
-fn quit_event_hook(_widget: &mut Widget, _event: Event, _cap: &Cap) -> Option<UiEvents> {
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn quit_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<UiEvents> {
   Some(UiEvent::Quit.into())
 }
 
@@ -594,8 +596,9 @@ fn hook_events_with_return() {
 }
 
 
-fn emitting_event_hook(_widget: &mut Widget, event: Event, _cap: &Cap) -> Option<UiEvents> {
-  assert_eq!(event, Event::KeyDown(Key::Char('y')));
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn emitting_event_hook(_widget: &mut Widget, event: &Event, _cap: &Cap) -> Option<UiEvents> {
+  assert_eq!(*event, Event::KeyDown(Key::Char('y')));
 
   Some(Event::KeyDown(Key::Char('z')).into())
 }

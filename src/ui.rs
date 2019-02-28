@@ -1,7 +1,7 @@
 // ui.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -108,7 +108,7 @@ type NewWidgetFn<'f> = &'f mut dyn FnMut(Id, &mut dyn Cap) -> Box<dyn Widget>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
-type EventHookFn = &'static dyn Fn(&mut dyn Widget, Event, &dyn Cap) -> Option<UiEvents>;
+type EventHookFn = &'static dyn Fn(&mut dyn Widget, &Event, &dyn Cap) -> Option<UiEvents>;
 
 
 /// A capability allowing for various widget related operations.
@@ -484,7 +484,8 @@ impl Ui {
   }
 
   /// Invoke all registered event hooks for the given event.
-  fn invoke_event_hooks(&mut self, event: Event) -> Option<UiEvents> {
+  #[allow(clippy::trivially_copy_pass_by_ref)]
+  fn invoke_event_hooks(&mut self, event: &Event) -> Option<UiEvents> {
     let mut result = None;
 
     // Note that we deliberately iterate over the vector by means of
@@ -522,7 +523,7 @@ impl Ui {
   {
     let ui_event = event.into();
 
-    let ui_events = if let UiEvent::Event(event) = ui_event {
+    let ui_events = if let UiEvent::Event(event) = &ui_event {
       // Invoke the hooks before passing the event to the widgets on the
       // "official" route.
       self.invoke_event_hooks(event)
