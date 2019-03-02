@@ -39,8 +39,12 @@ use gui::Ui;
 use gui::Widget;
 
 
+#[allow(unused)]
+type Event = ();
+
+
 #[derive(Debug, Widget, Handleable)]
-#[gui(default_new)]
+#[gui(default_new, Event = "Event")]
 struct TestWidget {
   id: Id,
 }
@@ -50,15 +54,16 @@ struct TestWidget {
 // purposes.
 #[deny(unused_imports)]
 #[derive(Debug, Widget)]
-#[gui(default_new)]
+#[gui(default_new, Event = "Event")]
 struct TestWidgetCustom {
   id: Id,
 }
 
-impl Handleable for TestWidgetCustom {}
+impl Handleable<Event> for TestWidgetCustom {}
 
 
 #[derive(Debug, Widget, Handleable)]
+#[gui(Event = "Event")]
 struct TestWidgetT<T>
 where
   T: 'static + Debug,
@@ -81,6 +86,7 @@ where
 
 
 #[derive(Debug, Handleable)]
+#[gui(Event = "Event")]
 struct TestHandleable {
   id: Id,
 }
@@ -101,7 +107,7 @@ impl Object for TestHandleable {
   }
 }
 
-impl Widget for TestHandleable {
+impl Widget<Event> for TestHandleable {
   fn type_id(&self) -> TypeId {
     TypeId::of::<TestHandleable>()
   }

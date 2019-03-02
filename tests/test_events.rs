@@ -33,13 +33,13 @@ use gui::MutCap;
 use gui::OptionChain;
 use gui::Ui;
 use gui::UiEvent;
-use gui::UiEvents;
 use gui::UnhandledEvent;
 use gui::UnhandledEvents;
 use gui::Widget;
 
 use crate::common::TestWidget;
 use crate::common::TestWidgetBuilder;
+use crate::common::UiEvents;
 use crate::common::unwrap_custom;
 
 
@@ -107,7 +107,10 @@ where
   }
 }
 
-fn compare_unhandled_events(events1: &UnhandledEvents, events2: &UnhandledEvents) -> bool {
+fn compare_unhandled_events<E>(events1: &UnhandledEvents<E>, events2: &UnhandledEvents<E>) -> bool
+where
+  E: PartialEq,
+{
   match *events1 {
     ChainEvent::Event(ref event1) => {
       match *events2 {
@@ -296,7 +299,7 @@ fn targeted_event_returned_on_no_focus() {
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
-fn key_handler(event: Event, cap: &mut MutCap, to_focus: Option<Id>) -> Option<UiEvents> {
+fn key_handler(event: Event, cap: &mut MutCap<Event>, to_focus: Option<Id>) -> Option<UiEvents> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -344,7 +347,9 @@ fn event_handling_with_focus() {
   assert!(ui.is_focused(w1));
 }
 
-fn custom_undirected_response_handler(_: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
+fn custom_undirected_response_handler(_: Id,
+                                      event: Box<Any>,
+                                      _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
@@ -377,10 +382,12 @@ fn custom_undirected_response_event() {
   let event = UiEvent::Custom(Box::new(42u64));
   let result = ui.handle(event).unwrap();
   // We expect three increments, one from each of the widgets.
-  assert_eq!(*unwrap_custom::<u64>(result), 45);
+  assert_eq!(*unwrap_custom::<_, u64>(result), 45);
 }
 
-fn custom_directed_response_handler(_: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
+fn custom_directed_response_handler(_: Id,
+                                    event: Box<Any>,
+                                    _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   let cell = *event.downcast::<Rc<RefCell<u64>>>().unwrap();
   let value = *cell.borrow();
   cell.replace(value + 1);
@@ -446,7 +453,7 @@ fn direct_custom_event() {
 
   let event = UiEvent::Directed(w1, Box::new(10u64));
   let result = ui.handle(event).unwrap();
-  assert_eq!(*unwrap_custom::<u64>(result), 13);
+  assert_eq!(*unwrap_custom::<_, u64>(result), 13);
 }
 
 #[test]
@@ -469,7 +476,7 @@ fn quit_event() {
 
 static mut ACCUMULATOR: u64 = 0;
 
-fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
+fn accumulating_handler(_: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
 
   unsafe {
@@ -478,7 +485,7 @@ fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Opti
   }
 }
 
-fn chaining_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
+fn chaining_handler(_: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   let value = event.downcast::<u64>().unwrap();
   let event1 = UiEvent::Custom(Box::new(*value));
   let event2 = UiEvent::Custom(Box::new(*value + 1));
@@ -510,13 +517,13 @@ fn chain_event_dispatch() {
 
   let event = UiEvent::Custom(Box::new(1u64));
   let result = ui.handle(event).unwrap().into_last();
-  assert_eq!(*unwrap_custom::<u64>(result.into()), 8);
+  assert_eq!(*unwrap_custom::<Event, u64>(result.into()), 8);
 }
 
 static mut HOOK_COUNT: u64 = 0;
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn count_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<UiEvents> {
+fn count_event_hook(_: &mut Widget<Event>, _event: &Event, _cap: &Cap) -> Option<UiEvents> {
   unsafe {
     HOOK_COUNT += 1;
   }
@@ -574,11 +581,11 @@ fn hook_events_handler() {
 
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn quit_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<UiEvents> {
+fn quit_event_hook(_: &mut Widget<Event>, _event: &Event, _cap: &Cap) -> Option<UiEvents> {
   Some(UiEvent::Quit.into())
 }
 
-fn swallowing_event_handler(_widget: Id, _event: Event, _cap: &mut MutCap) -> Option<UiEvents> {
+fn swallowing_event_handler(_: Id, _event: Event, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   None
 }
 
@@ -607,7 +614,7 @@ fn hook_events_with_return() {
 
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn emitting_event_hook(_widget: &mut Widget, event: &Event, _cap: &Cap) -> Option<UiEvents> {
+fn emitting_event_hook(_: &mut Widget<Event>, event: &Event, _cap: &Cap) -> Option<UiEvents> {
   assert_eq!(*event, Event::KeyDown(Key::Char('y')));
 
   Some(Event::KeyDown(Key::Char('z')).into())
@@ -615,7 +622,7 @@ fn emitting_event_hook(_widget: &mut Widget, event: &Event, _cap: &Cap) -> Optio
 
 static mut FIRST: bool = true;
 
-fn checking_event_handler(_widget: Id, event: Event, _cap: &mut MutCap) -> Option<UiEvents> {
+fn checking_event_handler(_: Id, event: Event, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   unsafe {
     if FIRST {
       assert_eq!(event, Event::KeyDown(Key::Char('y')));
@@ -650,12 +657,12 @@ fn hook_emitted_event_order() {
 }
 
 
-fn returned_event_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
+fn returned_event_handler(_: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
-fn returnable_event_handler(_widget: Id, event: &mut Any, _cap: &mut MutCap) -> Option<UiEvents> {
+fn returnable_event_handler(_: Id, event: &mut Any, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   match event.downcast_mut::<u64>() {
     Some(value) => *value *= 2,
     None => panic!("encountered unexpected custom event"),
@@ -687,5 +694,5 @@ fn custom_returnable_events() {
   let event = UiEvent::Returnable(src, dst, Box::new(10u64));
   let result = ui.handle(event).unwrap();
 
-  assert_eq!(*unwrap_custom::<u64>(result), 21);
+  assert_eq!(*unwrap_custom::<_, u64>(result), 21);
 }

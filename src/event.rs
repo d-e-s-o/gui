@@ -184,18 +184,25 @@ impl<E> From<E> for ChainEvent<E> {
 
 
 /// An event potentially comprising multiple `UiEvent` objects.
-pub type UiEvents = ChainEvent<UiEvent<Event>>;
+pub type UiEvents<E> = ChainEvent<UiEvent<E>>;
 
 /// A convenience conversion from a single event into a chain of `UiEvent` objects.
-impl From<Event> for UiEvents {
-  fn from(event: Event) -> Self {
+impl<E> From<E> for UiEvents<E> {
+  fn from(event: E) -> Self {
     ChainEvent::Event(event.into())
   }
 }
 
 
 /// An event potentially comprising multiple `UnhandledEvent` objects.
-pub type UnhandledEvents = ChainEvent<UnhandledEvent<Event>>;
+pub type UnhandledEvents<E> = ChainEvent<UnhandledEvent<E>>;
+
+/// A convenience conversion from a single event into a chain of `UnhandledEvent` objects.
+impl<E> From<E> for UnhandledEvents<E> {
+  fn from(event: E) -> Self {
+    ChainEvent::Event(event.into())
+  }
+}
 
 
 /// A trait for chaining of events.

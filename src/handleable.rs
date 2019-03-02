@@ -1,7 +1,7 @@
 // handleable.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -19,14 +19,16 @@
 
 use std::any::Any;
 
-use crate::Event;
 use crate::MutCap;
 use crate::UiEvent;
 use crate::UiEvents;
 
 
 /// A trait representing an object capable of handling events.
-pub trait Handleable {
+pub trait Handleable<E>
+where
+  E: 'static,
+{
   /// Handle an `Event`.
   ///
   /// The widget has the option to either consume the event and return
@@ -34,7 +36,7 @@ pub trait Handleable {
   /// it directly (the default behavior), in which case the its parent
   /// widget will receive it, or return a completely different event.
   #[allow(unused_variables)]
-  fn handle(&mut self, event: Event, cap: &mut dyn MutCap) -> Option<UiEvents> {
+  fn handle(&mut self, event: E, cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())
@@ -42,13 +44,15 @@ pub trait Handleable {
 
   /// Handle a custom event.
   #[allow(unused_variables)]
-  fn handle_custom(&mut self, event: Box<dyn Any>, cap: &mut dyn MutCap) -> Option<UiEvents> {
+  fn handle_custom(&mut self, event: Box<dyn Any>, cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
     Some(UiEvent::Custom(event).into())
   }
 
   /// Handle a custom event without transferring ownership of it.
   #[allow(unused_variables)]
-  fn handle_custom_ref(&mut self, event: &mut dyn Any, cap: &mut dyn MutCap) -> Option<UiEvents> {
+  fn handle_custom_ref(&mut self,
+                       event: &mut dyn Any,
+                       cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
     None
   }
 }

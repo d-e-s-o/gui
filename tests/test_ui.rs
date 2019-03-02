@@ -37,10 +37,10 @@ use gui::Key;
 use gui::MutCap;
 use gui::Ui;
 use gui::UiEvent;
-use gui::UiEvents;
 
 use crate::common::TestWidget;
 use crate::common::TestWidgetBuilder;
+use crate::common::UiEvents;
 use crate::common::unwrap_custom;
 
 
@@ -409,24 +409,25 @@ fn repeated_hide_preserves_order() {
 }
 
 
-fn counting_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
+fn counting_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
 
 /// Check if we need to create another `CreatingWidget`.
-fn need_more(id: Id, cap: &mut MutCap) -> bool {
+fn need_more(id: Id, cap: &mut MutCap<Event>) -> bool {
   cap.parent_id(id).is_none()
 }
 
 #[derive(Debug, Widget)]
+#[gui(Event = "Event")]
 struct CreatingWidget {
   id: Id,
 }
 
 impl CreatingWidget {
-  pub fn new(id: Id, cap: &mut MutCap) -> Self {
+  pub fn new(id: Id, cap: &mut MutCap<Event>) -> Self {
     let child = cap.add_widget(id, &mut |id, _cap| {
       let widget = TestWidgetBuilder::new()
         .custom_handler(counting_handler)
@@ -449,8 +450,8 @@ impl CreatingWidget {
   }
 }
 
-impl Handleable for CreatingWidget {
-  fn handle_custom(&mut self, event: Box<Any>, cap: &mut MutCap) -> Option<UiEvents> {
+impl Handleable<Event> for CreatingWidget {
+  fn handle_custom(&mut self, event: Box<Any>, cap: &mut MutCap<Event>) -> Option<UiEvents> {
     counting_handler(self.id, event, cap)
   }
 }
@@ -469,7 +470,7 @@ fn recursive_widget_creation() {
   // We expect three increments. Note that we have four widgets in
   // total, but we cannot easily have the event reach all four of them
   // because two are peers sharing a parent.
-  assert_eq!(*unwrap_custom::<u64>(result), 3);
+  assert_eq!(*unwrap_custom::<_, u64>(result), 3);
 }
 
 
@@ -477,6 +478,7 @@ fn recursive_widget_creation() {
 struct Moveable {}
 
 #[derive(Debug, Widget, Handleable)]
+#[gui(Event = "Event")]
 struct MovingWidget {
   id: Id,
   object: Moveable,
@@ -507,7 +509,7 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(widget: Id, event: Event, cap: &mut MutCap) -> Option<UiEvents> {
+fn create_handler(widget: Id, event: Event, cap: &mut MutCap<Event>) -> Option<UiEvents> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -546,7 +548,7 @@ fn event_based_widget_creation() {
 }
 
 
-fn recursive_operations_handler(widget: Id, _event: Box<Any>, cap: &mut MutCap) -> Option<UiEvents> {
+fn recursive_operations_handler(widget: Id, _event: Box<Any>, cap: &mut MutCap<Event>) -> Option<UiEvents> {
   // Check that we can use the supplied `MutCap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);

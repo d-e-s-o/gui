@@ -31,7 +31,6 @@ use std::sync::atomic::Ordering;
 use crate::BBox;
 use crate::ChainEvent;
 use crate::CustomEvent;
-use crate::Event;
 use crate::EventChain;
 use crate::OptionChain;
 use crate::Placeholder;
@@ -77,7 +76,10 @@ pub struct Id {
 
 impl Id {
   #[allow(unused_variables)]
-  fn new(idx: usize, ui: &Ui) -> Id {
+  fn new<E>(idx: usize, ui: &Ui<E>) -> Id
+  where
+    E: 'static,
+  {
     Id {
       #[cfg(debug_assertions)]
       ui_id: ui.id,
@@ -104,11 +106,11 @@ pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 //       solution but is a nightly-only API. For now, users are advised
 //       to use an Option as one of the parameters and panic if None is
 //       supplied.
-type NewWidgetFn<'f> = &'f mut dyn FnMut(Id, &mut dyn MutCap) -> Box<dyn Widget>;
+type NewWidgetFn<'f, E> = &'f mut dyn FnMut(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
-type EventHookFn = &'static dyn Fn(&mut dyn Widget, &Event, &dyn Cap) -> Option<UiEvents>;
+type EventHookFn<E> = &'static dyn Fn(&mut dyn Widget<E>, &E, &dyn Cap) -> Option<UiEvents<E>>;
 
 
 /// A capability allowing for various widget related operations.
@@ -147,9 +149,9 @@ pub trait Cap {
 
 
 /// A mutable capability allowing for various widget related operations.
-pub trait MutCap: Cap {
+pub trait MutCap<E>: Cap {
   /// Add a widget to the `Ui` represented by the capability.
-  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_>) -> Id;
+  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_, E>) -> Id;
 
   /// Show a widget, i.e., set its and its parents' visibility flag.
   ///
@@ -195,7 +197,7 @@ pub trait MutCap: Cap {
   /// handler and subsequent requests will overwrite the previously
   /// installed one. The method returns the handler that was previously
   /// installed, if any.
-  fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn>) -> Option<EventHookFn>;
+  fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn<E>>) -> Option<EventHookFn<E>>;
 }
 
 #[cfg(debug_assertions)]
@@ -208,7 +210,10 @@ fn get_next_ui_id() -> usize {
 
 /// This type contains data that is common to all widgets.
 #[derive(Debug)]
-struct WidgetData {
+struct WidgetData<E>
+where
+  E: 'static,
+{
   /// The `Id` of the parent widget.
   ///
   /// This value may only be `None` for the root widget.
@@ -219,12 +224,12 @@ struct WidgetData {
   // for the `children` method present in `Cap`.
   children: Vec<Id>,
   /// An optional event hook that may be registered for the widget.
-  event_hook: Option<EventHook>,
+  event_hook: Option<EventHook<E>>,
   /// Flag indicating the widget's visibility state.
   visible: bool,
 }
 
-impl WidgetData {
+impl<E> WidgetData<E> {
   fn new(parent_idx: Option<Index>) -> Self {
     WidgetData {
       parent_idx: parent_idx,
@@ -237,9 +242,11 @@ impl WidgetData {
 
 
 /// A struct wrapping an `EventHookFn` while implementing `Debug`.
-struct EventHook(EventHookFn);
+struct EventHook<E>(EventHookFn<E>)
+where
+  E: 'static;
 
-impl Debug for EventHook {
+impl<E> Debug for EventHook<E> {
   fn fmt(&self, f: &mut Formatter<'_>) -> Result {
     write!(f, "{:p}", self.0)
   }
@@ -248,19 +255,26 @@ impl Debug for EventHook {
 
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
-pub struct Ui {
+pub struct Ui<E>
+where
+  E: 'static,
+{
   #[cfg(debug_assertions)]
   id: usize,
-  widgets: Vec<(WidgetData, Option<Box<dyn Widget>>)>,
+  #[allow(clippy::type_complexity)]
+  widgets: Vec<(WidgetData<E>, Option<Box<dyn Widget<E>>>)>,
   hooked: Vec<Index>,
   focused: Option<Index>,
 }
 
-impl Ui {
+impl<E> Ui<E>
+where
+  E: 'static,
+{
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
   #[allow(clippy::new_ret_no_self)]
-  pub fn new(new_root_widget: NewWidgetFn<'_>) -> (Self, Id) {
+  pub fn new(new_root_widget: NewWidgetFn<'_, E>) -> (Self, Id) {
     let mut ui = Ui {
       #[cfg(debug_assertions)]
       id: get_next_ui_id(),
@@ -275,7 +289,7 @@ impl Ui {
   }
 
   /// Add a widget to the `Ui`.
-  fn _add_widget(&mut self, parent_idx: Option<Index>, new_widget: NewWidgetFn<'_>) -> Id {
+  fn _add_widget(&mut self, parent_idx: Option<Index>, new_widget: NewWidgetFn<'_, E>) -> Id {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
 
@@ -315,7 +329,7 @@ impl Ui {
   }
 
   /// Lookup a widget from an `Index`.
-  fn lookup(&self, idx: Index) -> &dyn Widget {
+  fn lookup(&self, idx: Index) -> &dyn Widget<E> {
     match &self.widgets[idx.idx].1 {
       Some(widget) => widget.as_ref(),
       None => panic!("Widget {} is currently taken", idx),
@@ -332,7 +346,7 @@ impl Ui {
   /// with respect to repeated reordering of the same widgets.
   fn show<F>(&mut self, idx: Index, reorder_fn: F)
   where
-    F: Fn(&mut Ui, Index),
+    F: Fn(&mut Ui<E>, Index),
   {
     // Always run before making the widget visible. The reorder function
     // may check for visibility internally and relies in the value being
@@ -353,7 +367,7 @@ impl Ui {
   /// Reorder the widget with the given `Index` as the last visible one.
   fn reorder<F>(&mut self, idx: Index, new_idx_fn: F)
   where
-    F: FnOnce(&Ui, &Vec<Id>) -> usize,
+    F: FnOnce(&Ui<E>, &Vec<Id>) -> usize,
   {
     // Non-lexical lifetimes I need you, now!
     if let Some(parent_idx) = self.widgets[idx.idx].0.parent_idx {
@@ -444,7 +458,7 @@ impl Ui {
 
   fn with<F, R>(&mut self, idx: Index, with_widget: F) -> R
   where
-    F: FnOnce(&mut Ui, Box<dyn Widget>) -> (Box<dyn Widget>, R),
+    F: FnOnce(&mut Ui<E>, Box<dyn Widget<E>>) -> (Box<dyn Widget<E>>, R),
   {
     match self.widgets[idx.idx].1.take() {
       Some(widget) => {
@@ -471,7 +485,7 @@ impl Ui {
   }
 
   /// Recursively render the given widget and its children.
-  fn render_all(&self, idx: Index, widget: &dyn Widget, renderer: &dyn Renderer, bbox: BBox) {
+  fn render_all(&self, idx: Index, widget: &dyn Widget<E>, renderer: &dyn Renderer, bbox: BBox) {
     if self.is_visible(idx) {
       // TODO: Ideally we would want to go without the recursion stuff we
       //       have. This may not be possible (efficiently) with safe
@@ -487,8 +501,7 @@ impl Ui {
   }
 
   /// Invoke all registered event hooks for the given event.
-  #[allow(clippy::trivially_copy_pass_by_ref)]
-  fn invoke_event_hooks(&mut self, event: &Event) -> Option<UiEvents> {
+  fn invoke_event_hooks(&mut self, event: &E) -> Option<UiEvents<E>> {
     let mut result = None;
 
     // Note that we deliberately iterate over the vector by means of
@@ -520,9 +533,9 @@ impl Ui {
   /// This function performs the initial determination of which widget
   /// is supposed to handle the given event and then passes it down to
   /// the actual event handler.
-  pub fn handle<E>(&mut self, event: E) -> Option<UnhandledEvents>
+  pub fn handle<T>(&mut self, event: T) -> Option<UnhandledEvents<E>>
   where
-    E: Into<UiEvent<Event>>,
+    T: Into<UiEvent<E>>,
   {
     let ui_event = event.into();
 
@@ -553,7 +566,7 @@ impl Ui {
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
-  fn handle_event(&mut self, idx: Index, event: Event) -> Option<UnhandledEvents> {
+  fn handle_event(&mut self, idx: Index, event: E) -> Option<UnhandledEvents<E>> {
     // To enable a mutable borrow of the Ui as well as the widget we
     // temporarily remove the widget from the internally used
     // vector. This means that now we would panic if we were to
@@ -577,7 +590,9 @@ impl Ui {
   }
 
   /// Handle a chain of `UiEvent` objects.
-  fn handle_ui_events(&mut self, idx: Option<Index>, events: UiEvents) -> Option<UnhandledEvents> {
+  fn handle_ui_events(&mut self,
+                      idx: Option<Index>,
+                      events: UiEvents<E>) -> Option<UnhandledEvents<E>> {
     match events {
       ChainEvent::Event(event) => self.handle_ui_event(idx, event),
       ChainEvent::Chain(event, chain) => OptionChain::chain(
@@ -588,7 +603,9 @@ impl Ui {
   }
 
   /// Handle a custom event.
-  fn handle_custom_event(&mut self, idx: Index, event: CustomEvent<'_>) -> Option<UnhandledEvents> {
+  fn handle_custom_event(&mut self,
+                         idx: Index,
+                         event: CustomEvent<'_>) -> Option<UnhandledEvents<E>> {
     let (events, parent_idx) = self.with(idx, |ui, mut widget| {
       let events = match event {
         CustomEvent::Owned(event) => widget.handle_custom(event, ui),
@@ -607,7 +624,9 @@ impl Ui {
   }
 
   /// Handle a `UiEvent`.
-  fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent<Event>) -> Option<UnhandledEvents> {
+  fn handle_ui_event(&mut self,
+                     idx: Option<Index>,
+                     event: UiEvent<E>) -> Option<UnhandledEvents<E>> {
     match event {
       UiEvent::Event(event) => {
         if let Some(idx) = idx {
@@ -656,7 +675,10 @@ impl Ui {
   }
 }
 
-impl Cap for Ui {
+impl<E> Cap for Ui<E>
+where
+  E: 'static,
+{
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
   fn children(&self, widget: Id) -> ChildIter<'_> {
@@ -708,9 +730,12 @@ impl Cap for Ui {
   }
 }
 
-impl MutCap for Ui {
+impl<E> MutCap<E> for Ui<E>
+where
+  E: 'static,
+{
   /// Add a widget to the `Ui`.
-  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_>) -> Id {
+  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_, E>) -> Id {
     let parent_idx = self.validate(parent);
     self._add_widget(Some(parent_idx), &mut |id, cap| new_widget(id, cap))
   }
@@ -739,7 +764,7 @@ impl MutCap for Ui {
   }
 
   /// Install or remove an event hook handler.
-  fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn>) -> Option<EventHookFn> {
+  fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn<E>>) -> Option<EventHookFn<E>> {
     let idx = self.validate(widget);
     let data = &mut self.widgets[idx.idx].0;
     let result = self.hooked.binary_search(&idx);

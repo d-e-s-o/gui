@@ -47,6 +47,8 @@ use std::fmt::Result as FmtResult;
 
 use proc_macro::LexError;
 use proc_macro::TokenStream;
+use proc_macro2::Ident;
+use proc_macro2::Span;
 use quote::__rt::TokenStream as Tokens;
 use quote::quote;
 use syn::Attribute;
@@ -118,6 +120,7 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 /// ```rust
 /// # use std::any::TypeId;
+/// # type Event = ();
 /// # #[derive(Debug)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
@@ -137,12 +140,12 @@ type Result<T> = std::result::Result<T, Error>;
 ///   }
 /// }
 ///
-/// impl gui::Widget for TestWidget {
+/// impl gui::Widget<Event> for TestWidget {
 ///   fn type_id(&self) -> TypeId {
 ///     TypeId::of::<TestWidget>()
 ///   }
 /// }
-/// # impl gui::Handleable for TestWidget {}
+/// # impl gui::Handleable<Event> for TestWidget {}
 /// ```
 #[proc_macro_derive(Widget, attributes(gui))]
 pub fn widget(input: TokenStream) -> TokenStream {
@@ -342,12 +345,19 @@ fn expand_object_trait(input: &DeriveInput) -> Tokens {
 }
 
 /// Expand an implementation for the `gui::Widget` trait.
-fn expand_widget_trait(_event: &Event, input: &DeriveInput) -> Tokens {
+fn expand_widget_trait(event: &Event, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
+  let widget = if let Some(event) = event {
+    let event = Ident::new(&event, Span::call_site());
+    quote! { ::gui::Widget<#event> }
+  } else {
+    unimplemented!()
+  };
+
   quote! {
-    impl #impl_generics ::gui::Widget for #name #ty_generics #where_clause {
+    impl #impl_generics #widget for #name #ty_generics #where_clause {
       fn type_id(&self) -> ::std::any::TypeId {
         ::std::any::TypeId::of::<#name #ty_generics>()
       }
@@ -366,11 +376,13 @@ fn expand_widget_trait(_event: &Event, input: &DeriveInput) -> Tokens {
 ///
 /// ```rust
 /// # use gui_derive::Widget;
+/// # type Event = ();
 /// # #[derive(Debug, Widget)]
+/// # #[gui(Event = "Event")]
 /// # struct TestWidget {
 /// #   id: gui::Id,
 /// # }
-/// impl gui::Handleable for TestWidget {}
+/// impl gui::Handleable<Event> for TestWidget {}
 /// # fn main() {}
 /// ```
 #[proc_macro_derive(Handleable, attributes(gui))]
@@ -399,12 +411,19 @@ fn expand_handleable_input(event: &Event, input: &DeriveInput) -> Result<Tokens>
 }
 
 /// Expand an implementation for the `gui::Handleable` trait.
-fn expand_handleable_trait(_event: &Event, input: &DeriveInput) -> Tokens {
+fn expand_handleable_trait(event: &Event, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
+  let handleable = if let Some(event) = event {
+    let event = Ident::new(&event, Span::call_site());
+    quote! { ::gui::Handleable<#event> }
+  } else {
+    unimplemented!()
+  };
+
   quote! {
-    impl #impl_generics ::gui::Handleable for #name #ty_generics #where_clause {}
+    impl #impl_generics #handleable for #name #ty_generics #where_clause {}
   }
 }
 

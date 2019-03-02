@@ -21,7 +21,6 @@ use std::any::TypeId;
 
 use crate::BBox;
 use crate::Cap;
-use crate::Event;
 use crate::Handleable;
 use crate::Id;
 use crate::MutCap;
@@ -64,13 +63,19 @@ impl Object for Placeholder {
   }
 }
 
-impl Handleable for Placeholder {
-  fn handle(&mut self, _event: Event, _cap: &mut dyn MutCap) -> Option<UiEvents> {
+impl<E> Handleable<E> for Placeholder
+where
+  E: 'static,
+{
+  fn handle(&mut self, _event: E, _cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
     unreachable!()
   }
 }
 
-impl Widget for Placeholder {
+impl<E> Widget<E> for Placeholder
+where
+  E: 'static,
+{
   fn type_id(&self) -> TypeId {
     TypeId::of::<Placeholder>()
   }

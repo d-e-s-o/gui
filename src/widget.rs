@@ -31,14 +31,20 @@ use crate::Renderable;
 /// relationships, the `Ui` is responsible for dispatching events to
 /// widgets and rendering them. Hence, a widget usable for the `Ui`
 /// needs to implement `Handleable`, `Renderable`, and `Object`.
-pub trait Widget: Handleable + Renderable + Object + Debug + 'static {
+pub trait Widget<E>: Handleable<E> + Renderable + Object + Debug
+where
+  E: 'static,
+{
   /// Get the `TypeId` of `self`.
   fn type_id(&self) -> TypeId;
 }
 
-impl dyn Widget {
+impl<E> dyn Widget<E>
+where
+  E: 'static,
+{
   /// Check if the widget is of type `T`.
-  pub fn is<T: Widget>(&self) -> bool {
+  pub fn is<T: Widget<E>>(&self) -> bool {
     let t = TypeId::of::<T>();
     let own_t = Widget::type_id(self);
 
@@ -46,18 +52,18 @@ impl dyn Widget {
   }
 
   /// Downcast the widget reference to type `T`.
-  pub fn downcast_ref<T: Widget>(&self) -> Option<&T> {
+  pub fn downcast_ref<T: Widget<E>>(&self) -> Option<&T> {
     if self.is::<T>() {
-      unsafe { Some(&*(self as *const dyn Widget as *const T)) }
+      unsafe { Some(&*(self as *const dyn Widget<E> as *const T)) }
     } else {
       None
     }
   }
 
   /// Downcast the widget reference to type `T`.
-  pub fn downcast_mut<T: Widget>(&mut self) -> Option<&mut T> {
+  pub fn downcast_mut<T: Widget<E>>(&mut self) -> Option<&mut T> {
     if self.is::<T>() {
-      unsafe { Some(&mut *(self as *mut dyn Widget as *mut T)) }
+      unsafe { Some(&mut *(self as *mut dyn Widget<E> as *mut T)) }
     } else {
       None
     }

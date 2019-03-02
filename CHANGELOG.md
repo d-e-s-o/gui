@@ -1,6 +1,7 @@
 Unreleased
 ----------
-- Made `UiEvent` and `UnhandledEvent` generic over the underlying event
+- Made `Handleable` trait generic over the event type to use
+  - Made `UiEvent` and `UnhandledEvent` generic over the underlying event
 - Split `Cap` trait into `Cap` and `MutCap` with all methods requiring
   a mutable self ending up in `MutCap`
 - Added `TypeId` functionality to `Renderable`
