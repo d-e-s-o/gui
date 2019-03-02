@@ -30,14 +30,13 @@ use std::any::Any;
 use gui::Cap;
 use gui::derive::Handleable;
 use gui::derive::Widget;
-use gui::Event;
 use gui::Handleable;
 use gui::Id;
-use gui::Key;
 use gui::MutCap;
 use gui::Ui;
 use gui::UiEvent;
 
+use crate::common::Event;
 use crate::common::TestWidget;
 use crate::common::TestWidgetBuilder;
 use crate::common::UiEvents;
@@ -511,16 +510,11 @@ fn moving_widget_creation() {
 
 fn create_handler(widget: Id, event: Event, cap: &mut MutCap<Event>) -> Option<UiEvents> {
   match event {
-    Event::KeyDown(key) => {
-      match key {
-        Key::Char('z') => {
-          cap.add_widget(widget, &mut |id, _cap| {
-            Box::new(TestWidget::new(id))
-          });
-          None
-        },
-        _ => Some(event.into()),
-      }
+    Event::Key(key) if key == 'z' => {
+      cap.add_widget(widget, &mut |id, _cap| {
+        Box::new(TestWidget::new(id))
+      });
+      None
     },
     _ => Some(event.into()),
   }
@@ -539,7 +533,7 @@ fn event_based_widget_creation() {
 
   assert_eq!(ui.children(root).count(), 0);
 
-  let event = Event::KeyDown(Key::Char('z'));
+  let event = Event::Key('z');
   let result = ui.handle(event);
   assert!(result.is_none());
 

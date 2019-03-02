@@ -25,10 +25,8 @@ use std::rc::Rc;
 
 use gui::Cap;
 use gui::ChainEvent;
-use gui::Event;
 use gui::EventChain;
 use gui::Id;
-use gui::Key;
 use gui::MutCap;
 use gui::OptionChain;
 use gui::Ui;
@@ -37,6 +35,7 @@ use gui::UnhandledEvent;
 use gui::UnhandledEvents;
 use gui::Widget;
 
+use crate::common::Event;
 use crate::common::TestWidget;
 use crate::common::TestWidgetBuilder;
 use crate::common::UiEvents;
@@ -133,7 +132,7 @@ where
 
 #[test]
 fn convert_event_into() {
-  let event = Event::KeyDown(Key::Char(' '));
+  let event = Event::Key(' ');
   let orig_event = event;
   let ui_event = UiEvent::from(event);
 
@@ -142,7 +141,7 @@ fn convert_event_into() {
 
 #[test]
 fn chain_event() {
-  let event1 = Event::KeyUp(Key::Char('a'));
+  let event1 = Event::Key('a');
   let orig_event1 = event1;
   let event2 = UiEvent::Quit;
   let orig_event2 = UiEvent::Quit;
@@ -158,9 +157,9 @@ fn chain_event() {
 
 #[test]
 fn chain_event_chain() {
-  let event1 = Event::KeyUp(Key::Char('a'));
+  let event1 = Event::Key('a');
   let orig_event1 = event1;
-  let event2 = Event::KeyUp(Key::Char('z'));
+  let event2 = Event::Key('z');
   let orig_event2 = event2;
   let event3 = UiEvent::Quit;
   let orig_event3 = UiEvent::Quit;
@@ -182,13 +181,13 @@ fn chain_event_chain() {
 
 #[test]
 fn event_and_option_chain() {
-  let event = Event::KeyDown(Key::Esc);
+  let event = Event::Empty;
   let orig_event = event;
   let result = event.chain_opt(None as Option<Event>);
 
   assert!(compare_ui_events(&result, &orig_event.into()));
 
-  let event1 = Event::KeyDown(Key::Right);
+  let event1 = Event::Key('%');
   let orig_event1 = event1;
   let event2 = UiEvent::Quit;
   let orig_event2 = UiEvent::Quit;
@@ -210,27 +209,27 @@ fn option_and_option_chain() {
   );
   assert!(result.is_none());
 
-  let event = Event::KeyDown(Key::PageDown);
+  let event = Event::Key('1');
   let orig_event = event;
   let result = OptionChain::chain(None as Option<Event>, Some(event));
 
   assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
 
-  let event = Event::KeyDown(Key::Char('u'));
+  let event = Event::Key('u');
   let orig_event = event;
   let result = OptionChain::chain(Some(event), None as Option<Event>);
 
   assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
 
-  let event = Event::KeyDown(Key::Esc);
+  let event = Event::Key('2');
   let orig_event = event;
   let result = (None as Option<Event>).opt_chain(event);
 
   assert!(compare_ui_events(&result, &orig_event.into()));
 
-  let event1 = Event::KeyDown(Key::End);
+  let event1 = Event::Key('z');
   let orig_event1 = event1;
-  let event2 = Event::KeyUp(Key::Char('u'));
+  let event2 = Event::Key('u');
   let orig_event2 = event2;
 
   let result = OptionChain::chain(Some(event1),Some(event2));
@@ -244,8 +243,8 @@ fn option_and_option_chain() {
 
 #[test]
 fn last_event_in_chain() {
-  let event1 = Event::KeyUp(Key::Char('a'));
-  let event2 = Event::KeyUp(Key::Char('z'));
+  let event1 = Event::Key('a');
+  let event2 = Event::Key('z');
   let orig_event2 = event2;
 
   let event_chain = ChainEvent::Chain(
@@ -271,7 +270,7 @@ fn events_bubble_up_when_unhandled() {
     Box::new(TestWidget::new(id))
   });
 
-  let event = Event::KeyUp(Key::Char(' '));
+  let event = Event::Key(' ');
   ui.focus(w1);
 
   let result = ui.handle(event);
@@ -290,7 +289,7 @@ fn targeted_event_returned_on_no_focus() {
     Box::new(TestWidget::new(id))
   });
 
-  let event = Event::KeyUp(Key::Char('y'));
+  let event = Event::Key('y');
   ui.focus(w);
   ui.hide(w);
 
@@ -301,17 +300,12 @@ fn targeted_event_returned_on_no_focus() {
 
 fn key_handler(event: Event, cap: &mut MutCap<Event>, to_focus: Option<Id>) -> Option<UiEvents> {
   match event {
-    Event::KeyDown(key) => {
-      match key {
-        Key::Char('a') => {
-          if let Some(id) = to_focus {
-            cap.focus(id);
-            None
-          } else {
-            Some(event.into())
-          }
-        },
-        _ => Some(event.into()),
+    Event::Key(key) if key == 'a' => {
+      if let Some(id) = to_focus {
+        cap.focus(id);
+        None
+      } else {
+        Some(event.into())
       }
     },
     _ => Some(event.into()),
@@ -341,7 +335,7 @@ fn event_handling_with_focus() {
 
   // Send a key down event, received by `w2`, which it will
   // translate into a focus event for `w1`.
-  let event = Event::KeyDown(Key::Char('a'));
+  let event = Event::Key('a');
   ui.handle(event);
 
   assert!(ui.is_focused(w1));
@@ -566,14 +560,14 @@ fn hook_events_handler() {
 
   assert_eq!(unsafe { HOOK_COUNT }, 0);
 
-  let event = Event::KeyDown(Key::Char(' '));
+  let event = Event::Key(' ');
   ui.handle(event).unwrap();
 
   assert_eq!(unsafe { HOOK_COUNT }, 1);
 
   ui.hook_events(c1, None);
 
-  let event = Event::KeyDown(Key::Char(' '));
+  let event = Event::Key(' ');
   ui.handle(event).unwrap();
 
   assert_eq!(unsafe { HOOK_COUNT }, 1);
@@ -605,7 +599,7 @@ fn hook_events_with_return() {
   ui.focus(w);
   ui.hook_events(w, Some(&quit_event_hook));
 
-  let event = Event::KeyDown(Key::Char(' '));
+  let event = Event::Key(' ');
   let result = ui.handle(event);
   let expected = UnhandledEvent::Quit.into();
 
@@ -615,9 +609,9 @@ fn hook_events_with_return() {
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 fn emitting_event_hook(_: &mut Widget<Event>, event: &Event, _cap: &Cap) -> Option<UiEvents> {
-  assert_eq!(*event, Event::KeyDown(Key::Char('y')));
+  assert_eq!(*event, Event::Key('y'));
 
-  Some(Event::KeyDown(Key::Char('z')).into())
+  Some(Event::Key('z').into())
 }
 
 static mut FIRST: bool = true;
@@ -625,9 +619,9 @@ static mut FIRST: bool = true;
 fn checking_event_handler(_: Id, event: Event, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
   unsafe {
     if FIRST {
-      assert_eq!(event, Event::KeyDown(Key::Char('y')));
+      assert_eq!(event, Event::Key('y'));
     } else {
-      assert_eq!(event, Event::KeyDown(Key::Char('z')));
+      assert_eq!(event, Event::Key('z'));
     };
 
     FIRST = false;
@@ -651,7 +645,7 @@ fn hook_emitted_event_order() {
   ui.focus(w);
   ui.hook_events(w, Some(&emitting_event_hook));
 
-  let event = Event::KeyDown(Key::Char('y'));
+  let event = Event::Key('y');
   let result = ui.handle(event);
   assert!(result.is_none())
 }

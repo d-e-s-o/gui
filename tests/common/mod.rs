@@ -29,13 +29,23 @@ use std::ops::Deref;
 
 use gui::ChainEvent;
 use gui::derive::Widget;
-use gui::Event;
 use gui::Handleable;
 use gui::Id;
 use gui::MutCap;
 use gui::UiEvents as GuiEvents;
 use gui::UnhandledEvent;
 use gui::UnhandledEvents;
+
+
+/// An event type used for testing purposes.
+#[allow(unused)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Event {
+  /// An empty event.
+  Empty,
+  /// An event containing a key.
+  Key(char),
+}
 
 pub type UiEvents = GuiEvents<Event>;
 
