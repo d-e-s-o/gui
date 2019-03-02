@@ -24,11 +24,11 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use gui::Cap;
 use gui::derive::Handleable;
 use gui::derive::Widget;
 use gui::Handleable;
 use gui::Id;
+use gui::MutCap;
 use gui::Ui;
 
 

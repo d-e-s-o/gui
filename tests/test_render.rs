@@ -24,6 +24,7 @@ use std::cell::Cell;
 use gui::BBox;
 use gui::Cap;
 use gui::Id;
+use gui::MutCap;
 use gui::Object;
 use gui::Renderable;
 use gui::Renderer;

@@ -104,7 +104,7 @@ pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 //       solution but is a nightly-only API. For now, users are advised
 //       to use an Option as one of the parameters and panic if None is
 //       supplied.
-type NewWidgetFn<'f> = &'f mut dyn FnMut(Id, &mut dyn Cap) -> Box<dyn Widget>;
+type NewWidgetFn<'f> = &'f mut dyn FnMut(Id, &mut dyn MutCap) -> Box<dyn Widget>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
@@ -113,9 +113,6 @@ type EventHookFn = &'static dyn Fn(&mut dyn Widget, &Event, &dyn Cap) -> Option<
 
 /// A capability allowing for various widget related operations.
 pub trait Cap {
-  /// Add a widget to the `Ui` represented by the capability.
-  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_>) -> Id;
-
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
   fn children(&self, widget: Id) -> ChildIter<'_>;
@@ -125,19 +122,6 @@ pub trait Cap {
 
   /// Retrieve the parent of the given widget.
   fn parent_id(&self, widget: Id) -> Option<Id>;
-
-  /// Show a widget, i.e., set its and its parents' visibility flag.
-  ///
-  /// This method sets the referenced widget's visibility flag as well
-  /// as those of all its parents.
-  fn show(&mut self, widget: Id);
-
-  /// Hide a widget, i.e., unset its visibility flag.
-  ///
-  /// This method makes sure that widget referenced is no longer
-  /// displayed. If the widget has children, all those children will
-  /// also be hidden.
-  fn hide(&mut self, widget: Id);
 
   /// Check whether a widget has its visibility flag set.
   ///
@@ -157,6 +141,29 @@ pub trait Cap {
   /// Retrieve the currently focused widget.
   fn focused(&self) -> Option<Id>;
 
+  /// Check whether the widget with the given `Id` is focused.
+  fn is_focused(&self, widget: Id) -> bool;
+}
+
+
+/// A mutable capability allowing for various widget related operations.
+pub trait MutCap: Cap {
+  /// Add a widget to the `Ui` represented by the capability.
+  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_>) -> Id;
+
+  /// Show a widget, i.e., set its and its parents' visibility flag.
+  ///
+  /// This method sets the referenced widget's visibility flag as well
+  /// as those of all its parents.
+  fn show(&mut self, widget: Id);
+
+  /// Hide a widget, i.e., unset its visibility flag.
+  ///
+  /// This method makes sure that widget referenced is no longer
+  /// displayed. If the widget has children, all those children will
+  /// also be hidden.
+  fn hide(&mut self, widget: Id);
+
   /// Focus a widget.
   ///
   /// The focused widget is the one receiving certain types of events
@@ -164,9 +171,6 @@ pub trait Cap {
   /// color or be otherwise highlighted. Note that being focused implies
   /// being visible. This invariant is enforced internally.
   fn focus(&mut self, widget: Id);
-
-  /// Check whether the widget with the given `Id` is focused.
-  fn is_focused(&self, widget: Id) -> bool;
 
   /// Install or remove an event hook handler.
   ///
@@ -193,7 +197,6 @@ pub trait Cap {
   /// installed, if any.
   fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn>) -> Option<EventHookFn>;
 }
-
 
 #[cfg(debug_assertions)]
 fn get_next_ui_id() -> usize {
@@ -655,12 +658,6 @@ impl Ui {
 }
 
 impl Cap for Ui {
-  /// Add a widget to the `Ui`.
-  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_>) -> Id {
-    let parent_idx = self.validate(parent);
-    self._add_widget(Some(parent_idx), &mut |id, cap| new_widget(id, cap))
-  }
-
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
   fn children(&self, widget: Id) -> ChildIter<'_> {
@@ -687,6 +684,38 @@ impl Cap for Ui {
     parent_id
   }
 
+  /// Check whether a widget has its visibility flag set.
+  fn is_visible(&self, widget: Id) -> bool {
+    self.is_visible(self.validate(widget))
+  }
+
+  /// Check whether a widget is actually being displayed.
+  fn is_displayed(&self, widget: Id) -> bool {
+    self.is_displayed(self.validate(widget))
+  }
+
+  /// Retrieve the currently focused widget.
+  fn focused(&self) -> Option<Id> {
+    self.focused.and_then(|x| Some(Id::new(x.idx, self)))
+  }
+
+  /// Check whether the given widget is focused.
+  fn is_focused(&self, widget: Id) -> bool {
+    let idx = self.validate(widget);
+    let result = self.focused == Some(idx);
+    debug_assert!(result && self.is_displayed(idx) || !result);
+    debug_assert!(result && self.is_top_most_child(idx) || !result);
+    result
+  }
+}
+
+impl MutCap for Ui {
+  /// Add a widget to the `Ui`.
+  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_>) -> Id {
+    let parent_idx = self.validate(parent);
+    self._add_widget(Some(parent_idx), &mut |id, cap| new_widget(id, cap))
+  }
+
   /// Show a widget, i.e., set its and its parents' visibility flag.
   fn show(&mut self, widget: Id) {
     let idx = self.validate(widget);
@@ -704,34 +733,10 @@ impl Cap for Ui {
     self.widgets[idx.idx].0.visible = false;
   }
 
-  /// Check whether a widget has its visibility flag set.
-  fn is_visible(&self, widget: Id) -> bool {
-    self.is_visible(self.validate(widget))
-  }
-
-  /// Check whether a widget is actually being displayed.
-  fn is_displayed(&self, widget: Id) -> bool {
-    self.is_displayed(self.validate(widget))
-  }
-
-  /// Retrieve the currently focused widget.
-  fn focused(&self) -> Option<Id> {
-    self.focused.and_then(|x| Some(Id::new(x.idx, self)))
-  }
-
   /// Focus a widget.
   fn focus(&mut self, widget: Id) {
     let idx = self.validate(widget);
     self.focus(idx)
-  }
-
-  /// Check whether the given widget is focused.
-  fn is_focused(&self, widget: Id) -> bool {
-    let idx = self.validate(widget);
-    let result = self.focused == Some(idx);
-    debug_assert!(result && self.is_displayed(idx) || !result);
-    debug_assert!(result && self.is_top_most_child(idx) || !result);
-    result
   }
 
   /// Install or remove an event hook handler.

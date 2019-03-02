@@ -19,8 +19,8 @@
 
 use std::any::Any;
 
-use crate::Cap;
 use crate::Event;
+use crate::MutCap;
 use crate::UiEvent;
 use crate::UiEvents;
 
@@ -34,7 +34,7 @@ pub trait Handleable {
   /// it directly (the default behavior), in which case the its parent
   /// widget will receive it, or return a completely different event.
   #[allow(unused_variables)]
-  fn handle(&mut self, event: Event, cap: &mut dyn Cap) -> Option<UiEvents> {
+  fn handle(&mut self, event: Event, cap: &mut dyn MutCap) -> Option<UiEvents> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())
@@ -42,13 +42,13 @@ pub trait Handleable {
 
   /// Handle a custom event.
   #[allow(unused_variables)]
-  fn handle_custom(&mut self, event: Box<dyn Any>, cap: &mut dyn Cap) -> Option<UiEvents> {
+  fn handle_custom(&mut self, event: Box<dyn Any>, cap: &mut dyn MutCap) -> Option<UiEvents> {
     Some(UiEvent::Custom(event).into())
   }
 
   /// Handle a custom event without transferring ownership of it.
   #[allow(unused_variables)]
-  fn handle_custom_ref(&mut self, event: &mut dyn Any, cap: &mut dyn Cap) -> Option<UiEvents> {
+  fn handle_custom_ref(&mut self, event: &mut dyn Any, cap: &mut dyn MutCap) -> Option<UiEvents> {
     None
   }
 }

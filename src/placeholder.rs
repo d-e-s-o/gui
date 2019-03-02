@@ -24,6 +24,7 @@ use crate::Cap;
 use crate::Event;
 use crate::Handleable;
 use crate::Id;
+use crate::MutCap;
 use crate::Object;
 use crate::Renderable;
 use crate::Renderer;
@@ -64,7 +65,7 @@ impl Object for Placeholder {
 }
 
 impl Handleable for Placeholder {
-  fn handle(&mut self, _event: Event, _cap: &mut dyn Cap) -> Option<UiEvents> {
+  fn handle(&mut self, _event: Event, _cap: &mut dyn MutCap) -> Option<UiEvents> {
     unreachable!()
   }
 }

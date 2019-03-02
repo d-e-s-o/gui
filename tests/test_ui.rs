@@ -34,6 +34,7 @@ use gui::Event;
 use gui::Handleable;
 use gui::Id;
 use gui::Key;
+use gui::MutCap;
 use gui::Ui;
 use gui::UiEvent;
 use gui::UiEvents;
@@ -408,14 +409,14 @@ fn repeated_hide_preserves_order() {
 }
 
 
-fn counting_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
+fn counting_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
 
 /// Check if we need to create another `CreatingWidget`.
-fn need_more(id: Id, cap: &Cap) -> bool {
+fn need_more(id: Id, cap: &mut MutCap) -> bool {
   cap.parent_id(id).is_none()
 }
 
@@ -425,7 +426,7 @@ struct CreatingWidget {
 }
 
 impl CreatingWidget {
-  pub fn new(id: Id, cap: &mut Cap) -> Self {
+  pub fn new(id: Id, cap: &mut MutCap) -> Self {
     let child = cap.add_widget(id, &mut |id, _cap| {
       let widget = TestWidgetBuilder::new()
         .custom_handler(counting_handler)
@@ -449,7 +450,7 @@ impl CreatingWidget {
 }
 
 impl Handleable for CreatingWidget {
-  fn handle_custom(&mut self, event: Box<Any>, cap: &mut Cap) -> Option<UiEvents> {
+  fn handle_custom(&mut self, event: Box<Any>, cap: &mut MutCap) -> Option<UiEvents> {
     counting_handler(self.id, event, cap)
   }
 }
@@ -506,7 +507,7 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(widget: Id, event: Event, cap: &mut Cap) -> Option<UiEvents> {
+fn create_handler(widget: Id, event: Event, cap: &mut MutCap) -> Option<UiEvents> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -545,8 +546,8 @@ fn event_based_widget_creation() {
 }
 
 
-fn recursive_operations_handler(widget: Id, _event: Box<Any>, cap: &mut Cap) -> Option<UiEvents> {
-  // Check that we can use the supplied `Cap` object to retrieve our
+fn recursive_operations_handler(widget: Id, _event: Box<Any>, cap: &mut MutCap) -> Option<UiEvents> {
+  // Check that we can use the supplied `MutCap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);
   cap.focus(widget);

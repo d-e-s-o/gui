@@ -29,6 +29,7 @@ use gui::Event;
 use gui::EventChain;
 use gui::Id;
 use gui::Key;
+use gui::MutCap;
 use gui::OptionChain;
 use gui::Ui;
 use gui::UiEvent;
@@ -292,7 +293,7 @@ fn targeted_event_returned_on_no_focus() {
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
-fn key_handler(event: Event, cap: &mut Cap, to_focus: Option<Id>) -> Option<UiEvents> {
+fn key_handler(event: Event, cap: &mut MutCap, to_focus: Option<Id>) -> Option<UiEvents> {
   match event {
     Event::KeyDown(key) => {
       match key {
@@ -340,7 +341,7 @@ fn event_handling_with_focus() {
   assert!(ui.is_focused(w1));
 }
 
-fn custom_undirected_response_handler(_: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
+fn custom_undirected_response_handler(_: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
@@ -376,7 +377,7 @@ fn custom_undirected_response_event() {
   assert_eq!(*unwrap_custom::<u64>(result), 45);
 }
 
-fn custom_directed_response_handler(_: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
+fn custom_directed_response_handler(_: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
   let cell = *event.downcast::<Rc<RefCell<u64>>>().unwrap();
   let value = *cell.borrow();
   cell.replace(value + 1);
@@ -465,7 +466,7 @@ fn quit_event() {
 
 static mut ACCUMULATOR: u64 = 0;
 
-fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
+fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
 
   unsafe {
@@ -474,7 +475,7 @@ fn accumulating_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<
   }
 }
 
-fn chaining_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
+fn chaining_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
   let value = event.downcast::<u64>().unwrap();
   let event1 = UiEvent::Custom(Box::new(*value));
   let event2 = UiEvent::Custom(Box::new(*value + 1));
@@ -574,7 +575,7 @@ fn quit_event_hook(_widget: &mut Widget, _event: &Event, _cap: &Cap) -> Option<U
   Some(UiEvent::Quit.into())
 }
 
-fn swallowing_event_handler(_widget: Id, _event: Event, _cap: &mut Cap) -> Option<UiEvents> {
+fn swallowing_event_handler(_widget: Id, _event: Event, _cap: &mut MutCap) -> Option<UiEvents> {
   None
 }
 
@@ -611,7 +612,7 @@ fn emitting_event_hook(_widget: &mut Widget, event: &Event, _cap: &Cap) -> Optio
 
 static mut FIRST: bool = true;
 
-fn checking_event_handler(_widget: Id, event: Event, _cap: &mut Cap) -> Option<UiEvents> {
+fn checking_event_handler(_widget: Id, event: Event, _cap: &mut MutCap) -> Option<UiEvents> {
   unsafe {
     if FIRST {
       assert_eq!(event, Event::KeyDown(Key::Char('y')));
@@ -646,12 +647,12 @@ fn hook_emitted_event_order() {
 }
 
 
-fn returned_event_handler(_widget: Id, event: Box<Any>, _cap: &mut Cap) -> Option<UiEvents> {
+fn returned_event_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
-fn returnable_event_handler(_widget: Id, event: &mut Any, _cap: &mut Cap) -> Option<UiEvents> {
+fn returnable_event_handler(_widget: Id, event: &mut Any, _cap: &mut MutCap) -> Option<UiEvents> {
   match event.downcast_mut::<u64>() {
     Some(value) => *value *= 2,
     None => panic!("encountered unexpected custom event"),
