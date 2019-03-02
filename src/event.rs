@@ -146,6 +146,13 @@ pub enum UnhandledEvent<E> {
   Quit,
 }
 
+/// A convenience conversion from a single event into an `UnhandledEvent`.
+impl<E> From<E> for UnhandledEvent<E> {
+  fn from(event: E) -> Self {
+    UnhandledEvent::Event(event)
+  }
+}
+
 
 /// An event potentially comprising multiple event objects.
 #[derive(Debug)]
@@ -168,16 +175,20 @@ impl<E> ChainEvent<E> {
   }
 }
 
+/// A convenience conversion from a single event into a `ChainEvent`.
+impl<E> From<E> for ChainEvent<E> {
+  fn from(event: E) -> Self {
+    ChainEvent::Event(event)
+  }
+}
+
 
 /// An event potentially comprising multiple `UiEvent` objects.
 pub type UiEvents = ChainEvent<UiEvent<Event>>;
 
 /// A convenience conversion from a single event into a chain of `UiEvent` objects.
-impl<E> From<E> for UiEvents
-where
-  E: Into<UiEvent<Event>>,
-{
-  fn from(event: E) -> Self {
+impl From<Event> for UiEvents {
+  fn from(event: Event) -> Self {
     ChainEvent::Event(event.into())
   }
 }
@@ -185,16 +196,6 @@ where
 
 /// An event potentially comprising multiple `UnhandledEvent` objects.
 pub type UnhandledEvents = ChainEvent<UnhandledEvent<Event>>;
-
-/// A convenience conversion from a single event into a chain of `UnhandledEvent` objects.
-impl<E> From<E> for UnhandledEvents
-where
-  E: Into<UnhandledEvent<Event>>,
-{
-  fn from(event: E) -> Self {
-    ChainEvent::Event(event.into())
-  }
-}
 
 
 /// A trait for chaining of events.
@@ -226,7 +227,7 @@ where
   {
     match self.into() {
       ChainEvent::Event(e) => ChainEvent::Chain(e, Box::new(event.into())),
-      ChainEvent::Chain(e, chain) => ChainEvent::Chain(e, Box::new(chain.chain(event))),
+      ChainEvent::Chain(e, chain) => ChainEvent::Chain(e, Box::new((*chain).chain(event))),
     }
   }
 

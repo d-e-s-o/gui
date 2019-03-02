@@ -505,7 +505,7 @@ impl Ui {
           Some(hook_fn) => {
             let event = hook_fn.0(widget.as_mut(), event, ui);
             let prev = result.take();
-            let _ = replace(&mut result, prev.chain(event));
+            let _ = replace(&mut result, OptionChain::chain(prev, event));
           },
           None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
         };
@@ -580,11 +580,10 @@ impl Ui {
   fn handle_ui_events(&mut self, idx: Option<Index>, events: UiEvents) -> Option<UnhandledEvents> {
     match events {
       ChainEvent::Event(event) => self.handle_ui_event(idx, event),
-      ChainEvent::Chain(event, chain) => {
-        self
-          .handle_ui_event(idx, event)
-          .chain(self.handle_ui_events(idx, *chain))
-      },
+      ChainEvent::Chain(event, chain) => OptionChain::chain(
+        self.handle_ui_event(idx, event),
+        self.handle_ui_events(idx, *chain),
+      ),
     }
   }
 
@@ -650,7 +649,7 @@ impl Ui {
           let idx = self.validate(src);
           self.handle_custom_event(idx, event)
         };
-        events1.chain(events2)
+        OptionChain::chain(events1, events2)
       },
       UiEvent::Quit => Some(UnhandledEvent::Quit.into()),
     }

@@ -201,18 +201,21 @@ fn event_and_option_chain() {
 
 #[test]
 fn option_and_option_chain() {
-  let result = (None as Option<Event>).chain(None as Option<Event>);
+  let result = OptionChain::<_, UiEvent<Event>>::chain(
+    None as Option<Event>,
+    None as Option<Event>,
+  );
   assert!(result.is_none());
 
   let event = Event::KeyDown(Key::PageDown);
   let orig_event = event;
-  let result = (None as Option<Event>).chain(Some(event));
+  let result = OptionChain::chain(None as Option<Event>, Some(event));
 
   assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
 
   let event = Event::KeyDown(Key::Char('u'));
   let orig_event = event;
-  let result = Some(event).chain(None as Option<Event>);
+  let result = OptionChain::chain(Some(event), None as Option<Event>);
 
   assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
 
@@ -227,7 +230,7 @@ fn option_and_option_chain() {
   let event2 = Event::KeyUp(Key::Char('u'));
   let orig_event2 = event2;
 
-  let result = Some(event1).chain(Some(event2));
+  let result = OptionChain::chain(Some(event1),Some(event2));
   let expected = ChainEvent::Chain(
     orig_event1.into(),
     Box::new(orig_event2.into())
