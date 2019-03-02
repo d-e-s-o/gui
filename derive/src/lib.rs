@@ -53,6 +53,7 @@ use syn::Attribute;
 use syn::Data;
 use syn::DeriveInput;
 use syn::Fields;
+use syn::Lit;
 use syn::Meta;
 use syn::NestedMeta;
 use syn::parse2;
@@ -62,6 +63,8 @@ use syn::token::Comma;
 
 /// A type indicating whether or not to create a default implementation of Type::new().
 type New = Option<()>;
+/// A type representing an event type to parametrize a widget with.
+type Event = Option<String>;
 
 
 /// The error type used internally by this module.
@@ -153,34 +156,40 @@ fn expand_widget(input: TokenStream) -> Result<TokenStream> {
   let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
     Err("unable to parse input")
   })?;
-  let new = parse_attributes(&input.attrs)?;
-  let tokens = expand_widget_input(new, &input)?;
+  let (new, event) = parse_attributes(&input.attrs)?;
+  let tokens = expand_widget_input(new, &event, &input)?;
   Ok(tokens.into())
 }
 
 /// Parse the macro's attributes.
-fn parse_attributes(attributes: &[Attribute]) -> Result<New> {
-  let new = attributes
+fn parse_attributes(attributes: &[Attribute]) -> Result<(New, Event)> {
+  let (new, event) = attributes
     .iter()
     .map(|attr| parse_attribute(attr))
-    .fold(Ok(None), |result1, result2| {
+    .fold(Ok((None, None)), |result1, result2| {
       match (result1, result2) {
-        (Ok(new1), Ok(new2)) => Ok(new2.or(new1)),
+        (Ok((new1, event1)), Ok((new2, event2))) => Ok((new2.or(new1), event2.or(event1))),
         (Err(x), _) | (_, Err(x)) => Err(x),
       }
     })?;
 
   // If no attribute is given we do not create a default implementation
   // of new().
-  Ok(new)
+  Ok((new, event))
 }
 
 /// Parse a single item in a #[gui(list...)] attribute list.
-fn parse_gui_attribute(item: &NestedMeta) -> Result<New> {
+fn parse_gui_attribute(item: &NestedMeta) -> Result<(New, Event)> {
   match *item {
     NestedMeta::Meta(ref meta_item) => {
       match *meta_item {
-        Meta::Word(ref ident) if ident == "default_new" => Ok(Some(())),
+        Meta::NameValue(ref name_val) if name_val.ident == "Event" => {
+          match name_val.lit {
+            Lit::Str(ref string) => Ok((None, Some(string.value()))),
+            _ => Ok((None, None)),
+          }
+        },
+        Meta::Word(ref ident) if ident == "default_new" => Ok((Some(()), None)),
         _ => Err(Error::from(format!("unsupported attribute: {}", meta_item.name()))),
       }
     },
@@ -189,24 +198,23 @@ fn parse_gui_attribute(item: &NestedMeta) -> Result<New> {
 }
 
 /// Parse a #[gui(list...)] attribute list.
-fn parse_gui_attributes(list: &Punctuated<NestedMeta, Comma>) -> Result<New> {
-  // Right now we only support a single attribute at all (default_new).
-  // So strictly speaking if the first item is a match we are good,
-  // otherwise we error out. However, we do not simply want to silently
-  // ignore other (faulty) attributes, so as to inform the user about
-  // any errors early on.
+fn parse_gui_attributes(list: &Punctuated<NestedMeta, Comma>) -> Result<(New, Event)> {
+  let mut new = None;
+  let mut event = None;
+
   for item in list {
-    let _ = parse_gui_attribute(item)?;
+    let (this_new, this_event) = parse_gui_attribute(item)?;
+    new = this_new.or(new);
+    event = this_event.or(event);
   }
-  if !list.is_empty() {
-    Ok(Some(()))
-  } else {
-    Ok(None)
-  }
+  Ok((new, event))
 }
 
 /// Parse a single attribute, e.g., #[GuiType = "Widget"].
-fn parse_attribute(attribute: &Attribute) -> Result<New> {
+// TODO: Once https://github.com/rust-lang/rust/pull/57367 lands in
+//       stable we should migrate to using the actual type and not a
+//       textual representation of it.
+fn parse_attribute(attribute: &Attribute) -> Result<(New, Event)> {
   // We don't care about the other meta data elements, inner/outer,
   // doc/non-doc, it's all fine by us.
 
@@ -218,19 +226,19 @@ fn parse_attribute(attribute: &Attribute) -> Result<New> {
           // ...)]. Parse the inner list.
           parse_gui_attributes(&list.nested)
         },
-        _ => Ok(None),
+        _ => Ok((None, None)),
       }
     },
-    None => Ok(None),
+    None => Ok((None, None)),
   }
 }
 
 /// Expand the input with the implementation of the required traits.
-fn expand_widget_input(new: New, input: &DeriveInput) -> Result<Tokens> {
+fn expand_widget_input(new: New, event: &Event, input: &DeriveInput) -> Result<Tokens> {
   match input.data {
     Data::Struct(ref data) => {
       check_struct_fields(&data.fields)?;
-      Ok(expand_widget_traits(new, input))
+      Ok(expand_widget_traits(new, event, input))
     },
     _ => Err(Error::from("#[derive(Widget)] is only defined for structs")),
   }
@@ -260,11 +268,11 @@ fn check_struct_fields(fields: &Fields) -> Result<()> {
 }
 
 /// Expand the struct input with the implementation of the required traits.
-fn expand_widget_traits(new: New, input: &DeriveInput) -> Tokens {
+fn expand_widget_traits(new: New, event: &Event, input: &DeriveInput) -> Tokens {
   let new_impl = expand_new_impl(new, input);
   let renderer = expand_renderer_trait(input);
   let object = expand_object_trait(input);
-  let widget = expand_widget_trait(input);
+  let widget = expand_widget_trait(event, input);
 
   quote! {
     #new_impl
@@ -334,7 +342,7 @@ fn expand_object_trait(input: &DeriveInput) -> Tokens {
 }
 
 /// Expand an implementation for the `gui::Widget` trait.
-fn expand_widget_trait(input: &DeriveInput) -> Tokens {
+fn expand_widget_trait(_event: &Event, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -365,7 +373,7 @@ fn expand_widget_trait(input: &DeriveInput) -> Tokens {
 /// impl gui::Handleable for TestWidget {}
 /// # fn main() {}
 /// ```
-#[proc_macro_derive(Handleable)]
+#[proc_macro_derive(Handleable, attributes(gui))]
 pub fn handleable(input: TokenStream) -> TokenStream {
   match expand_handleable(input) {
     Ok(tokens) => tokens,
@@ -377,20 +385,21 @@ fn expand_handleable(input: TokenStream) -> Result<TokenStream> {
   let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
     Err("unable to parse input")
   })?;
-  let tokens = expand_handleable_input(&input)?;
+  let (_, event) = parse_attributes(&input.attrs)?;
+  let tokens = expand_handleable_input(&event, &input)?;
   Ok(tokens.into())
 }
 
 /// Expand the input with the implementation of the required traits.
-fn expand_handleable_input(input: &DeriveInput) -> Result<Tokens> {
+fn expand_handleable_input(event: &Event, input: &DeriveInput) -> Result<Tokens> {
   match input.data {
-    Data::Struct(_) => Ok(expand_handleable_trait(input)),
+    Data::Struct(_) => Ok(expand_handleable_trait(event, input)),
     _ => Err(Error::from("#[derive(Handleable)] is only defined for structs")),
   }
 }
 
 /// Expand an implementation for the `gui::Handleable` trait.
-fn expand_handleable_trait(input: &DeriveInput) -> Tokens {
+fn expand_handleable_trait(_event: &Event, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -411,8 +420,9 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    let new = parse_attributes(&input.attrs).unwrap();
+    let (new, event) = parse_attributes(&input.attrs).unwrap();
     assert_eq!(new, None);
+    assert_eq!(event, None);
   }
 
   #[test]
@@ -423,6 +433,34 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    assert_eq!(parse_attributes(&input.attrs).unwrap(), Some(()));
+    let (new, event) = parse_attributes(&input.attrs).unwrap();
+    assert_eq!(new, Some(()));
+    assert_eq!(event, None);
+  }
+
+  #[test]
+  fn custom_event() {
+    let tokens = quote! {
+      #[gui(Event = "FooBarBazEvent")]
+      struct Bar { }
+    };
+
+    let input = parse2::<DeriveInput>(tokens).unwrap();
+    let (new, event) = parse_attributes(&input.attrs).unwrap();
+    assert_eq!(new, None);
+    assert_eq!(event, Some("FooBarBazEvent".to_string()));
+  }
+
+  #[test]
+  fn last_event_type_takes_precedence() {
+    let tokens = quote! {
+      #[gui(Event = "Event1")]
+      #[gui(Event = "Event2")]
+      struct Foo { }
+    };
+
+    let input = parse2::<DeriveInput>(tokens).unwrap();
+    let (_, event) = parse_attributes(&input.attrs).unwrap();
+    assert_eq!(event.as_ref().map(String::as_str), Some("Event2"));
   }
 }

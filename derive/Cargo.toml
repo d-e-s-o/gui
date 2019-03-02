@@ -19,6 +19,9 @@ gitlab = { repository = "d-e-s-o/gui", branch = "devel" }
 [lib]
 proc-macro = true
 
+[dependencies.proc-macro2]
+version = "0.4"
+
 [dependencies.quote]
 version = "0.6"
 

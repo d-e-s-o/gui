@@ -21,15 +21,22 @@
   clippy::redundant_field_names,
 )]
 
+use std::any::TypeId;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
+use gui::BBox;
+use gui::Cap;
 use gui::derive::Handleable;
 use gui::derive::Widget;
 use gui::Handleable;
 use gui::Id;
 use gui::MutCap;
+use gui::Object;
+use gui::Renderable;
+use gui::Renderer;
 use gui::Ui;
+use gui::Widget;
 
 
 #[derive(Debug, Widget, Handleable)]
@@ -69,6 +76,34 @@ where
       id: id,
       _data: PhantomData,
     }
+  }
+}
+
+
+#[derive(Debug, Handleable)]
+struct TestHandleable {
+  id: Id,
+}
+
+impl Renderable for TestHandleable {
+  fn type_id(&self) -> TypeId {
+    TypeId::of::<TestHandleable>()
+  }
+
+  fn render(&self, renderer: &Renderer, bbox: BBox, cap: &Cap) -> BBox {
+    renderer.render(self, bbox, cap)
+  }
+}
+
+impl Object for TestHandleable {
+  fn id(&self) -> Id {
+    self.id
+  }
+}
+
+impl Widget for TestHandleable {
+  fn type_id(&self) -> TypeId {
+    TypeId::of::<TestHandleable>()
   }
 }
 
