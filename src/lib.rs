@@ -53,9 +53,7 @@ use self::event::CustomEvent;
 use self::placeholder::Placeholder;
 
 pub use self::event::ChainEvent;
-pub use self::event::Event;
 pub use self::event::EventChain;
-pub use self::event::Key;
 pub use self::event::OptionChain;
 pub use self::event::UiEvent;
 pub use self::event::UiEvents;

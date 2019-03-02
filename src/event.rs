@@ -22,58 +22,6 @@ use std::any::Any;
 use crate::Id;
 
 
-/// An object representing a key on the key board.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Key {
-  /// The backspace key.
-  Backspace,
-  /// The character representing the key.
-  Char(char),
-  /// The delete key.
-  Delete,
-  /// The down arrow key.
-  Down,
-  /// The end key.
-  End,
-  /// The Escape key.
-  Esc,
-  /// The home key.
-  Home,
-  /// The insert key.
-  Insert,
-  /// The left arrow key.
-  Left,
-  /// The page down key.
-  PageDown,
-  /// The page up key.
-  PageUp,
-  /// The return key.
-  Return,
-  /// The right arrow key.
-  Right,
-  /// The up arrow key.
-  Up,
-}
-
-
-/// An event that can be handled by a `Handleable`.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Event {
-  /// A key was pressed.
-  ///
-  /// A key down event is delivered to the focused widget and it is up
-  /// to this widget to decide whether the event gets propagated further
-  /// up.
-  KeyDown(Key),
-  /// A key was released.
-  ///
-  /// A key up event is delivered to the focused widget and it is up to
-  /// this widget to decide whether the event gets propagated further
-  /// up.
-  KeyUp(Key),
-}
-
-
 /// An event type containing custom and arbitrary data.
 ///
 /// Custom events are the means for transferring arbitrary data between

@@ -7,6 +7,7 @@ Unreleased
 - Added `TypeId` functionality to `Renderable`
 - Adjusted event hook function signature to take event to use by
   reference
+- Removed `Event` and `Key` types
 - Introduced 'derive' feature pulling in and re-exporting the custom
   derive functionality provided by `gui-derive`
 
