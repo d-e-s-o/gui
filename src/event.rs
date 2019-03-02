@@ -1,7 +1,7 @@
 // event.rs
 
 // *************************************************************************
-// * Copyright (C) 2018 Daniel Mueller (deso@posteo.net)                   *
+// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -100,9 +100,9 @@ pub(crate) enum CustomEvent<'evnt> {
 
 /// An event that the `Ui` can process.
 #[derive(Debug)]
-pub enum UiEvent {
+pub enum UiEvent<E> {
   /// An `Event` that can be handled by a `Handleable`.
-  Event(Event),
+  Event(E),
   /// A custom event that can contain arbitrary data.
   Custom(Box<dyn Any>),
   /// A custom event directed to a certain widget.
@@ -121,8 +121,8 @@ pub enum UiEvent {
 }
 
 /// A convenience conversion from `Event` to `UiEvent`.
-impl From<Event> for UiEvent {
-  fn from(event: Event) -> Self {
+impl<E> From<E> for UiEvent<E> {
+  fn from(event: E) -> Self {
     UiEvent::Event(event)
   }
 }
@@ -137,9 +137,9 @@ impl From<Event> for UiEvent {
 // making sure that `UiEvent` variants dealing solely with addressing
 // are no longer present.
 #[derive(Debug)]
-pub enum UnhandledEvent {
+pub enum UnhandledEvent<E> {
   /// An `Event` that can be handled by a `Handleable`.
-  Event(Event),
+  Event(E),
   /// A custom event that can contain arbitrary data.
   Custom(Box<dyn Any>),
   /// A request to quit the application has been made.
@@ -170,12 +170,12 @@ impl<E> ChainEvent<E> {
 
 
 /// An event potentially comprising multiple `UiEvent` objects.
-pub type UiEvents = ChainEvent<UiEvent>;
+pub type UiEvents = ChainEvent<UiEvent<Event>>;
 
 /// A convenience conversion from a single event into a chain of `UiEvent` objects.
 impl<E> From<E> for UiEvents
 where
-  E: Into<UiEvent>,
+  E: Into<UiEvent<Event>>,
 {
   fn from(event: E) -> Self {
     ChainEvent::Event(event.into())
@@ -184,12 +184,12 @@ where
 
 
 /// An event potentially comprising multiple `UnhandledEvent` objects.
-pub type UnhandledEvents = ChainEvent<UnhandledEvent>;
+pub type UnhandledEvents = ChainEvent<UnhandledEvent<Event>>;
 
 /// A convenience conversion from a single event into a chain of `UnhandledEvent` objects.
 impl<E> From<E> for UnhandledEvents
 where
-  E: Into<UnhandledEvent>,
+  E: Into<UnhandledEvent<Event>>,
 {
   fn from(event: E) -> Self {
     ChainEvent::Event(event.into())

@@ -519,7 +519,7 @@ impl Ui {
   /// the actual event handler.
   pub fn handle<E>(&mut self, event: E) -> Option<UnhandledEvents>
   where
-    E: Into<UiEvent>,
+    E: Into<UiEvent<Event>>,
   {
     let ui_event = event.into();
 
@@ -605,7 +605,7 @@ impl Ui {
   }
 
   /// Handle a `UiEvent`.
-  fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent) -> Option<UnhandledEvents> {
+  fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent<Event>) -> Option<UnhandledEvents> {
     match event {
       UiEvent::Event(event) => {
         if let Some(idx) = idx {

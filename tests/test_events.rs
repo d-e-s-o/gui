@@ -42,7 +42,10 @@ use crate::common::TestWidgetBuilder;
 use crate::common::unwrap_custom;
 
 
-fn compare_ui_event(event1: &UiEvent, event2: &UiEvent) -> bool {
+fn compare_ui_event<E>(event1: &UiEvent<E>, event2: &UiEvent<E>) -> bool
+where
+  E: PartialEq,
+{
   match *event1 {
     UiEvent::Event(ref event1) => {
       match *event2 {
@@ -82,7 +85,10 @@ fn compare_ui_events(event1: &UiEvents, event2: &UiEvents) -> bool {
   }
 }
 
-fn compare_unhandled(event1: &UnhandledEvent, event2: &UnhandledEvent) -> bool {
+fn compare_unhandled<E>(event1: &UnhandledEvent<E>, event2: &UnhandledEvent<E>) -> bool
+where
+  E: PartialEq,
+{
   match *event1 {
     UnhandledEvent::Event(ref event1) => {
       match *event2 {

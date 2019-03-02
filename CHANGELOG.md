@@ -1,5 +1,6 @@
 Unreleased
 ----------
+- Made `UiEvent` and `UnhandledEvent` generic over the underlying event
 - Added `TypeId` functionality to `Renderable`
 - Adjusted event hook function signature to take event to use by
   reference
