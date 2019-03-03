@@ -78,7 +78,7 @@ impl Id {
   #[allow(unused_variables)]
   fn new<E>(idx: usize, ui: &Ui<E>) -> Id
   where
-    E: 'static,
+    E: 'static + Debug,
   {
     Id {
       #[cfg(debug_assertions)]
@@ -114,7 +114,7 @@ type EventHookFn<E> = &'static dyn Fn(&mut dyn Widget<E>, &E, &dyn Cap) -> Optio
 
 
 /// A capability allowing for various widget related operations.
-pub trait Cap {
+pub trait Cap: Debug {
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
   fn children(&self, widget: Id) -> ChildIter<'_>;
@@ -149,7 +149,10 @@ pub trait Cap {
 
 
 /// A mutable capability allowing for various widget related operations.
-pub trait MutCap<E>: Cap {
+pub trait MutCap<E>: Cap
+where
+  E: Debug,
+{
   /// Add a widget to the `Ui` represented by the capability.
   fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_, E>) -> Id;
 
@@ -257,7 +260,7 @@ impl<E> Debug for EventHook<E> {
 #[derive(Debug, Default)]
 pub struct Ui<E>
 where
-  E: 'static,
+  E: 'static + Debug,
 {
   #[cfg(debug_assertions)]
   id: usize,
@@ -269,7 +272,7 @@ where
 
 impl<E> Ui<E>
 where
-  E: 'static,
+  E: 'static + Debug,
 {
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
@@ -677,7 +680,7 @@ where
 
 impl<E> Cap for Ui<E>
 where
-  E: 'static,
+  E: 'static + Debug,
 {
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
@@ -732,7 +735,7 @@ where
 
 impl<E> MutCap<E> for Ui<E>
 where
-  E: 'static,
+  E: 'static + Debug,
 {
   /// Add a widget to the `Ui`.
   fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_, E>) -> Id {

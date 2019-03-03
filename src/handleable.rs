@@ -18,6 +18,7 @@
 // *************************************************************************
 
 use std::any::Any;
+use std::fmt::Debug;
 
 use crate::MutCap;
 use crate::UiEvent;
@@ -25,7 +26,7 @@ use crate::UiEvents;
 
 
 /// A trait representing an object capable of handling events.
-pub trait Handleable<E>
+pub trait Handleable<E>: Debug
 where
   E: 'static,
 {
