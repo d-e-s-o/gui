@@ -55,12 +55,17 @@ use syn::Attribute;
 use syn::Data;
 use syn::DeriveInput;
 use syn::Fields;
+use syn::GenericParam;
+use syn::Generics;
 use syn::Lit;
 use syn::Meta;
 use syn::NestedMeta;
 use syn::parse2;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
+use syn::TypeGenerics;
+use syn::WhereClause;
+use syn::WherePredicate;
 
 
 /// A type indicating whether or not to create a default implementation of Type::new().
@@ -347,17 +352,18 @@ fn expand_object_trait(input: &DeriveInput) -> Tokens {
 /// Expand an implementation for the `gui::Widget` trait.
 fn expand_widget_trait(event: &Event, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
-  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+  let generic = event.is_none();
+  let (generics, ty_generics, where_clause) = split_for_impl(&input.generics, generic);
 
-  let widget = if let Some(event) = event {
-    let event = Ident::new(&event, Span::call_site());
-    quote! { ::gui::Widget<#event> }
+  let event = if let Some(event) = event {
+    Ident::new(&event, Span::call_site())
   } else {
-    unimplemented!()
+    Ident::new("__E", Span::call_site())
   };
+  let widget = quote! { ::gui::Widget<#event> };
 
   quote! {
-    impl #impl_generics #widget for #name #ty_generics #where_clause {
+    impl #generics #widget for #name #ty_generics #where_clause {
       fn type_id(&self) -> ::std::any::TypeId {
         ::std::any::TypeId::of::<#name #ty_generics>()
       }
@@ -410,20 +416,71 @@ fn expand_handleable_input(event: &Event, input: &DeriveInput) -> Result<Tokens>
   }
 }
 
+/// Extend generics with a type parameter named as per the given
+/// identifier.
+fn extend_generics(generics: &Generics, ident: Ident) -> Generics {
+  let param = GenericParam::Type(ident.into());
+  let mut generics = generics.clone();
+  generics.params.push(param);
+  generics
+}
+
+/// Extract an extended where clause of the given Generics object.
+fn extend_where_clause(where_clause: &Option<WhereClause>, ident: &Ident) -> WhereClause {
+  if let Some(where_clause) = where_clause {
+    let predicate = quote! { #ident: 'static };
+    let predicate = parse2::<WherePredicate>(predicate).unwrap();
+    let mut where_clause = where_clause.clone();
+    where_clause.predicates.push(predicate);
+    where_clause
+  } else {
+    // Strictly speaking we should always have a where clause because
+    // Handleable and Widget have additional trait constraints. However,
+    // if the user forgets we would hit this code path before the
+    // compiler could actually provide a hint (in the form of an error)
+    // that clarifies the mistake. So just provide sane behavior here as
+    // well.
+    let where_clause = quote! { where #ident: 'static };
+    parse2::<WhereClause>(where_clause).unwrap()
+  }
+}
+
+/// Split a type's generics into the pieces required for impl'ing a
+/// trait for that type, while correctly handling a potential generic
+/// event type.
+fn split_for_impl(generics: &Generics,
+                  generic: bool) -> (Generics, TypeGenerics<'_>, Option<WhereClause>) {
+  let (_, ty_generics, _) = generics.split_for_impl();
+
+  if generic {
+    let event = Ident::new("__E", Span::call_site());
+    let generics = extend_generics(&generics, event.clone());
+    let where_clause = extend_where_clause(&generics.where_clause, &event);
+
+    (generics, ty_generics, Some(where_clause))
+  } else {
+    let generics = generics.clone();
+    let where_clause = generics.where_clause.clone();
+
+    (generics, ty_generics, where_clause)
+  }
+}
+
 /// Expand an implementation for the `gui::Handleable` trait.
 fn expand_handleable_trait(event: &Event, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
-  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+  let generic = event.is_none();
+  let (generics, ty_generics, where_clause) = split_for_impl(&input.generics, generic);
 
-  let handleable = if let Some(event) = event {
-    let event = Ident::new(&event, Span::call_site());
-    quote! { ::gui::Handleable<#event> }
+  let event = if let Some(event) = event {
+    Ident::new(&event, Span::call_site())
   } else {
-    unimplemented!()
+    Ident::new("__E", Span::call_site())
   };
+  let handleable = quote! { ::gui::Handleable<#event> };
 
   quote! {
-    impl #impl_generics #handleable for #name #ty_generics #where_clause {}
+    impl #generics #handleable for #name #ty_generics #where_clause {}
   }
 }
 
