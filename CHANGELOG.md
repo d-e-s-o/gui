@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.3.0
+-----
 - Made `Handleable` trait generic over the event type to use
   - Made `UiEvent` and `UnhandledEvent` generic over the underlying event
 - Split `Cap` trait into `Cap` and `MutCap` with all methods requiring
