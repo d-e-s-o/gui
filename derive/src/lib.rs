@@ -20,9 +20,12 @@
 // TODO: Figure out how to enable the 'missing_docs' lint. The problem
 //       is that this lint seemingly flags a problem with the imported
 //       crates, which is not what we want.
-#![deny(
+#![warn(
+  future_incompatible,
   missing_copy_implementations,
   missing_debug_implementations,
+  rust_2018_compatibility,
+  rust_2018_idioms,
   trivial_casts,
   trivial_numeric_casts,
   unsafe_code,
@@ -30,11 +33,6 @@
   unused_import_braces,
   unused_qualifications,
   unused_results,
-)]
-#![warn(
-  future_incompatible,
-  rust_2018_compatibility,
-  rust_2018_idioms,
 )]
 
 //! A crate providing custom derive functionality for the `gui` crate.

@@ -20,20 +20,18 @@
 #![allow(
   clippy::redundant_field_names,
 )]
-#![deny(
+#![warn(
+  future_incompatible,
   missing_copy_implementations,
   missing_debug_implementations,
   missing_docs,
+  rust_2018_compatibility,
+  rust_2018_idioms,
   trivial_numeric_casts,
   unstable_features,
   unused_import_braces,
   unused_qualifications,
   unused_results,
-)]
-#![warn(
-  future_incompatible,
-  rust_2018_compatibility,
-  rust_2018_idioms,
 )]
 
 //! A crate containing the basic infrastructure for user interfaces. It

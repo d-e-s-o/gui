@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Downgraded `deny` crate-level lints to `warn`
+
+
 0.3.0
 -----
 - Made `Handleable` trait generic over the event type to use
