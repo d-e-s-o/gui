@@ -18,6 +18,7 @@
 // *************************************************************************
 
 #![allow(
+  clippy::assertions_on_constants,
   clippy::redundant_field_names,
 )]
 #![warn(

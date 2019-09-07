@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Bumped minimum required Rust version to `1.34.0`
+
+
 0.3.0
 -----
 - Added support for `gui(Event = ...)` attribute

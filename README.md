@@ -1,7 +1,7 @@
 [![pipeline](https://gitlab.com/d-e-s-o/gui/badges/devel/pipeline.svg)](https://gitlab.com/d-e-s-o/gui/commits/devel)
 [![crates.io](https://img.shields.io/crates/v/gui.svg)](https://crates.io/crates/gui)
 [![Docs](https://docs.rs/gui/badge.svg)](https://docs.rs/gui)
-[![rustc](https://img.shields.io/badge/rustc-1.31+-blue.svg)](https://blog.rust-lang.org/2018/12/06/Rust-1.31-and-rust-2018.html)
+[![rustc](https://img.shields.io/badge/rustc-1.34+-blue.svg)](https://blog.rust-lang.org/2019/04/11/Rust-1.34.0.html)
 
 gui
 ===
