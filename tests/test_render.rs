@@ -59,7 +59,7 @@ impl Renderer for CountingRenderer {
     self.pre_render_count.set(self.pre_render_count.get() + 1);
   }
 
-  fn render(&self, _object: &Renderable, bbox: BBox, _cap: &Cap) -> BBox {
+  fn render(&self, _object: &dyn Renderable, bbox: BBox, _cap: &dyn Cap) -> BBox {
     self.total_render_count.set(
       self.total_render_count.get() + 1,
     );
@@ -168,7 +168,7 @@ impl Renderer for BBoxRenderer {
     }
   }
 
-  fn render(&self, object: &Renderable, mut bbox: BBox, _cap: &Cap) -> BBox {
+  fn render(&self, object: &dyn Renderable, mut bbox: BBox, _cap: &dyn Cap) -> BBox {
     let mut expected = self.renderable_area();
     let widget = object.downcast_ref::<TestWidget>().unwrap();
 

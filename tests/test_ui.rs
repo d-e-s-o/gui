@@ -408,14 +408,16 @@ fn repeated_hide_preserves_order() {
 }
 
 
-fn counting_handler(_widget: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn counting_handler(_widget: Id,
+                    event: Box<dyn Any>,
+                    _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
 
 /// Check if we need to create another `CreatingWidget`.
-fn need_more(id: Id, cap: &mut MutCap<Event>) -> bool {
+fn need_more(id: Id, cap: &mut dyn MutCap<Event>) -> bool {
   cap.parent_id(id).is_none()
 }
 
@@ -426,7 +428,7 @@ struct CreatingWidget {
 }
 
 impl CreatingWidget {
-  pub fn new(id: Id, cap: &mut MutCap<Event>) -> Self {
+  pub fn new(id: Id, cap: &mut dyn MutCap<Event>) -> Self {
     let child = cap.add_widget(id, &mut |id, _cap| {
       let widget = TestWidgetBuilder::new()
         .custom_handler(counting_handler)
@@ -450,7 +452,9 @@ impl CreatingWidget {
 }
 
 impl Handleable<Event> for CreatingWidget {
-  fn handle_custom(&mut self, event: Box<Any>, cap: &mut MutCap<Event>) -> Option<UiEvents> {
+  fn handle_custom(&mut self,
+                   event: Box<dyn Any>,
+                   cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
     counting_handler(self.id, event, cap)
   }
 }
@@ -508,7 +512,7 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(widget: Id, event: Event, cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn create_handler(widget: Id, event: Event, cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   match event {
     Event::Key(key) if key == 'z' => {
       cap.add_widget(widget, &mut |id, _cap| {
@@ -542,7 +546,9 @@ fn event_based_widget_creation() {
 }
 
 
-fn recursive_operations_handler(widget: Id, _event: Box<Any>, cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn recursive_operations_handler(widget: Id,
+                                _event: Box<dyn Any>,
+                                cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   // Check that we can use the supplied `MutCap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);

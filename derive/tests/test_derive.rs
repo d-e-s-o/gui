@@ -100,7 +100,7 @@ impl Renderable for TestHandleable {
     TypeId::of::<TestHandleable>()
   }
 
-  fn render(&self, renderer: &Renderer, bbox: BBox, cap: &Cap) -> BBox {
+  fn render(&self, renderer: &dyn Renderer, bbox: BBox, cap: &dyn Cap) -> BBox {
     renderer.render(self, bbox, cap)
   }
 }

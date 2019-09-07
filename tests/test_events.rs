@@ -298,7 +298,9 @@ fn targeted_event_returned_on_no_focus() {
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
-fn key_handler(event: Event, cap: &mut MutCap<Event>, to_focus: Option<Id>) -> Option<UiEvents> {
+fn key_handler(event: Event,
+               cap: &mut dyn MutCap<Event>,
+               to_focus: Option<Id>) -> Option<UiEvents> {
   match event {
     Event::Key(key) if key == 'a' => {
       if let Some(id) = to_focus {
@@ -342,8 +344,8 @@ fn event_handling_with_focus() {
 }
 
 fn custom_undirected_response_handler(_: Id,
-                                      event: Box<Any>,
-                                      _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+                                      event: Box<dyn Any>,
+                                      _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
@@ -380,8 +382,8 @@ fn custom_undirected_response_event() {
 }
 
 fn custom_directed_response_handler(_: Id,
-                                    event: Box<Any>,
-                                    _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+                                    event: Box<dyn Any>,
+                                    _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   let cell = *event.downcast::<Rc<RefCell<u64>>>().unwrap();
   let value = *cell.borrow();
   cell.replace(value + 1);
@@ -470,7 +472,9 @@ fn quit_event() {
 
 static mut ACCUMULATOR: u64 = 0;
 
-fn accumulating_handler(_: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn accumulating_handler(_: Id,
+                        event: Box<dyn Any>,
+                        _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
 
   unsafe {
@@ -479,7 +483,7 @@ fn accumulating_handler(_: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Opt
   }
 }
 
-fn chaining_handler(_: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn chaining_handler(_: Id, event: Box<dyn Any>, _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   let value = event.downcast::<u64>().unwrap();
   let event1 = UiEvent::Custom(Box::new(*value));
   let event2 = UiEvent::Custom(Box::new(*value + 1));
@@ -517,7 +521,9 @@ fn chain_event_dispatch() {
 static mut HOOK_COUNT: u64 = 0;
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn count_event_hook(_: &mut Widget<Event>, _event: &Event, _cap: &Cap) -> Option<UiEvents> {
+fn count_event_hook(_: &mut dyn Widget<Event>,
+                    _event: &Event,
+                    _cap: &dyn Cap) -> Option<UiEvents> {
   unsafe {
     HOOK_COUNT += 1;
   }
@@ -575,11 +581,13 @@ fn hook_events_handler() {
 
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn quit_event_hook(_: &mut Widget<Event>, _event: &Event, _cap: &Cap) -> Option<UiEvents> {
+fn quit_event_hook(_: &mut dyn Widget<Event>, _event: &Event, _cap: &dyn Cap) -> Option<UiEvents> {
   Some(UiEvent::Quit.into())
 }
 
-fn swallowing_event_handler(_: Id, _event: Event, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn swallowing_event_handler(_: Id,
+                            _event: Event,
+                            _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   None
 }
 
@@ -608,7 +616,9 @@ fn hook_events_with_return() {
 
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn emitting_event_hook(_: &mut Widget<Event>, event: &Event, _cap: &Cap) -> Option<UiEvents> {
+fn emitting_event_hook(_: &mut dyn Widget<Event>,
+                       event: &Event,
+                       _cap: &dyn Cap) -> Option<UiEvents> {
   assert_eq!(*event, Event::Key('y'));
 
   Some(Event::Key('z').into())
@@ -616,7 +626,7 @@ fn emitting_event_hook(_: &mut Widget<Event>, event: &Event, _cap: &Cap) -> Opti
 
 static mut FIRST: bool = true;
 
-fn checking_event_handler(_: Id, event: Event, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn checking_event_handler(_: Id, event: Event, _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   unsafe {
     if FIRST {
       assert_eq!(event, Event::Key('y'));
@@ -651,12 +661,16 @@ fn hook_emitted_event_order() {
 }
 
 
-fn returned_event_handler(_: Id, event: Box<Any>, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn returned_event_handler(_: Id,
+                          event: Box<dyn Any>,
+                          _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
-fn returnable_event_handler(_: Id, event: &mut Any, _cap: &mut MutCap<Event>) -> Option<UiEvents> {
+fn returnable_event_handler(_: Id,
+                            event: &mut dyn Any,
+                            _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
   match event.downcast_mut::<u64>() {
     Some(value) => *value *= 2,
     None => panic!("encountered unexpected custom event"),
