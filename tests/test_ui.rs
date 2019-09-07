@@ -422,7 +422,7 @@ fn need_more(id: Id, cap: &mut dyn MutCap<Event>) -> bool {
 }
 
 #[derive(Debug, Widget)]
-#[gui(Event = "Event")]
+#[gui(Event = Event)]
 struct CreatingWidget {
   id: Id,
 }
@@ -481,7 +481,7 @@ fn recursive_widget_creation() {
 struct Moveable {}
 
 #[derive(Debug, Widget, Handleable)]
-#[gui(Event = "Event")]
+#[gui(Event = Event)]
 struct MovingWidget {
   id: Id,
   object: Moveable,

@@ -132,7 +132,7 @@ impl TestWidgetBuilder {
 
 
 #[derive(Debug, Widget)]
-#[gui(Event = "Event")]
+#[gui(Event = Event)]
 pub struct TestWidget {
   id: Id,
   event_handler: Option<EventHandler>,

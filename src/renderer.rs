@@ -61,14 +61,13 @@ pub trait Renderer {
   /// ```rust
   /// # use gui::{BBox, Cap, Id, Renderer, Renderable};
   /// # use gui::derive::{Handleable, Widget};
-  /// # type Event = ();
   /// # #[derive(Debug, Widget, Handleable)]
-  /// # #[gui(Event = "Event")]
+  /// # #[gui(Event = ())]
   /// # struct ConcreteWidget1 {
   /// #   id: Id,
   /// # }
   /// # #[derive(Debug, Widget, Handleable)]
-  /// # #[gui(Event = "Event")]
+  /// # #[gui(Event = ())]
   /// # struct ConcreteWidget2 {
   /// #   id: Id,
   /// # }

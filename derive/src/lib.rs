@@ -50,17 +50,20 @@ use proc_macro2::Span;
 use quote::__rt::TokenStream as Tokens;
 use quote::quote;
 use syn::Attribute;
+use syn::Binding;
 use syn::Data;
 use syn::DeriveInput;
 use syn::Fields;
 use syn::GenericParam;
 use syn::Generics;
-use syn::Lit;
-use syn::Meta;
-use syn::NestedMeta;
+use syn::parenthesized;
+use syn::parse::Parse;
+use syn::parse::ParseStream;
 use syn::parse2;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
+use syn::token::Eq;
+use syn::Type;
 use syn::TypeGenerics;
 use syn::WhereClause;
 use syn::WherePredicate;
@@ -69,7 +72,7 @@ use syn::WherePredicate;
 /// A type indicating whether or not to create a default implementation of Type::new().
 type New = Option<()>;
 /// A type representing an event type to parametrize a widget with.
-type Event = Option<String>;
+type Event = Option<Type>;
 
 
 /// The error type used internally by this module.
@@ -185,30 +188,31 @@ fn parse_attributes(attributes: &[Attribute]) -> Result<(New, Event)> {
 }
 
 /// Parse a single item in a #[gui(list...)] attribute list.
-fn parse_gui_attribute(item: &NestedMeta) -> Result<(New, Event)> {
-  match *item {
-    NestedMeta::Meta(ref meta_item) => {
-      match *meta_item {
-        Meta::NameValue(ref name_val) if name_val.ident == "Event" => {
-          match name_val.lit {
-            Lit::Str(ref string) => Ok((None, Some(string.value()))),
-            _ => Ok((None, None)),
-          }
-        },
-        Meta::Word(ref ident) if ident == "default_new" => Ok((Some(()), None)),
-        _ => Err(Error::from(format!("unsupported attribute: {}", meta_item.name()))),
+fn parse_gui_attribute(item: Attr) -> Result<(New, Event)> {
+  match item {
+    Attr::Ident(ref ident) if ident == "default_new" => {
+      Ok((Some(()), None))
+    },
+    Attr::Binding(binding) => {
+      // Unfortunately we can't use a pattern guard here. See issue
+      // https://github.com/rust-lang/rust/issues/15287 for more
+      // details.
+      if binding.ident == "Event" {
+        Ok((None, Some(binding.ty)))
+      } else {
+        Err(Error::from("encountered unknown binding attribute"))
       }
     },
-    NestedMeta::Literal(_) => Err(Error::from("unsupported literal")),
+    _ => Err(Error::from("encountered unknown attribute")),
   }
 }
 
 /// Parse a #[gui(list...)] attribute list.
-fn parse_gui_attributes(list: &Punctuated<NestedMeta, Comma>) -> Result<(New, Event)> {
+fn parse_gui_attributes(list: AttrList) -> Result<(New, Event)> {
   let mut new = None;
   let mut event = None;
 
-  for item in list {
+  for item in list.0 {
     let (this_new, this_event) = parse_gui_attribute(item)?;
     new = this_new.or(new);
     event = this_event.or(event);
@@ -216,26 +220,51 @@ fn parse_gui_attributes(list: &Punctuated<NestedMeta, Comma>) -> Result<(New, Ev
   Ok((new, event))
 }
 
-/// Parse a single attribute, e.g., #[GuiType = "Widget"].
-// TODO: Once https://github.com/rust-lang/rust/pull/57367 lands in
-//       stable we should migrate to using the actual type and not a
-//       textual representation of it.
-fn parse_attribute(attribute: &Attribute) -> Result<(New, Event)> {
-  // We don't care about the other meta data elements, inner/outer,
-  // doc/non-doc, it's all fine by us.
 
-  match attribute.interpret_meta() {
-    Some(x) => {
-      match x {
-        Meta::List(ref list) if list.ident == "gui" => {
-          // Here we have found an attribute of the form #[gui(xxx, yyy,
-          // ...)]. Parse the inner list.
-          parse_gui_attributes(&list.nested)
-        },
-        _ => Ok((None, None)),
-      }
-    },
-    None => Ok((None, None)),
+/// An attribute list representing an syn::Attribute::tts.
+struct AttrList(Punctuated<Attr, Comma>);
+
+impl Parse for AttrList {
+  fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+    let content;
+    let _ = parenthesized!(content in input);
+    let list = content.parse_terminated(Attr::parse)?;
+
+    Ok(Self(list))
+  }
+}
+
+
+enum Attr {
+  Ident(Ident),
+  Binding(Binding),
+}
+
+impl Parse for Attr {
+  fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+    // We need to peek at the second token coming up next first, because
+    // attempting to parse it would advance the position in the buffer.
+    if input.peek2(Eq) {
+      let bind = input.parse::<Binding>()?;
+      Ok(Attr::Binding(bind))
+    } else {
+      input.parse::<Ident>().map(Attr::Ident)
+    }
+  }
+}
+
+
+/// Parse a single attribute, e.g., #[Event = MyEvent].
+fn parse_attribute(attribute: &Attribute) -> Result<(New, Event)> {
+  if attribute.path.is_ident("gui") {
+    let tokens = attribute.tts.clone();
+    let attr = parse2::<AttrList>(tokens).or_else(|err| {
+      Err(format!("unable to parse attributes: {:?}", err))
+    })?;
+
+    parse_gui_attributes(attr)
+  } else {
+    Ok((None, None))
   }
 }
 
@@ -353,12 +382,12 @@ fn expand_widget_trait(event: &Event, input: &DeriveInput) -> Tokens {
   let generic = event.is_none();
   let (generics, ty_generics, where_clause) = split_for_impl(&input.generics, generic);
 
-  let event = if let Some(event) = event {
-    Ident::new(&event, Span::call_site())
+  let widget = if let Some(event) = event {
+    quote! { ::gui::Widget<#event> }
   } else {
-    Ident::new("__E", Span::call_site())
+    let event = Ident::new("__E", Span::call_site());
+    quote! { ::gui::Widget<#event> }
   };
-  let widget = quote! { ::gui::Widget<#event> };
 
   quote! {
     impl #generics #widget for #name #ty_generics #where_clause {
@@ -382,7 +411,7 @@ fn expand_widget_trait(event: &Event, input: &DeriveInput) -> Tokens {
 /// # use gui_derive::Widget;
 /// # type Event = ();
 /// # #[derive(Debug, Widget)]
-/// # #[gui(Event = "Event")]
+/// # #[gui(Event = Event)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
 /// # }
@@ -470,12 +499,12 @@ fn expand_handleable_trait(event: &Event, input: &DeriveInput) -> Tokens {
   let generic = event.is_none();
   let (generics, ty_generics, where_clause) = split_for_impl(&input.generics, generic);
 
-  let event = if let Some(event) = event {
-    Ident::new(&event, Span::call_site())
+  let handleable = if let Some(event) = event {
+    quote! { ::gui::Handleable<#event> }
   } else {
-    Ident::new("__E", Span::call_site())
+    let event = Ident::new("__E", Span::call_site());
+    quote! { ::gui::Handleable<#event> }
   };
-  let handleable = quote! { ::gui::Handleable<#event> };
 
   quote! {
     impl #generics #handleable for #name #ty_generics #where_clause {}
@@ -515,26 +544,49 @@ mod tests {
   #[test]
   fn custom_event() {
     let tokens = quote! {
-      #[gui(Event = "FooBarBazEvent")]
+      #[gui(Event = FooBarBazEvent)]
       struct Bar { }
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
     let (new, event) = parse_attributes(&input.attrs).unwrap();
     assert_eq!(new, None);
-    assert_eq!(event, Some("FooBarBazEvent".to_string()));
+
+    let tokens = quote! { FooBarBazEvent };
+    let foobar = parse2::<Type>(tokens).unwrap();
+    assert_eq!(event, Some(foobar));
+  }
+
+  #[test]
+  fn default_new_and_event_with_ignore() {
+    let tokens = quote! {
+      #[allow(an_attribute_to_be_ignored)]
+      #[gui(default_new, Event = ())]
+      struct Baz { }
+    };
+
+    let input = parse2::<DeriveInput>(tokens).unwrap();
+    let (new, event) = parse_attributes(&input.attrs).unwrap();
+    assert_eq!(new, Some(()));
+
+    let tokens = quote! { () };
+    let parens = parse2::<Type>(tokens).unwrap();
+    assert_eq!(event, Some(parens));
   }
 
   #[test]
   fn last_event_type_takes_precedence() {
     let tokens = quote! {
-      #[gui(Event = "Event1")]
-      #[gui(Event = "Event2")]
+      #[gui(Event = Event1)]
+      #[gui(Event = Event2)]
       struct Foo { }
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
     let (_, event) = parse_attributes(&input.attrs).unwrap();
-    assert_eq!(event.as_ref().map(String::as_str), Some("Event2"));
+
+    let tokens = quote! { Event2 };
+    let event2 = parse2::<Type>(tokens).unwrap();
+    assert_eq!(event, Some(event2));
   }
 }

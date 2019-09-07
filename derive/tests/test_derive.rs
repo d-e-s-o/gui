@@ -48,7 +48,7 @@ type Event = ();
 
 
 #[derive(Debug, Widget, Handleable)]
-#[gui(default_new, Event = "Event")]
+#[gui(default_new, Event = ())]
 struct TestWidget {
   id: Id,
 }
@@ -58,7 +58,7 @@ struct TestWidget {
 // purposes.
 #[deny(unused_imports)]
 #[derive(Debug, Widget)]
-#[gui(default_new, Event = "Event")]
+#[gui(default_new, Event = ())]
 struct TestWidgetCustom {
   id: Id,
 }
@@ -67,7 +67,7 @@ impl Handleable<Event> for TestWidgetCustom {}
 
 
 #[derive(Debug, Widget, Handleable)]
-#[gui(Event = "Event")]
+#[gui(Event = Event)]
 struct TestWidgetT<T>
 where
   T: 'static + Debug,
@@ -90,7 +90,7 @@ where
 
 
 #[derive(Debug, Handleable)]
-#[gui(Event = "Event")]
+#[gui(Event = Event)]
 struct TestHandleable {
   id: Id,
 }
@@ -158,7 +158,7 @@ impl MyEvent for CustomEvent {
 
 
 #[derive(Debug, Widget)]
-#[gui(Event = "E")]
+#[gui(Event = E)]
 struct TestGenericEvent<E>
 where
   E: Debug + MyEvent + 'static,
