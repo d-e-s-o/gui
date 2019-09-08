@@ -2,6 +2,9 @@ Unreleased
 ----------
 - Made `Event = ...` attribute support actual event type and not just
   string representation of it
+- Bumped `syn` dependency to `1.0`
+- Bumped `quote` dependency to `1.0`
+- Bumped `proc-macro` dependency to `1.0`
 - Bumped minimum required Rust version to `1.34.0`
 
 

@@ -257,7 +257,7 @@ impl Parse for Attr {
 /// Parse a single attribute, e.g., #[Event = MyEvent].
 fn parse_attribute(attribute: &Attribute) -> Result<(New, Event)> {
   if attribute.path.is_ident("gui") {
-    let tokens = attribute.tts.clone();
+    let tokens = attribute.tokens.clone();
     let attr = parse2::<AttrList>(tokens).or_else(|err| {
       Err(format!("unable to parse attributes: {:?}", err))
     })?;
