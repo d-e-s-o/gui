@@ -17,13 +17,11 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-// TODO: Figure out how to enable the 'missing_docs' lint. The problem
-//       is that this lint seemingly flags a problem with the imported
-//       crates, which is not what we want.
 #![warn(
   future_incompatible,
   missing_copy_implementations,
   missing_debug_implementations,
+  missing_docs,
   rust_2018_compatibility,
   rust_2018_idioms,
   trivial_casts,
