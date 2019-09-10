@@ -5,7 +5,7 @@ Unreleased
 - Bumped `syn` dependency to `1.0`
 - Bumped `quote` dependency to `1.0`
 - Bumped `proc-macro` dependency to `1.0`
-- Bumped minimum required Rust version to `1.34.0`
+- Bumped minimum required Rust version to `1.36.0`
 
 
 0.3.0

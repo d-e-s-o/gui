@@ -1,6 +1,6 @@
 Unreleased
 ----------
-- Bumped minimum required Rust version to `1.34.0`
+- Bumped minimum required Rust version to `1.36.0`
 - Downgraded `deny` crate-level lints to `warn`
 
 

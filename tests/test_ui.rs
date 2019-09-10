@@ -18,7 +18,7 @@
 // *************************************************************************
 
 #![allow(
-  clippy::cyclomatic_complexity,
+  clippy::cognitive_complexity,
   clippy::needless_pass_by_value,
   clippy::redundant_field_names,
 )]
