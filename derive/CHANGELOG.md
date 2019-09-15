@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.4.0
+-----
 - Made `Event = ...` attribute support actual event type and not just
   string representation of it
 - Bumped `syn` dependency to `1.0`
