@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Added code coverage collection and reporting to CI pipeline
+
+
 0.4.0
 -----
 - Bumped minimum required Rust version to `1.36.0`
