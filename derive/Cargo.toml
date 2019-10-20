@@ -14,7 +14,7 @@ Custom derive macros for the gui crate.
 """
 
 [badges]
-gitlab = { repository = "d-e-s-o/gui", branch = "devel" }
+gitlab = { repository = "d-e-s-o/gui", branch = "master" }
 
 [lib]
 proc-macro = true

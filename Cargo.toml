@@ -17,7 +17,7 @@ A generic UI library/framework.
 members = ["derive"]
 
 [badges]
-gitlab = { repository = "d-e-s-o/gui", branch = "devel" }
+gitlab = { repository = "d-e-s-o/gui", branch = "master" }
 
 [features]
 default = ["derive"]
