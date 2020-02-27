@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Fixed build breakage from using private `__rt` member from `quote`
+
+
 0.4.0
 -----
 - Made `Event = ...` attribute support actual event type and not just

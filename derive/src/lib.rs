@@ -1,7 +1,7 @@
 // lib.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -45,7 +45,7 @@ use proc_macro::LexError;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use proc_macro2::Span;
-use quote::__rt::TokenStream as Tokens;
+use proc_macro2::TokenStream as Tokens;
 use quote::quote;
 use syn::Attribute;
 use syn::Binding;
