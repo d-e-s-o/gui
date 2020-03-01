@@ -1,7 +1,7 @@
 // ui.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -414,7 +414,7 @@ where
           .iter()
           .rev()
           .position(|x| Cap::is_visible(ui, *x))
-          .and_then(|x| Some(x + 1))
+          .map(|x| x + 1)
           .unwrap_or_else(|| children.len())
       })
     }
@@ -703,7 +703,7 @@ where
   fn parent_id(&self, widget: Id) -> Option<Id> {
     let idx = self.validate(widget);
     let parent_idx = self.widgets[idx.idx].0.parent_idx;
-    let parent_id = parent_idx.and_then(|x| Some(Id::new(x.idx, self)));
+    let parent_id = parent_idx.map(|x| Id::new(x.idx, self));
     debug_assert!(parent_id.map_or(true, |x| Cap::children(self, x).any(|x| *x == widget)));
     parent_id
   }
@@ -720,7 +720,7 @@ where
 
   /// Retrieve the currently focused widget.
   fn focused(&self) -> Option<Id> {
-    self.focused.and_then(|x| Some(Id::new(x.idx, self)))
+    self.focused.map(|x| Id::new(x.idx, self))
   }
 
   /// Check whether the given widget is focused.

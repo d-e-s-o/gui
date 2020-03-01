@@ -1,6 +1,7 @@
 Unreleased
 ----------
 - Fixed build breakage from using private `__rt` member from `quote`
+- Bumped minimum required Rust version to `1.42.0`
 
 
 0.4.0

@@ -35,6 +35,7 @@
 
 //! A crate providing custom derive functionality for the `gui` crate.
 
+#[allow(unused_extern_crates)]
 extern crate proc_macro;
 
 use std::fmt::Display;
