@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.5.0
+-----
 - Fixed build breakage from using private `__rt` member from `quote`
 - Bumped minimum required Rust version to `1.42.0`
 

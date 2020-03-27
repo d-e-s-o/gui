@@ -1,6 +1,6 @@
 [package]
 name = "gui"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2018"
 authors = ["Daniel Mueller <deso@posteo.net>"]
 license = "GPL-3.0-or-later"
@@ -24,6 +24,6 @@ default = ["derive"]
 derive = ["gui-derive"]
 
 [dependencies.gui-derive]
-version = "0.4"
+version = "0.5"
 optional = true
 path = "derive"
