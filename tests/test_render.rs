@@ -1,7 +1,7 @@
 // test_render.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -76,13 +76,13 @@ impl Renderer for CountingRenderer {
 #[test]
 fn render_is_called_for_each_widget() {
   let renderer = CountingRenderer::new();
-  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(|id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let _ = ui.add_widget(root, &mut |id, _cap| {
+  let _ = ui.add_ui_widget(root, |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let _ = ui.add_widget(root, &mut |id, _cap| {
+  let _ = ui.add_ui_widget(root, |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
@@ -96,16 +96,16 @@ fn render_is_called_for_each_widget() {
 #[test]
 fn render_honors_visibility_flag() {
   let renderer = CountingRenderer::new();
-  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(|id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let w1 = ui.add_widget(root, &mut |id, _cap| {
+  let w1 = ui.add_ui_widget(root, |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let w2 = ui.add_widget(root, &mut |id, _cap| {
+  let w2 = ui.add_ui_widget(root, |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let _ = ui.add_widget(w2, &mut |id, _cap| {
+  let _ = ui.add_ui_widget(w2, |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 
@@ -196,13 +196,13 @@ impl Renderer for BBoxRenderer {
 #[test]
 fn bounding_box_is_properly_sized() {
   let renderer = BBoxRenderer::new();
-  let (mut ui, root) = Ui::new(&mut |id, _cap| {
+  let (mut ui, root) = Ui::new(|id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let cont = ui.add_widget(root, &mut |id, _cap| {
+  let cont = ui.add_ui_widget(root, |id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let widget = ui.add_widget(cont, &mut |id, _cap| {
+  let widget = ui.add_ui_widget(cont, |id, _cap| {
     Box::new(TestWidget::new(id))
   });
 

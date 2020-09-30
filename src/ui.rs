@@ -99,14 +99,7 @@ impl Display for Id {
 /// An iterator over the children of a widget.
 pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
-// TODO: Ideally we would want to use FnOnce here, in case callers need
-//       to move data into a widget. We cannot do so with a reference
-//       and using generics is not possible because NewWidgetFn is used
-//       in the signature of a trait method. FnBox provides a possible
-//       solution but is a nightly-only API. For now, users are advised
-//       to use an Option as one of the parameters and panic if None is
-//       supplied.
-type NewWidgetFn<'f, E> = &'f mut dyn FnMut(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>;
+type NewWidgetFn<E> = dyn FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
@@ -154,7 +147,9 @@ where
   E: Debug,
 {
   /// Add a widget to the `Ui` represented by the capability.
-  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_, E>) -> Id;
+  // TODO: We should not require a Box here conceptually, but omitting
+  //       it will require the unboxed closures feature to stabilize.
+  fn add_widget(&mut self, parent: Id, new_widget: Box<NewWidgetFn<E>>) -> Id;
 
   /// Show a widget, i.e., set its and its parents' visibility flag.
   ///
@@ -277,7 +272,10 @@ where
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
   #[allow(clippy::new_ret_no_self)]
-  pub fn new(new_root_widget: NewWidgetFn<'_, E>) -> (Self, Id) {
+  pub fn new<F>(new_root_widget: F) -> (Self, Id)
+  where
+    F: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+  {
     let mut ui = Ui {
       #[cfg(debug_assertions)]
       id: get_next_ui_id(),
@@ -292,7 +290,25 @@ where
   }
 
   /// Add a widget to the `Ui`.
-  fn _add_widget(&mut self, parent_idx: Option<Index>, new_widget: NewWidgetFn<'_, E>) -> Id {
+  ///
+  /// This method fulfills the exact same purpose as
+  /// `MutCap::add_widget`, but it does not require boxing up the
+  /// provided `FnOnce`.
+  // TODO: This method should be removed once we no longer require
+  //       boxing up of `FnOnce` closures.
+  pub fn add_ui_widget<F>(&mut self, parent: Id, new_widget: F) -> Id
+  where
+    F: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+  {
+    let parent_idx = self.validate(parent);
+    self._add_widget(Some(parent_idx), new_widget)
+  }
+
+  /// Add a widget to the `Ui`.
+  fn _add_widget<F>(&mut self, parent_idx: Option<Index>, new_widget: F) -> Id
+  where
+    F: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+  {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
 
@@ -738,9 +754,8 @@ where
   E: 'static + Debug,
 {
   /// Add a widget to the `Ui`.
-  fn add_widget(&mut self, parent: Id, new_widget: NewWidgetFn<'_, E>) -> Id {
-    let parent_idx = self.validate(parent);
-    self._add_widget(Some(parent_idx), &mut |id, cap| new_widget(id, cap))
+  fn add_widget(&mut self, parent: Id, new_widget: Box<NewWidgetFn<E>>) -> Id {
+    self.add_ui_widget(parent, new_widget)
   }
 
   /// Show a widget, i.e., set its and its parents' visibility flag.

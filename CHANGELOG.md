@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Changed widget creation function from `FnMut` to `FnOnce`
+
+
 0.5.0
 -----
 - Added code coverage collection and reporting to CI pipeline

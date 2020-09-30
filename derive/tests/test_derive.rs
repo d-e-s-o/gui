@@ -1,7 +1,7 @@
 // test_derive.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -193,13 +193,13 @@ where
 
 #[test]
 fn various_derive_combinations() {
-  let (mut ui, r) = Ui::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::new(|id, _cap| {
     Box::new(TestWidget::new(id))
   });
-  let _ = ui.add_widget(r, &mut |id, _cap| {
+  let _ = ui.add_ui_widget(r, |id, _cap| {
     Box::new(TestWidgetCustom::new(id))
   });
-  let _ = ui.add_widget(r, &mut |id, _cap| {
+  let _ = ui.add_ui_widget(r, |id, _cap| {
     Box::new(TestWidgetT::<u32>::new(id))
   });
 }
@@ -208,10 +208,10 @@ fn various_derive_combinations() {
 fn generic_widget() {
   type Event = ();
 
-  let (mut ui, r) = Ui::<Event>::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::<Event>::new(|id, _cap| {
     Box::new(TestGeneric::<Event>::new(id))
   });
-  let _ = ui.add_widget(r, &mut |id, _cap| {
+  let _ = ui.add_ui_widget(r, |id, _cap| {
     Box::new(TestGeneric::<Event>::new(id))
   });
 
@@ -220,10 +220,10 @@ fn generic_widget() {
 
 #[test]
 fn generic_event() {
-  let (mut ui, r) = Ui::<CustomEvent>::new(&mut |id, _cap| {
+  let (mut ui, r) = Ui::<CustomEvent>::new(|id, _cap| {
     Box::new(TestGenericEvent::<CustomEvent>::new(id))
   });
-  let _ = ui.add_widget(r, &mut |id, _cap| {
+  let _ = ui.add_ui_widget(r, |id, _cap| {
     Box::new(TestGenericEvent::<CustomEvent>::new(id))
   });
   ui.focus(r);
