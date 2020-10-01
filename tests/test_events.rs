@@ -521,15 +521,19 @@ fn chain_event_dispatch() {
 static mut HOOK_COUNT: u64 = 0;
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn count_event_hook(_: &mut dyn Widget<Event>,
+fn count_event_hook(widget: &mut dyn Widget<Event>,
                     _event: &Event,
                     _cap: &dyn Cap) -> Option<UiEvents> {
+  assert!(widget.downcast_ref::<TestWidget>().is_some());
+  assert!(widget.downcast_mut::<TestWidget>().is_some());
+
   unsafe {
     HOOK_COUNT += 1;
   }
   None
 }
 
+/// Check that `MutCap::hook_events` behaves as expected.
 #[test]
 fn hook_events_return_value() {
   let (mut ui, r) = Ui::new(|id, _cap| {
