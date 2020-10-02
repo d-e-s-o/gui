@@ -52,9 +52,7 @@ struct Index {
 
 impl Index {
   fn new(idx: usize) -> Self {
-    Index {
-      idx: idx,
-    }
+    Self { idx }
   }
 }
 
@@ -80,7 +78,7 @@ impl Id {
   where
     E: 'static + Debug,
   {
-    Id {
+    Self {
       #[cfg(debug_assertions)]
       ui_id: ui.id,
       idx: Index::new(idx),
@@ -229,8 +227,8 @@ where
 
 impl<E> WidgetData<E> {
   fn new(parent_idx: Option<Index>) -> Self {
-    WidgetData {
-      parent_idx: parent_idx,
+    Self {
+      parent_idx,
       children: Default::default(),
       event_hook: None,
       visible: true,
@@ -276,7 +274,7 @@ where
   where
     F: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
   {
-    let mut ui = Ui {
+    let mut ui = Self {
       #[cfg(debug_assertions)]
       id: get_next_ui_id(),
       widgets: Default::default(),

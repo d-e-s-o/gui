@@ -82,7 +82,7 @@ where
 {
   pub fn new(id: Id) -> Self {
     Self {
-      id: id,
+      id,
       _data: PhantomData,
     }
   }
@@ -133,7 +133,7 @@ where
 {
   pub fn new(id: Id) -> Self {
     Self {
-      id: id,
+      id,
       _data: PhantomData,
     }
   }
@@ -173,7 +173,7 @@ where
 {
   pub fn new(id: Id) -> Self {
     Self {
-      id: id,
+      id,
       _data: PhantomData,
     }
   }

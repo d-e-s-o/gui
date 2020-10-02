@@ -42,7 +42,7 @@ struct CountingRenderer {
 
 impl CountingRenderer {
   fn new() -> Self {
-    CountingRenderer {
+    Self {
       pre_render_count: Cell::new(0),
       post_render_count: Cell::new(0),
       total_render_count: Cell::new(0),
@@ -154,7 +154,7 @@ struct BBoxRenderer {
 
 impl BBoxRenderer {
   fn new() -> Self {
-    BBoxRenderer {
+    Self {
       valid_bbox_count: Cell::new(0),
     }
   }

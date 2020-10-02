@@ -445,9 +445,7 @@ impl CreatingWidget {
       }));
     }
 
-    CreatingWidget {
-      id: id,
-    }
+    Self { id }
   }
 }
 
@@ -489,10 +487,7 @@ struct MovingWidget {
 
 impl MovingWidget {
   pub fn new(id: Id, object: Moveable) -> Self {
-    MovingWidget {
-      id: id,
-      object: object,
-    }
+    Self { id, object }
   }
 }
 

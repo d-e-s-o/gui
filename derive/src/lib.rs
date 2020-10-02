@@ -325,7 +325,7 @@ fn expand_new_impl(new: New, input: &DeriveInput) -> Tokens {
         impl #impl_generics #name #ty_generics #where_clause {
           pub fn new(id: ::gui::Id) -> Self {
             #name {
-              id: id,
+              id,
             }
           }
         }

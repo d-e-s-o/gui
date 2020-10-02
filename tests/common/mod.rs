@@ -1,7 +1,7 @@
 // mod.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -122,7 +122,7 @@ impl TestWidgetBuilder {
   /// Build the `TestWidget` object.
   pub fn build(self, id: Id) -> TestWidget {
     TestWidget {
-      id: id,
+      id,
       event_handler: self.event_handler,
       custom_handler: self.custom_handler,
       custom_ref_handler: self.custom_ref_handler,
@@ -142,8 +142,8 @@ pub struct TestWidget {
 
 impl TestWidget {
   pub fn new(id: Id) -> Self {
-    TestWidget {
-      id: id,
+    Self {
+      id,
       event_handler: None,
       custom_handler: None,
       custom_ref_handler: None,

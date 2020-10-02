@@ -1,7 +1,7 @@
 // placeholder.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -41,7 +41,7 @@ pub(crate) struct Placeholder {
 
 impl Placeholder {
   pub(crate) fn new() -> Self {
-    Placeholder {
+    Self {
       children: Vec::new(),
     }
   }
