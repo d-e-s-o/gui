@@ -158,9 +158,7 @@ pub fn widget(input: TokenStream) -> TokenStream {
 }
 
 fn expand_widget(input: TokenStream) -> Result<TokenStream> {
-  let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
-    Err("unable to parse input")
-  })?;
+  let input = parse2::<DeriveInput>(input.into()).map_err(|_| "unable to parse input")?;
   let (new, event) = parse_attributes(&input.attrs)?;
   let tokens = expand_widget_input(new, &event, &input)?;
   Ok(tokens.into())
@@ -231,6 +229,7 @@ impl Parse for AttrList {
 }
 
 
+#[allow(clippy::large_enum_variant)]
 enum Attr {
   Ident(Ident),
   Binding(Binding),
@@ -254,8 +253,8 @@ impl Parse for Attr {
 fn parse_attribute(attribute: &Attribute) -> Result<(New, Event)> {
   if attribute.path.is_ident("gui") {
     let tokens = attribute.tokens.clone();
-    let attr = parse2::<AttrList>(tokens).or_else(|err| {
-      Err(format!("unable to parse attributes: {:?}", err))
+    let attr = parse2::<AttrList>(tokens).map_err(|err| {
+      format!("unable to parse attributes: {:?}", err)
     })?;
 
     parse_gui_attributes(attr)
@@ -423,9 +422,7 @@ pub fn handleable(input: TokenStream) -> TokenStream {
 }
 
 fn expand_handleable(input: TokenStream) -> Result<TokenStream> {
-  let input = parse2::<DeriveInput>(input.into()).or_else(|_| {
-    Err("unable to parse input")
-  })?;
+  let input = parse2::<DeriveInput>(input.into()).map_err(|_| "unable to parse input")?;
   let (_, event) = parse_attributes(&input.attrs)?;
   let tokens = expand_handleable_input(&event, &input)?;
   Ok(tokens.into())
