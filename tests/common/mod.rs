@@ -65,9 +65,9 @@ impl<T> Deref for Handler<T> {
   }
 }
 
-type EventFn = dyn Fn(Id, Event, &mut dyn MutCap<Event>) -> Option<UiEvents>;
-type CustomFn = dyn Fn(Id, Box<dyn Any>, &mut dyn MutCap<Event>) -> Option<UiEvents>;
-type CustomRefFn = dyn Fn(Id, &mut dyn Any, &mut dyn MutCap<Event>) -> Option<UiEvents>;
+type EventFn = dyn Fn(Id, &mut dyn MutCap<Event>, Event) -> Option<UiEvents>;
+type CustomFn = dyn Fn(Id, &mut dyn MutCap<Event>, Box<dyn Any>) -> Option<UiEvents>;
+type CustomRefFn = dyn Fn(Id, &mut dyn MutCap<Event>, &mut dyn Any) -> Option<UiEvents>;
 
 type EventHandler = Handler<Box<EventFn>>;
 type CustomHandler = Handler<Box<CustomFn>>;
@@ -95,7 +95,7 @@ impl TestWidgetBuilder {
   /// Set a handler for `Handleable::handle`.
   pub fn event_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, Event, &mut dyn MutCap<Event>) -> Option<UiEvents>,
+    F: 'static + Fn(Id, &mut dyn MutCap<Event>, Event) -> Option<UiEvents>,
   {
     self.event_handler = Some(Handler(Box::new(handler)));
     self
@@ -104,7 +104,7 @@ impl TestWidgetBuilder {
   /// Set a handler for `Handleable::handle_custom`.
   pub fn custom_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, Box<dyn Any>, &mut dyn MutCap<Event>) -> Option<UiEvents>,
+    F: 'static + Fn(Id, &mut dyn MutCap<Event>, Box<dyn Any>) -> Option<UiEvents>,
   {
     self.custom_handler = Some(Handler(Box::new(handler)));
     self
@@ -113,7 +113,7 @@ impl TestWidgetBuilder {
   /// Set a handler for `Handleable::handle_custom_ref`.
   pub fn custom_ref_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, &mut dyn Any, &mut dyn MutCap<Event>) -> Option<UiEvents>,
+    F: 'static + Fn(Id, &mut dyn MutCap<Event>, &mut dyn Any) -> Option<UiEvents>,
   {
     self.custom_ref_handler = Some(Handler(Box::new(handler)));
     self
@@ -152,10 +152,10 @@ impl TestWidget {
 }
 
 impl Handleable<Event> for TestWidget {
-  fn handle(&mut self, event: Event, cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
+  fn handle(&mut self, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
     match self.event_handler.take() {
       Some(handler) => {
-        let event = handler(self.id, event, cap);
+        let event = handler(self.id, cap, event);
         self.event_handler = Some(handler);
         event
       },
@@ -163,12 +163,14 @@ impl Handleable<Event> for TestWidget {
     }
   }
 
-  fn handle_custom(&mut self,
-                   event: Box<dyn Any>,
-                   cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
+  fn handle_custom(
+    &mut self,
+    cap: &mut dyn MutCap<Event>,
+    event: Box<dyn Any>,
+  ) -> Option<UiEvents> {
     match self.custom_handler.take() {
       Some(handler) => {
-        let event = handler(self.id, event, cap);
+        let event = handler(self.id, cap, event);
         self.custom_handler = Some(handler);
         event
       },
@@ -176,12 +178,14 @@ impl Handleable<Event> for TestWidget {
     }
   }
 
-  fn handle_custom_ref(&mut self,
-                       event: &mut dyn Any,
-                       cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
+  fn handle_custom_ref(
+    &mut self,
+    cap: &mut dyn MutCap<Event>,
+    event: &mut dyn Any,
+  ) -> Option<UiEvents> {
     match self.custom_ref_handler.take() {
       Some(handler) => {
-        let event = handler(self.id, event, cap);
+        let event = handler(self.id, cap, event);
         self.custom_ref_handler = Some(handler);
         event
       },

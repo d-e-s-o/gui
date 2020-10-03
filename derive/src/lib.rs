@@ -131,8 +131,13 @@ type Result<T> = std::result::Result<T, Error>;
 ///   fn type_id(&self) -> TypeId {
 ///     TypeId::of::<TestWidget>()
 ///   }
-///   fn render(&self, renderer: &gui::Renderer, bbox: gui::BBox, cap: &gui::Cap) -> gui::BBox {
-///     renderer.render(self, bbox, cap)
+///   fn render(
+///     &self,
+///     cap: &dyn gui::Cap,
+///     renderer: &dyn gui::Renderer,
+///     bbox: gui::BBox,
+///   ) -> gui::BBox {
+///     renderer.render(self, cap, bbox)
 ///   }
 /// }
 ///
@@ -346,11 +351,13 @@ fn expand_renderer_trait(input: &DeriveInput) -> Tokens {
         ::std::any::TypeId::of::<#name #ty_generics>()
       }
 
-      fn render(&self,
-                renderer: &::gui::Renderer,
-                bbox: ::gui::BBox,
-                cap: &::gui::Cap) -> ::gui::BBox {
-        renderer.render(self, bbox, cap)
+      fn render(
+        &self,
+        cap: &::gui::Cap,
+        renderer: &::gui::Renderer,
+        bbox: ::gui::BBox,
+      ) -> ::gui::BBox {
+        renderer.render(self, cap, bbox)
       }
     }
   }

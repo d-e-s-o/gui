@@ -408,9 +408,11 @@ fn repeated_hide_preserves_order() {
 }
 
 
-fn counting_handler(_widget: Id,
-                    event: Box<dyn Any>,
-                    _cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
+fn counting_handler(
+  _widget: Id,
+  _cap: &mut dyn MutCap<Event>,
+  event: Box<dyn Any>,
+) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
@@ -450,10 +452,12 @@ impl CreatingWidget {
 }
 
 impl Handleable<Event> for CreatingWidget {
-  fn handle_custom(&mut self,
-                   event: Box<dyn Any>,
-                   cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
-    counting_handler(self.id, event, cap)
+  fn handle_custom(
+    &mut self,
+    cap: &mut dyn MutCap<Event>,
+    event: Box<dyn Any>,
+  ) -> Option<UiEvents> {
+    counting_handler(self.id, cap, event)
   }
 }
 
@@ -505,7 +509,7 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(widget: Id, event: Event, cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
+fn create_handler(widget: Id, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
   match event {
     Event::Key(key) if key == 'z' => {
       cap.add_widget(widget, Box::new(|id, _cap| {
@@ -539,9 +543,11 @@ fn event_based_widget_creation() {
 }
 
 
-fn recursive_operations_handler(widget: Id,
-                                _event: Box<dyn Any>,
-                                cap: &mut dyn MutCap<Event>) -> Option<UiEvents> {
+fn recursive_operations_handler(
+  widget: Id,
+  cap: &mut dyn MutCap<Event>,
+  _event: Box<dyn Any>,
+) -> Option<UiEvents> {
   // Check that we can use the supplied `MutCap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);

@@ -1,7 +1,7 @@
 // handleable.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -37,7 +37,7 @@ where
   /// it directly (the default behavior), in which case the its parent
   /// widget will receive it, or return a completely different event.
   #[allow(unused_variables)]
-  fn handle(&mut self, event: E, cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
+  fn handle(&mut self, cap: &mut dyn MutCap<E>, event: E) -> Option<UiEvents<E>> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())
@@ -45,15 +45,17 @@ where
 
   /// Handle a custom event.
   #[allow(unused_variables)]
-  fn handle_custom(&mut self, event: Box<dyn Any>, cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
+  fn handle_custom(&mut self, cap: &mut dyn MutCap<E>, event: Box<dyn Any>) -> Option<UiEvents<E>> {
     Some(UiEvent::Custom(event).into())
   }
 
   /// Handle a custom event without transferring ownership of it.
   #[allow(unused_variables)]
-  fn handle_custom_ref(&mut self,
-                       event: &mut dyn Any,
-                       cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
+  fn handle_custom_ref(
+    &mut self,
+    cap: &mut dyn MutCap<E>,
+    event: &mut dyn Any,
+  ) -> Option<UiEvents<E>> {
     None
   }
 }

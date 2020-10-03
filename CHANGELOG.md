@@ -1,5 +1,6 @@
 Unreleased
 ----------
+- Reordered `Cap` & `MutCap` parameter in various function signatures
 - Changed widget creation function from `FnMut` to `FnOnce`
 
 

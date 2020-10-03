@@ -101,7 +101,7 @@ type NewWidgetFn<E> = dyn FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
-type EventHookFn<E> = &'static dyn Fn(&mut dyn Widget<E>, &E, &dyn Cap) -> Option<UiEvents<E>>;
+type EventHookFn<E> = &'static dyn Fn(&mut dyn Widget<E>, &dyn Cap, &E) -> Option<UiEvents<E>>;
 
 
 /// A capability allowing for various widget related operations.
@@ -507,7 +507,7 @@ where
       // TODO: Ideally we would want to go without the recursion stuff we
       //       have. This may not be possible (efficiently) with safe
       //       Rust, though. Not sure.
-      let bbox = widget.render(renderer, bbox, self);
+      let bbox = widget.render(self, renderer, bbox);
 
       for child_id in self.children(idx).rev() {
         let child_idx = self.validate(*child_id);
@@ -533,7 +533,7 @@ where
       self.with(idx, |ui, mut widget| {
         match &ui.widgets[idx.idx].0.event_hook {
           Some(hook_fn) => {
-            let event = hook_fn.0(widget.as_mut(), event, ui);
+            let event = hook_fn.0(widget.as_mut(), ui, event);
             let prev = result.take();
             let _ = replace(&mut result, OptionChain::chain(prev, event));
           },
@@ -593,7 +593,7 @@ where
     // the methods of this object are carefully chosen in a way to
     // not call into the widget itself.
     let (events, parent_idx) = self.with(idx, |ui, mut widget| {
-      let events = widget.handle(event, ui);
+      let events = widget.handle(ui, event);
       let parent_idx = ui.widgets[idx.idx].0.parent_idx;
       (widget, (events, parent_idx))
     });
@@ -625,8 +625,8 @@ where
                          event: CustomEvent<'_>) -> Option<UnhandledEvents<E>> {
     let (events, parent_idx) = self.with(idx, |ui, mut widget| {
       let events = match event {
-        CustomEvent::Owned(event) => widget.handle_custom(event, ui),
-        CustomEvent::Borrowed(event) => widget.handle_custom_ref(event, ui),
+        CustomEvent::Owned(event) => widget.handle_custom(ui, event),
+        CustomEvent::Borrowed(event) => widget.handle_custom_ref(ui, event),
       };
       let parent_idx = ui.widgets[idx.idx].0.parent_idx;
       (widget, (events, parent_idx))

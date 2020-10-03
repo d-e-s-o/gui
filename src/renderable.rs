@@ -1,7 +1,7 @@
 // renderable.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -36,7 +36,7 @@ pub trait Renderable: 'static + Debug {
   /// supplying a trait object of the actual widget. The renderer is
   /// advised to honor the given `BBox` and is free to inquire
   /// additional state using the supplied `Cap`.
-  fn render(&self, renderer: &dyn Renderer, bbox: BBox, cap: &dyn Cap) -> BBox;
+  fn render(&self, cap: &dyn Cap, renderer: &dyn Renderer, bbox: BBox) -> BBox;
 }
 
 impl dyn Renderable {

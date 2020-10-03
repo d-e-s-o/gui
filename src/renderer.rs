@@ -1,7 +1,7 @@
 // renderer.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -85,7 +85,7 @@ pub trait Renderer {
   /// #   fn renderable_area(&self) -> BBox {
   /// #     Default::default()
   /// #   }
-  /// fn render(&self, widget: &dyn Renderable, bbox: BBox, cap: &dyn Cap) -> BBox {
+  /// fn render(&self, widget: &dyn Renderable, cap: &dyn Cap, bbox: BBox) -> BBox {
   ///   if let Some(widget1) = widget.downcast_ref::<ConcreteWidget1>() {
   ///     self.render_concrete_widget1(widget1, bbox)
   ///   } else if let Some(widget2) = widget.downcast_ref::<ConcreteWidget1>() {
@@ -99,7 +99,7 @@ pub trait Renderer {
   /// ```
   // TODO: Ideally we would like to have a double dispatch mechanism for
   //       determining the object to render.
-  fn render(&self, object: &dyn Renderable, bbox: BBox, cap: &dyn Cap) -> BBox;
+  fn render(&self, object: &dyn Renderable, cap: &dyn Cap, bbox: BBox) -> BBox;
 
   /// Perform some post-render step.
   fn post_render(&self) {}

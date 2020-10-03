@@ -100,8 +100,8 @@ impl Renderable for TestHandleable {
     TypeId::of::<TestHandleable>()
   }
 
-  fn render(&self, renderer: &dyn Renderer, bbox: BBox, cap: &dyn Cap) -> BBox {
-    renderer.render(self, bbox, cap)
+  fn render(&self, cap: &dyn Cap, renderer: &dyn Renderer, bbox: BBox) -> BBox {
+    renderer.render(self, cap, bbox)
   }
 }
 
@@ -183,7 +183,7 @@ impl<E> Handleable<E> for TestGenericEvent<E>
 where
   E: Debug + MyEvent + 'static,
 {
-  fn handle(&mut self, mut event: E, _cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
+  fn handle(&mut self, _cap: &mut dyn MutCap<E>, mut event: E) -> Option<UiEvents<E>> {
     event.modify();
     Some(UiEvent::Event(event).into())
   }

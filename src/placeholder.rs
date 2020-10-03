@@ -52,7 +52,7 @@ impl Renderable for Placeholder {
     TypeId::of::<Placeholder>()
   }
 
-  fn render(&self, _renderer: &dyn Renderer, _bbox: BBox, _cap: &dyn Cap) -> BBox {
+  fn render(&self, _cap: &dyn Cap, _renderer: &dyn Renderer, _bbox: BBox) -> BBox {
     unreachable!()
   }
 }
@@ -67,7 +67,7 @@ impl<E> Handleable<E> for Placeholder
 where
   E: 'static,
 {
-  fn handle(&mut self, _event: E, _cap: &mut dyn MutCap<E>) -> Option<UiEvents<E>> {
+  fn handle(&mut self, _cap: &mut dyn MutCap<E>, _event: E) -> Option<UiEvents<E>> {
     unreachable!()
   }
 }
