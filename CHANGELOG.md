@@ -1,5 +1,8 @@
 Unreleased
 ----------
+- Separated widgets from their mutable data
+  - Added data creation function alongside widget creation one
+  - Added `data` and `data_mut` accessors to `Cap` and `MutCap`
 - Reordered `Cap` & `MutCap` parameter in various function signatures
 - Changed widget creation function from `FnMut` to `FnOnce`
 

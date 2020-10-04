@@ -38,38 +38,51 @@ use gui::UiEvent;
 
 use crate::common::Event;
 use crate::common::TestWidget;
-use crate::common::TestWidgetBuilder;
+use crate::common::TestWidgetDataBuilder;
 use crate::common::UiEvents;
 use crate::common::unwrap_custom;
 
 
 #[test]
 fn correct_ids() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w1 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w2 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
   // And a container.
-  let c1 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let c1 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
   // And a widget to the container.
-  let w3 = ui.add_ui_widget(c1, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let w3 = ui.add_ui_widget(
+    c1,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
   // And another container for deeper nesting.
-  let c2 = ui.add_ui_widget(c1, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let c2 = ui.add_ui_widget(
+    c1,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
   // And the last widget.
-  let w4 = ui.add_ui_widget(c2, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let w4 = ui.add_ui_widget(
+    c2,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   assert_eq!(ui.parent_id(root), None);
   assert_eq!(ui.parent_id(w1).unwrap(), root);
@@ -81,24 +94,35 @@ fn correct_ids() {
 
 #[test]
 fn creation_order_is_child_order() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w1 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w11 = ui.add_ui_widget(w1, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w12 = ui.add_ui_widget(w1, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w2 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w21 = ui.add_ui_widget(w2, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w11 = ui.add_ui_widget(
+    w1,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w12 = ui.add_ui_widget(
+    w1,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w21 = ui.add_ui_widget(
+    w2,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   let mut it = ui.children(root);
   assert_eq!(*it.next().unwrap(), w1);
@@ -122,16 +146,20 @@ fn creation_order_is_child_order() {
 #[cfg(debug_assertions)]
 #[should_panic(expected = "The given Id belongs to a different Ui")]
 fn share_ids_between_ui_objects() {
-  let (mut ui1, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let widget = ui1.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui1, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let widget = ui1.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
-  let (mut ui2, _) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui2, _) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   // `widget` is registered to `ui1` and so using it in the context of
   // `ui2` is not as intended. On debug builds we have special detection
@@ -141,18 +169,25 @@ fn share_ids_between_ui_objects() {
 
 #[test]
 fn visibility_fun() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w1 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w2 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w3 = ui.add_ui_widget(w2, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w3 = ui.add_ui_widget(
+    w2,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   assert!(ui.is_visible(root));
   assert!(ui.is_visible(w1));
@@ -206,27 +241,33 @@ fn visibility_fun() {
 
 #[test]
 fn no_initial_focus() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   // No widget has the input focus by default.
   assert!(ui.focused().is_none());
 
-  let _ = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let _ = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
   assert!(ui.focused().is_none());
 }
 
 #[test]
 fn focus_widget() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let widget = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let widget = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   ui.focus(widget);
   assert!(ui.is_focused(widget));
@@ -234,12 +275,15 @@ fn focus_widget() {
 
 #[test]
 fn focus_makes_widget_visible() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let widget = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let widget = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   ui.hide(root);
   ui.hide(widget);
@@ -255,27 +299,40 @@ fn focus_makes_widget_visible() {
 
 #[test]
 fn focus_changes_child_order() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w1 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w11 = ui.add_ui_widget(w1, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w2 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w21 = ui.add_ui_widget(w2, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w22 = ui.add_ui_widget(w2, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w23 = ui.add_ui_widget(w2, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w11 = ui.add_ui_widget(
+    w1,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w21 = ui.add_ui_widget(
+    w2,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w22 = ui.add_ui_widget(
+    w2,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w23 = ui.add_ui_widget(
+    w2,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   ui.focus(w1);
   {
@@ -314,21 +371,30 @@ fn focus_changes_child_order() {
 
 #[test]
 fn repeated_show_preserves_order() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w1 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w11 = ui.add_ui_widget(w1, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w2 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w21 = ui.add_ui_widget(w2, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w11 = ui.add_ui_widget(
+    w1,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w21 = ui.add_ui_widget(
+    w2,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   // By default all widgets are visible. Make sure that issuing a show
   // does not change the order of children. It should be a no-op.
@@ -345,21 +411,30 @@ fn repeated_show_preserves_order() {
 
 #[test]
 fn hide_changes_child_order() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w1 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w2 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w3 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w4 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w3 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w4 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   ui.hide(w2);
   {
@@ -384,18 +459,25 @@ fn hide_changes_child_order() {
 
 #[test]
 fn repeated_hide_preserves_order() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let _ = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w2 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w3 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w3 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   ui.hide(w2);
   ui.hide(w3);
@@ -431,20 +513,25 @@ struct CreatingWidget {
 
 impl CreatingWidget {
   pub fn new(id: Id, cap: &mut dyn MutCap<Event>) -> Self {
-    let child = cap.add_widget(id, Box::new(|id, _cap| {
-      let widget = TestWidgetBuilder::new()
-        .custom_handler(counting_handler)
-        .build(id);
-      Box::new(widget)
-    }));
+    let child = cap.add_widget(
+      id,
+      Box::new(|| {
+        TestWidgetDataBuilder::new()
+          .custom_handler(counting_handler)
+          .build()
+      }),
+      Box::new(|id, _cap| Box::new(TestWidget::new(id))),
+    );
     // Focus the "last" widget. Doing so allows us to send an event to
     // all widgets.
     cap.focus(child);
 
     if need_more(id, cap) {
-      let _ = cap.add_widget(id, Box::new(|id, cap| {
-        Box::new(CreatingWidget::new(id, cap))
-      }));
+      let _ = cap.add_widget(
+        id,
+        Box::new(|| Box::new(())),
+        Box::new(|id, cap| Box::new(CreatingWidget::new(id, cap))),
+      );
     }
 
     Self { id }
@@ -466,9 +553,10 @@ impl Handleable<Event> for CreatingWidget {
 fn recursive_widget_creation() {
   // We only create the root widget directly but it will take care of
   // recursively creating a bunch of more widgets.
-  let (mut ui, _) = Ui::new(|id, cap| {
-    Box::new(CreatingWidget::new(id, cap))
-  });
+  let (mut ui, _) = Ui::new(
+    || Box::new(()),
+    |id, cap| Box::new(CreatingWidget::new(id, cap)),
+  );
 
   let event = UiEvent::Custom(Box::new(0u64));
   let result = ui.handle(event).unwrap();
@@ -500,21 +588,26 @@ impl MovingWidget {
 // ownership of some data during its construction.
 #[test]
 fn moving_widget_creation() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let _ = ui.add_ui_widget(root, move |id, _cap| {
-    Box::new(MovingWidget::new(id, Moveable {}))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    root,
+    || Box::new(()),
+    |id, _cap| Box::new(MovingWidget::new(id, Moveable {})),
+  );
 }
 
 
 fn create_handler(widget: Id, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
   match event {
     Event::Key(key) if key == 'z' => {
-      cap.add_widget(widget, Box::new(|id, _cap| {
-        Box::new(TestWidget::new(id))
-      }));
+      cap.add_widget(
+        widget,
+        Box::new(|| Box::new(())),
+        Box::new(|id, _cap| Box::new(TestWidget::new(id))),
+      );
       None
     },
     _ => Some(event.into()),
@@ -524,12 +617,14 @@ fn create_handler(widget: Id, cap: &mut dyn MutCap<Event>, event: Event) -> Opti
 
 #[test]
 fn event_based_widget_creation() {
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    let widget = TestWidgetBuilder::new()
-      .event_handler(create_handler)
-      .build(id);
-    Box::new(widget)
-  });
+  let (mut ui, root) = Ui::new(
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(create_handler)
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
   ui.focus(root);
 
   assert_eq!(ui.children(root).count(), 0);
@@ -558,12 +653,14 @@ fn recursive_operations_handler(
 
 #[test]
 fn recursive_widget_operations() {
-  let (mut ui, _) = Ui::new(|id, _cap| {
-    let widget = TestWidgetBuilder::new()
-      .custom_handler(recursive_operations_handler)
-      .build(id);
-    Box::new(widget)
-  });
+  let (mut ui, _) = Ui::new(
+    || {
+      TestWidgetDataBuilder::new()
+        .custom_handler(recursive_operations_handler)
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   ui.handle(UiEvent::Custom(Box::new(())));
 }

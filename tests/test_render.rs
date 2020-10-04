@@ -31,6 +31,7 @@ use gui::Renderer;
 use gui::Ui;
 
 use crate::common::TestWidget;
+use crate::common::TestWidgetDataBuilder;
 
 
 #[derive(Debug)]
@@ -78,15 +79,20 @@ impl Renderer for CountingRenderer {
 #[test]
 fn render_is_called_for_each_widget() {
   let renderer = CountingRenderer::new();
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let _ = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let _ = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   ui.render(&renderer);
 
@@ -98,18 +104,25 @@ fn render_is_called_for_each_widget() {
 #[test]
 fn render_honors_visibility_flag() {
   let renderer = CountingRenderer::new();
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w1 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w2 = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let _ = ui.add_ui_widget(w2, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    w2,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   ui.hide(w1);
   ui.render(&renderer);
@@ -198,15 +211,20 @@ impl Renderer for BBoxRenderer {
 #[test]
 fn bounding_box_is_properly_sized() {
   let renderer = BBoxRenderer::new();
-  let (mut ui, root) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let cont = ui.add_ui_widget(root, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let widget = ui.add_ui_widget(cont, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let cont = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let widget = ui.add_ui_widget(
+    cont,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
 
   unsafe {
     ROOT = Some(root);

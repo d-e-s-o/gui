@@ -75,15 +75,22 @@ type CustomRefHandler = Handler<Box<CustomRefFn>>;
 
 
 #[derive(Debug)]
-pub struct TestWidgetBuilder {
+pub struct TestWidgetData {
+  event_handler: Option<EventHandler>,
+  custom_handler: Option<CustomHandler>,
+  custom_ref_handler: Option<CustomRefHandler>,
+}
+
+#[derive(Debug)]
+pub struct TestWidgetDataBuilder {
   event_handler: Option<EventHandler>,
   custom_handler: Option<CustomHandler>,
   custom_ref_handler: Option<CustomRefHandler>,
 }
 
 #[allow(unused)]
-impl TestWidgetBuilder {
-  /// Create a new `TestWidgetBuilder` object.
+impl TestWidgetDataBuilder {
+  /// Create a new `TestWidgetDataBuilder` object.
   pub fn new() -> Self {
     Self {
       event_handler: None,
@@ -120,43 +127,42 @@ impl TestWidgetBuilder {
   }
 
   /// Build the `TestWidget` object.
-  pub fn build(self, id: Id) -> TestWidget {
-    TestWidget {
-      id,
+  pub fn build(self) -> Box<dyn Any> {
+    let data = TestWidgetData {
       event_handler: self.event_handler,
       custom_handler: self.custom_handler,
       custom_ref_handler: self.custom_ref_handler,
-    }
+    };
+    Box::new(data)
   }
 }
-
 
 #[derive(Debug, Widget)]
 #[gui(Event = Event)]
 pub struct TestWidget {
   id: Id,
-  event_handler: Option<EventHandler>,
-  custom_handler: Option<CustomHandler>,
-  custom_ref_handler: Option<CustomRefHandler>,
 }
 
 impl TestWidget {
   pub fn new(id: Id) -> Self {
-    Self {
-      id,
-      event_handler: None,
-      custom_handler: None,
-      custom_ref_handler: None,
-    }
+    Self { id }
   }
 }
 
 impl Handleable<Event> for TestWidget {
   fn handle(&mut self, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
-    match self.event_handler.take() {
+    let data = cap
+      .data_mut(self.id)
+      .downcast_mut::<TestWidgetData>()
+      .unwrap();
+    match data.event_handler.take() {
       Some(handler) => {
         let event = handler(self.id, cap, event);
-        self.event_handler = Some(handler);
+        let data = cap
+          .data_mut(self.id)
+          .downcast_mut::<TestWidgetData>()
+          .unwrap();
+        data.event_handler = Some(handler);
         event
       },
       None => Some(event.into()),
@@ -168,10 +174,18 @@ impl Handleable<Event> for TestWidget {
     cap: &mut dyn MutCap<Event>,
     event: Box<dyn Any>,
   ) -> Option<UiEvents> {
-    match self.custom_handler.take() {
+    let data = cap
+      .data_mut(self.id)
+      .downcast_mut::<TestWidgetData>()
+      .unwrap();
+    match data.custom_handler.take() {
       Some(handler) => {
         let event = handler(self.id, cap, event);
-        self.custom_handler = Some(handler);
+        let data = cap
+          .data_mut(self.id)
+          .downcast_mut::<TestWidgetData>()
+          .unwrap();
+        data.custom_handler = Some(handler);
         event
       },
       None => Some(gui::UiEvent::Custom(event).into()),
@@ -183,10 +197,18 @@ impl Handleable<Event> for TestWidget {
     cap: &mut dyn MutCap<Event>,
     event: &mut dyn Any,
   ) -> Option<UiEvents> {
-    match self.custom_ref_handler.take() {
+    let data = cap
+      .data_mut(self.id)
+      .downcast_mut::<TestWidgetData>()
+      .unwrap();
+    match data.custom_ref_handler.take() {
       Some(handler) => {
         let event = handler(self.id, cap, event);
-        self.custom_ref_handler = Some(handler);
+        let data = cap
+          .data_mut(self.id)
+          .downcast_mut::<TestWidgetData>()
+          .unwrap();
+        data.custom_ref_handler = Some(handler);
         event
       },
       None => None,

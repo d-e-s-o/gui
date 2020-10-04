@@ -190,42 +190,49 @@ where
 }
 
 
-
 #[test]
 fn various_derive_combinations() {
-  let (mut ui, r) = Ui::new(|id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let _ = ui.add_ui_widget(r, |id, _cap| {
-    Box::new(TestWidgetCustom::new(id))
-  });
-  let _ = ui.add_ui_widget(r, |id, _cap| {
-    Box::new(TestWidgetT::<u32>::new(id))
-  });
+  let (mut ui, r) = Ui::new(|| Box::new(()), |id, _cap| Box::new(TestWidget::new(id)));
+  let _ = ui.add_ui_widget(
+    r,
+    || Box::new(()),
+    |id, _cap| Box::new(TestWidgetCustom::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    r,
+    || Box::new(()),
+    |id, _cap| Box::new(TestWidgetT::<u32>::new(id)),
+  );
 }
 
 #[test]
 fn generic_widget() {
   type Event = ();
 
-  let (mut ui, r) = Ui::<Event>::new(|id, _cap| {
-    Box::new(TestGeneric::<Event>::new(id))
-  });
-  let _ = ui.add_ui_widget(r, |id, _cap| {
-    Box::new(TestGeneric::<Event>::new(id))
-  });
+  let (mut ui, r) = Ui::<Event>::new(
+    || Box::new(()),
+    |id, _cap| Box::new(TestGeneric::<Event>::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    r,
+    || Box::new(()),
+    |id, _cap| Box::new(TestGeneric::<Event>::new(id)),
+  );
 
   ui.handle(UiEvent::Event(()));
 }
 
 #[test]
 fn generic_event() {
-  let (mut ui, r) = Ui::<CustomEvent>::new(|id, _cap| {
-    Box::new(TestGenericEvent::<CustomEvent>::new(id))
-  });
-  let _ = ui.add_ui_widget(r, |id, _cap| {
-    Box::new(TestGenericEvent::<CustomEvent>::new(id))
-  });
+  let (mut ui, r) = Ui::<CustomEvent>::new(
+    || Box::new(()),
+    |id, _cap| Box::new(TestGenericEvent::<CustomEvent>::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    r,
+    || Box::new(()),
+    |id, _cap| Box::new(TestGenericEvent::<CustomEvent>::new(id)),
+  );
   ui.focus(r);
 
   let event = CustomEvent { value: 42 };

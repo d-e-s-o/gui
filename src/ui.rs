@@ -17,6 +17,7 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
+use std::any::Any;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -97,6 +98,7 @@ impl Display for Id {
 /// An iterator over the children of a widget.
 pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
+type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
 type NewWidgetFn<E> = dyn FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
@@ -106,6 +108,9 @@ type EventHookFn<E> = &'static dyn Fn(&mut dyn Widget<E>, &dyn Cap, &E) -> Optio
 
 /// A capability allowing for various widget related operations.
 pub trait Cap: Debug {
+  /// Retrieve a reference to a widget's data.
+  fn data(&self, widget: Id) -> &dyn Any;
+
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
   fn children(&self, widget: Id) -> ChildIter<'_>;
@@ -144,10 +149,18 @@ pub trait MutCap<E>: Cap
 where
   E: Debug,
 {
+  /// Retrieve a mutable reference to a widget's data.
+  fn data_mut(&mut self, widget: Id) -> &mut dyn Any;
+
   /// Add a widget to the `Ui` represented by the capability.
   // TODO: We should not require a Box here conceptually, but omitting
   //       it will require the unboxed closures feature to stabilize.
-  fn add_widget(&mut self, parent: Id, new_widget: Box<NewWidgetFn<E>>) -> Id;
+  fn add_widget(
+    &mut self,
+    parent: Id,
+    new_data: Box<NewDataFn>,
+    new_widget: Box<NewWidgetFn<E>>,
+  ) -> Id;
 
   /// Show a widget, i.e., set its and its parents' visibility flag.
   ///
@@ -214,6 +227,8 @@ where
   ///
   /// This value may only be `None` for the root widget.
   parent_idx: Option<Index>,
+  /// The data associated with the widget.
+  data: Box<dyn Any>,
   /// Vector of all the children that have this widget as a parent.
   // Note that unfortunately there is no straight forward way to make
   // this a Vec<Index> because we cannot use an impl trait return type
@@ -226,9 +241,10 @@ where
 }
 
 impl<E> WidgetData<E> {
-  fn new(parent_idx: Option<Index>) -> Self {
+  fn new(parent_idx: Option<Index>, data: Box<dyn Any>) -> Self {
     Self {
       parent_idx,
+      data,
       children: Default::default(),
       event_hook: None,
       visible: true,
@@ -270,9 +286,10 @@ where
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
   #[allow(clippy::new_ret_no_self)]
-  pub fn new<F>(new_root_widget: F) -> (Self, Id)
+  pub fn new<D, W>(new_data: D, new_root_widget: W) -> (Self, Id)
   where
-    F: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+    D: FnOnce() -> Box<dyn Any>,
+    W: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
   {
     let mut ui = Self {
       #[cfg(debug_assertions)]
@@ -282,7 +299,7 @@ where
       focused: None,
     };
 
-    let id = ui._add_widget(None, new_root_widget);
+    let id = ui._add_widget(None, new_data, new_root_widget);
     debug_assert_eq!(id.idx.idx, 0);
     (ui, id)
   }
@@ -294,18 +311,20 @@ where
   /// provided `FnOnce`.
   // TODO: This method should be removed once we no longer require
   //       boxing up of `FnOnce` closures.
-  pub fn add_ui_widget<F>(&mut self, parent: Id, new_widget: F) -> Id
+  pub fn add_ui_widget<D, W>(&mut self, parent: Id, new_data: D, new_widget: W) -> Id
   where
-    F: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+    D: FnOnce() -> Box<dyn Any>,
+    W: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
   {
     let parent_idx = self.validate(parent);
-    self._add_widget(Some(parent_idx), new_widget)
+    self._add_widget(Some(parent_idx), new_data, new_widget)
   }
 
   /// Add a widget to the `Ui`.
-  fn _add_widget<F>(&mut self, parent_idx: Option<Index>, new_widget: F) -> Id
+  fn _add_widget<D, W>(&mut self, parent_idx: Option<Index>, new_data: D, new_widget: W) -> Id
   where
-    F: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+    D: FnOnce() -> Box<dyn Any>,
+    W: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
   {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
@@ -315,7 +334,8 @@ where
     // particular, we install a "dummy" widget that acts as a container
     // to which newly created child widgets can be registered.
     let dummy = Placeholder::new();
-    let data = WidgetData::new(parent_idx);
+    let data = new_data();
+    let data = WidgetData::new(parent_idx, data);
     self.widgets.push((data, Some(Box::new(dummy))));
 
     // The widget is already linked to its parent but the parent needs to
@@ -696,6 +716,12 @@ impl<E> Cap for Ui<E>
 where
   E: 'static + Debug,
 {
+  /// Retrieve a reference to a widget's data.
+  fn data(&self, widget: Id) -> &dyn Any {
+    let idx = self.validate(widget);
+    self.widgets[idx.idx].0.data.as_ref()
+  }
+
   /// Retrieve an iterator over the children. Iteration happens in
   /// z-order, from highest to lowest.
   fn children(&self, widget: Id) -> ChildIter<'_> {
@@ -751,9 +777,20 @@ impl<E> MutCap<E> for Ui<E>
 where
   E: 'static + Debug,
 {
+  /// Retrieve a mutable reference to a widget's data.
+  fn data_mut(&mut self, widget: Id) -> &mut dyn Any {
+    let idx = self.validate(widget);
+    self.widgets[idx.idx].0.data.as_mut()
+  }
+
   /// Add a widget to the `Ui`.
-  fn add_widget(&mut self, parent: Id, new_widget: Box<NewWidgetFn<E>>) -> Id {
-    self.add_ui_widget(parent, new_widget)
+  fn add_widget(
+    &mut self,
+    parent: Id,
+    new_data: Box<NewDataFn>,
+    new_widget: Box<NewWidgetFn<E>>,
+  ) -> Id {
+    self.add_ui_widget(parent, new_data, new_widget)
   }
 
   /// Show a widget, i.e., set its and its parents' visibility flag.
