@@ -1,7 +1,7 @@
 // widget.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -20,7 +20,9 @@
 use std::any::TypeId;
 use std::fmt::Debug;
 
+use crate::Cap;
 use crate::Handleable;
+use crate::MutCap;
 use crate::Object;
 use crate::Renderable;
 
@@ -37,6 +39,31 @@ where
 {
   /// Get the `TypeId` of `self`.
   fn type_id(&self) -> TypeId;
+
+  /// Retrieve a reference to a widget's data.
+  ///
+  /// Note: This function will panic if the data associated with the
+  ///       object is not of type `D`.
+  fn data<'c, D>(&self, cap: &'c dyn Cap) -> &'c D
+  where
+    Self: Sized,
+    D: 'static,
+  {
+    cap.data(self.id()).downcast_ref::<D>().unwrap()
+  }
+
+  /// Retrieve a mutable reference to a widget's data.
+  ///
+  /// Note: This function will panic if the data associated with the
+  ///       object is not of type `D`.
+  fn data_mut<'c, D>(&self, cap: &'c mut dyn MutCap<E>) -> &'c mut D
+  where
+    Self: Sized,
+    D: 'static,
+    E: Debug,
+  {
+    cap.data_mut(self.id()).downcast_mut::<D>().unwrap()
+  }
 }
 
 impl<E> dyn Widget<E>

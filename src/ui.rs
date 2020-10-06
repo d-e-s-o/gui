@@ -23,6 +23,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
 use std::mem::replace;
+use std::ops::Deref;
 use std::slice::Iter;
 #[cfg(debug_assertions)]
 use std::sync::atomic::AtomicUsize;
@@ -145,7 +146,7 @@ pub trait Cap: Debug {
 
 
 /// A mutable capability allowing for various widget related operations.
-pub trait MutCap<E>: Cap
+pub trait MutCap<E>: Cap + Deref<Target = dyn Cap>
 where
   E: Debug,
 {
@@ -208,6 +209,7 @@ where
   /// installed, if any.
   fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn<E>>) -> Option<EventHookFn<E>>;
 }
+
 
 #[cfg(debug_assertions)]
 fn get_next_ui_id() -> usize {
@@ -840,5 +842,16 @@ where
     let prev_hook = data.event_hook.take();
     data.event_hook = hook_fn.map(|x| EventHook(x));
     prev_hook.map(|x| x.0)
+  }
+}
+
+impl<E> Deref for Ui<E>
+where
+  E: 'static + Debug,
+{
+  type Target = dyn Cap;
+
+  fn deref(&self) -> &Self::Target {
+    self
   }
 }

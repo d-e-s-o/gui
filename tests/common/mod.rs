@@ -35,6 +35,7 @@ use gui::MutCap;
 use gui::UiEvents as GuiEvents;
 use gui::UnhandledEvent;
 use gui::UnhandledEvents;
+use gui::Widget;
 
 
 /// An event type used for testing purposes.
@@ -151,17 +152,14 @@ impl TestWidget {
 
 impl Handleable<Event> for TestWidget {
   fn handle(&mut self, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
-    let data = cap
-      .data_mut(self.id)
-      .downcast_mut::<TestWidgetData>()
-      .unwrap();
+    // Also check that we can access the non-mutable version of the data.
+    let _ = self.data::<TestWidgetData>(cap);
+
+    let data = self.data_mut::<TestWidgetData>(cap);
     match data.event_handler.take() {
       Some(handler) => {
         let event = handler(self.id, cap, event);
-        let data = cap
-          .data_mut(self.id)
-          .downcast_mut::<TestWidgetData>()
-          .unwrap();
+        let data = self.data_mut::<TestWidgetData>(cap);
         data.event_handler = Some(handler);
         event
       },
@@ -174,17 +172,11 @@ impl Handleable<Event> for TestWidget {
     cap: &mut dyn MutCap<Event>,
     event: Box<dyn Any>,
   ) -> Option<UiEvents> {
-    let data = cap
-      .data_mut(self.id)
-      .downcast_mut::<TestWidgetData>()
-      .unwrap();
+    let data = self.data_mut::<TestWidgetData>(cap);
     match data.custom_handler.take() {
       Some(handler) => {
         let event = handler(self.id, cap, event);
-        let data = cap
-          .data_mut(self.id)
-          .downcast_mut::<TestWidgetData>()
-          .unwrap();
+        let data = self.data_mut::<TestWidgetData>(cap);
         data.custom_handler = Some(handler);
         event
       },
@@ -197,17 +189,11 @@ impl Handleable<Event> for TestWidget {
     cap: &mut dyn MutCap<Event>,
     event: &mut dyn Any,
   ) -> Option<UiEvents> {
-    let data = cap
-      .data_mut(self.id)
-      .downcast_mut::<TestWidgetData>()
-      .unwrap();
+    let data = self.data_mut::<TestWidgetData>(cap);
     match data.custom_ref_handler.take() {
       Some(handler) => {
         let event = handler(self.id, cap, event);
-        let data = cap
-          .data_mut(self.id)
-          .downcast_mut::<TestWidgetData>()
-          .unwrap();
+        let data = self.data_mut::<TestWidgetData>(cap);
         data.custom_ref_handler = Some(handler);
         event
       },
