@@ -614,7 +614,7 @@ where
     // widget's handle method uses the provided `Cap` object. All
     // the methods of this object are carefully chosen in a way to
     // not call into the widget itself.
-    let (events, parent_idx) = self.with(idx, |ui, mut widget| {
+    let (events, parent_idx) = self.with(idx, |ui, widget| {
       let events = widget.handle(ui, event);
       let parent_idx = ui.widgets[idx.idx].0.parent_idx;
       (widget, (events, parent_idx))
@@ -645,7 +645,7 @@ where
   fn handle_custom_event(&mut self,
                          idx: Index,
                          event: CustomEvent<'_>) -> Option<UnhandledEvents<E>> {
-    let (events, parent_idx) = self.with(idx, |ui, mut widget| {
+    let (events, parent_idx) = self.with(idx, |ui, widget| {
       let events = match event {
         CustomEvent::Owned(event) => widget.handle_custom(ui, event),
         CustomEvent::Borrowed(event) => widget.handle_custom_ref(ui, event),

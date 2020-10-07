@@ -183,7 +183,7 @@ impl<E> Handleable<E> for TestGenericEvent<E>
 where
   E: Debug + MyEvent + 'static,
 {
-  fn handle(&mut self, _cap: &mut dyn MutCap<E>, mut event: E) -> Option<UiEvents<E>> {
+  fn handle(&self, _cap: &mut dyn MutCap<E>, mut event: E) -> Option<UiEvents<E>> {
     event.modify();
     Some(UiEvent::Event(event).into())
   }

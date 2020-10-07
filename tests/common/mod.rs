@@ -151,7 +151,7 @@ impl TestWidget {
 }
 
 impl Handleable<Event> for TestWidget {
-  fn handle(&mut self, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
+  fn handle(&self, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
     // Also check that we can access the non-mutable version of the data.
     let _ = self.data::<TestWidgetData>(cap);
 
@@ -167,11 +167,7 @@ impl Handleable<Event> for TestWidget {
     }
   }
 
-  fn handle_custom(
-    &mut self,
-    cap: &mut dyn MutCap<Event>,
-    event: Box<dyn Any>,
-  ) -> Option<UiEvents> {
+  fn handle_custom(&self, cap: &mut dyn MutCap<Event>, event: Box<dyn Any>) -> Option<UiEvents> {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.custom_handler.take() {
       Some(handler) => {
@@ -185,7 +181,7 @@ impl Handleable<Event> for TestWidget {
   }
 
   fn handle_custom_ref(
-    &mut self,
+    &self,
     cap: &mut dyn MutCap<Event>,
     event: &mut dyn Any,
   ) -> Option<UiEvents> {

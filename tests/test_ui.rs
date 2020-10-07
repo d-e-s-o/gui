@@ -540,7 +540,7 @@ impl CreatingWidget {
 
 impl Handleable<Event> for CreatingWidget {
   fn handle_custom(
-    &mut self,
+    &self,
     cap: &mut dyn MutCap<Event>,
     event: Box<dyn Any>,
   ) -> Option<UiEvents> {

@@ -67,7 +67,7 @@ impl<E> Handleable<E> for Placeholder
 where
   E: 'static,
 {
-  fn handle(&mut self, _cap: &mut dyn MutCap<E>, _event: E) -> Option<UiEvents<E>> {
+  fn handle(&self, _cap: &mut dyn MutCap<E>, _event: E) -> Option<UiEvents<E>> {
     unreachable!()
   }
 }
