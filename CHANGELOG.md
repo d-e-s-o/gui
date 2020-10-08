@@ -4,6 +4,7 @@ Unreleased
   - Added data creation function alongside widget creation one
   - Added `data` and `data_mut` accessors to `Cap` and `MutCap`
   - Changed all `Handleable` event handling methods to target `&self`
+  - Changed event hooks to target non-mutable `&dyn Widget`
 - Reordered `Cap` & `MutCap` parameter in various function signatures
 - Changed widget creation function from `FnMut` to `FnOnce`
 

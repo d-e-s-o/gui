@@ -104,7 +104,7 @@ type NewWidgetFn<E> = dyn FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>;
 // Note that we only pass a non-mutable Cap object to the handler. We do
 // not want to allow operations such as changing of the input focus or
 // overwriting of the event hook itself from the event hook handler.
-type EventHookFn<E> = &'static dyn Fn(&mut dyn Widget<E>, &dyn Cap, &E) -> Option<UiEvents<E>>;
+type EventHookFn<E> = &'static dyn Fn(&dyn Widget<E>, &dyn Cap, &E) -> Option<UiEvents<E>>;
 
 
 /// A capability allowing for various widget related operations.
@@ -552,10 +552,10 @@ where
     for i in 0..self.hooked.len() {
       let idx = self.hooked[i];
 
-      self.with(idx, |ui, mut widget| {
+      self.with(idx, |ui, widget| {
         match &ui.widgets[idx.idx].0.event_hook {
           Some(hook_fn) => {
-            let event = hook_fn.0(widget.as_mut(), ui, event);
+            let event = hook_fn.0(widget.as_ref(), ui, event);
             let prev = result.take();
             let _ = replace(&mut result, OptionChain::chain(prev, event));
           },
