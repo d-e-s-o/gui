@@ -392,13 +392,10 @@ where
     // that before the change.
     reorder_fn(self, idx);
 
-    let parent_idx = {
-      let data = &mut self.widgets[idx.idx].0;
-      data.visible = true;
-      data.parent_idx
-    };
+    let data = &mut self.widgets[idx.idx].0;
+    data.visible = true;
 
-    if let Some(parent_idx) = parent_idx {
+    if let Some(parent_idx) = data.parent_idx {
       self.show(parent_idx, reorder_fn)
     }
   }
@@ -408,15 +405,12 @@ where
   where
     F: FnOnce(&Ui<E>, &Vec<Id>) -> usize,
   {
-    // Non-lexical lifetimes I need you, now!
     if let Some(parent_idx) = self.widgets[idx.idx].0.parent_idx {
-      // First retrieve the index of the widget we are interested in in
-      // its parent's list of children.
-      let cur_idx = {
-        let children = &self.widgets[parent_idx.idx].0.children;
-        let id = Id::new(idx.idx, self);
-        children.iter().position(|x| *x == id).unwrap()
-      };
+      // First retrieve the index of the widget we are interested in
+      // from its parent's list of children.
+      let children = &self.widgets[parent_idx.idx].0.children;
+      let id = Id::new(idx.idx, self);
+      let cur_idx = children.iter().position(|x| *x == id).unwrap();
 
       // Now remove said widget from the list of children.
       let id = self.widgets[parent_idx.idx].0.children.remove(cur_idx);
