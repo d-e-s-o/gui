@@ -24,6 +24,7 @@ use std::fmt::Formatter;
 use std::fmt::Result;
 use std::mem::replace;
 use std::ops::Deref;
+use std::rc::Rc;
 use std::slice::Iter;
 #[cfg(debug_assertions)]
 use std::sync::atomic::AtomicUsize;
@@ -276,7 +277,7 @@ where
   #[cfg(debug_assertions)]
   id: usize,
   #[allow(clippy::type_complexity)]
-  widgets: Vec<(WidgetData<E>, Option<Box<dyn Widget<E>>>)>,
+  widgets: Vec<(WidgetData<E>, Option<Rc<dyn Widget<E>>>)>,
   hooked: Vec<Index>,
   focused: Option<Index>,
 }
@@ -338,7 +339,7 @@ where
     let dummy = Placeholder::new();
     let data = new_data();
     let data = WidgetData::new(parent_idx, data);
-    self.widgets.push((data, Some(Box::new(dummy))));
+    self.widgets.push((data, Some(Rc::new(dummy))));
 
     // The widget is already linked to its parent but the parent needs to
     // know about the child as well. We do that registration before the
@@ -349,7 +350,9 @@ where
       self.widgets[parent_idx.idx].0.children.push(id)
     }
 
-    let widget = new_widget(id, self);
+    // TODO: Consider making NewWidgetFn return an Rc instead of a Box
+    //       to begin with as Rc::from(Box) is a non-trivial operation.
+    let widget = Rc::from(new_widget(id, self));
     // Replace our placeholder with the actual widget we just created.
     // Note that because we store the children separately as part of an
     // `WidgetData` object there is no need for us to do anything about
@@ -491,7 +494,7 @@ where
 
   fn with<F, R>(&mut self, idx: Index, with_widget: F) -> R
   where
-    F: FnOnce(&mut Ui<E>, Box<dyn Widget<E>>) -> (Box<dyn Widget<E>>, R),
+    F: FnOnce(&mut Ui<E>, Rc<dyn Widget<E>>) -> (Rc<dyn Widget<E>>, R),
   {
     match self.widgets[idx.idx].1.take() {
       Some(widget) => {
