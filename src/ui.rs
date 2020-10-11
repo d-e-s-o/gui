@@ -276,8 +276,7 @@ where
 {
   #[cfg(debug_assertions)]
   id: usize,
-  #[allow(clippy::type_complexity)]
-  widgets: Vec<(WidgetData<E>, Option<Rc<dyn Widget<E>>>)>,
+  widgets: Vec<(WidgetData<E>, Rc<dyn Widget<E>>)>,
   hooked: Vec<Index>,
   focused: Option<Index>,
 }
@@ -339,7 +338,7 @@ where
     let dummy = Placeholder::new();
     let data = new_data();
     let data = WidgetData::new(parent_idx, data);
-    self.widgets.push((data, Some(Rc::new(dummy))));
+    self.widgets.push((data, Rc::new(dummy)));
 
     // The widget is already linked to its parent but the parent needs to
     // know about the child as well. We do that registration before the
@@ -358,7 +357,7 @@ where
     // `WidgetData` object there is no need for us to do anything about
     // them. Note furthermore that this implies that the Widget trait's
     // `add_child` method must not have any side effects.
-    self.with(idx, |_, _| (widget, ()));
+    self.widgets[idx.idx].1 = widget;
     id
   }
 
@@ -372,10 +371,7 @@ where
 
   /// Lookup a widget from an `Index`.
   fn lookup(&self, idx: Index) -> &dyn Widget<E> {
-    match &self.widgets[idx.idx].1 {
-      Some(widget) => widget.as_ref(),
-      None => panic!("Widget {} is currently taken", idx),
-    }
+    self.widgets[idx.idx].1.as_ref()
   }
 
   fn children(&self, idx: Index) -> ChildIter<'_> {
@@ -492,20 +488,6 @@ where
     self.focused = Some(idx);
   }
 
-  fn with<F, R>(&mut self, idx: Index, with_widget: F) -> R
-  where
-    F: FnOnce(&mut Ui<E>, Rc<dyn Widget<E>>) -> (Rc<dyn Widget<E>>, R),
-  {
-    match self.widgets[idx.idx].1.take() {
-      Some(widget) => {
-        let (widget, result) = with_widget(self, widget);
-        self.widgets[idx.idx].1 = Some(widget);
-        result
-      },
-      None => panic!("Widget {} is currently taken", idx),
-    }
-  }
-
   /// Render the `Ui` with the given `Renderer`.
   pub fn render(&self, renderer: &dyn Renderer) {
     // We cannot simply iterate through all widgets in `self.widgets`
@@ -540,26 +522,16 @@ where
   fn invoke_event_hooks(&mut self, event: &E) -> Option<UiEvents<E>> {
     let mut result = None;
 
-    // Note that we deliberately iterate over the vector by means of
-    // indices. We cannot acquire an immutable reference to it because
-    // we require a mutable one to self below. By using indices for the
-    // iteration we side step this problem. That is safe, though,
-    // because a widget cannot modify the event hooks from the hook
-    // function, because we only provide it with an immutable `Cap`.
-    for i in 0..self.hooked.len() {
-      let idx = self.hooked[i];
-
-      self.with(idx, |ui, widget| {
-        match &ui.widgets[idx.idx].0.event_hook {
-          Some(hook_fn) => {
-            let event = hook_fn.0(widget.as_ref(), ui, event);
-            let prev = result.take();
-            let _ = replace(&mut result, OptionChain::chain(prev, event));
-          },
-          None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
-        };
-        (widget, ())
-      })
+    for idx in &self.hooked {
+      let widget = self.widgets[idx.idx].1.as_ref();
+      match &self.widgets[idx.idx].0.event_hook {
+        Some(hook_fn) => {
+          let event = hook_fn.0(widget, self, event);
+          let prev = result.take();
+          let _ = replace(&mut result, OptionChain::chain(prev, event));
+        },
+        None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
+      };
     }
     result
   }
@@ -603,19 +575,13 @@ where
 
   /// Bubble up an event until it is handled by some `Widget`.
   fn handle_event(&mut self, idx: Index, event: E) -> Option<UnhandledEvents<E>> {
-    // To enable a mutable borrow of the Ui as well as the widget we
-    // temporarily remove the widget from the internally used
-    // vector. This means that now we would panic if we were to
-    // access the widget recursively (because that's what we do if
-    // the Option is None). The only way this can happen is if the
-    // widget's handle method uses the provided `Cap` object. All
-    // the methods of this object are carefully chosen in a way to
-    // not call into the widget itself.
-    let (events, parent_idx) = self.with(idx, |ui, widget| {
-      let events = widget.handle(ui, event);
-      let parent_idx = ui.widgets[idx.idx].0.parent_idx;
-      (widget, (events, parent_idx))
-    });
+    // The clone we perform here allows us to decouple the Widget from
+    // the Ui, which in turn makes it possible to pass a mutable Ui
+    // reference (in the form of a MutCap) to an immutable widget. It is
+    // nothing more but a reference count bump, though.
+    let widget = self.widgets[idx.idx].1.clone();
+    let events = widget.handle(self, event);
+    let parent_idx = self.widgets[idx.idx].0.parent_idx;
 
     if let Some(events) = events {
       self.handle_ui_events(parent_idx, events)
@@ -642,14 +608,12 @@ where
   fn handle_custom_event(&mut self,
                          idx: Index,
                          event: CustomEvent<'_>) -> Option<UnhandledEvents<E>> {
-    let (events, parent_idx) = self.with(idx, |ui, widget| {
-      let events = match event {
-        CustomEvent::Owned(event) => widget.handle_custom(ui, event),
-        CustomEvent::Borrowed(event) => widget.handle_custom_ref(ui, event),
-      };
-      let parent_idx = ui.widgets[idx.idx].0.parent_idx;
-      (widget, (events, parent_idx))
-    });
+    let widget = self.widgets[idx.idx].1.clone();
+    let events = match event {
+      CustomEvent::Owned(event) => widget.handle_custom(self, event),
+      CustomEvent::Borrowed(event) => widget.handle_custom_ref(self, event),
+    };
+    let parent_idx = self.widgets[idx.idx].0.parent_idx;
 
     if let Some(events) = events {
       self.handle_ui_events(parent_idx, events)
@@ -733,7 +697,7 @@ where
     // We do not unconditionally unwrap the Option returned by as_ref()
     // here as it is possible that it is empty and we do not want to
     // panic here. This is mostly important for unit testing.
-    debug_assert_eq!(self.widgets[0].1.as_ref().map_or(0, |x| self.validate(x.id()).idx), 0);
+    debug_assert_eq!(self.validate(self.widgets[0].1.id()).idx, 0);
 
     Id::new(0, self)
   }
