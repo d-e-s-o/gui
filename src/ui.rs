@@ -22,7 +22,6 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
-use std::mem::replace;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::slice::Iter;
@@ -523,12 +522,11 @@ where
     let mut result = None;
 
     for idx in &self.hooked {
-      let widget = self.widgets[idx.idx].1.as_ref();
       match &self.widgets[idx.idx].0.event_hook {
         Some(hook_fn) => {
+          let widget = self.lookup(*idx);
           let event = hook_fn.0(widget, self, event);
-          let prev = result.take();
-          let _ = replace(&mut result, OptionChain::chain(prev, event));
+          result = OptionChain::chain(result, event);
         },
         None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
       };
