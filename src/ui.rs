@@ -276,7 +276,7 @@ where
   #[cfg(debug_assertions)]
   id: usize,
   widgets: Vec<(WidgetData<E>, Rc<dyn Widget<E>>)>,
-  hooked: Vec<Index>,
+  hooked: Rc<Vec<Index>>,
   focused: Option<Index>,
 }
 
@@ -521,11 +521,11 @@ where
   fn invoke_event_hooks(&mut self, event: &E) -> Option<UiEvents<E>> {
     let mut result = None;
 
-    for idx in &self.hooked {
+    for idx in self.hooked.clone().as_ref() {
       match &self.widgets[idx.idx].0.event_hook {
         Some(hook_fn) => {
-          let widget = self.lookup(*idx);
-          let event = hook_fn.0(widget, self, event);
+          let widget = self.widgets[idx.idx].1.clone();
+          let event = hook_fn.0(widget.as_ref(), self, event);
           result = OptionChain::chain(result, event);
         },
         None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
@@ -788,12 +788,12 @@ where
     match hook_fn {
       Some(_) => {
         if let Err(i) = result {
-          self.hooked.insert(i, idx);
+          Rc::make_mut(&mut self.hooked).insert(i, idx);
         }
       },
       None => {
         if let Ok(i) = result {
-          let _ = self.hooked.remove(i);
+          let _ = Rc::make_mut(&mut self.hooked).remove(i);
         }
       },
     };
