@@ -101,10 +101,8 @@ pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
 type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
 type NewWidgetFn<E> = dyn FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>;
-// Note that we only pass a non-mutable Cap object to the handler. We do
-// not want to allow operations such as changing of the input focus or
-// overwriting of the event hook itself from the event hook handler.
-type EventHookFn<E> = &'static dyn Fn(&dyn Widget<E>, &dyn Cap, &E) -> Option<UiEvents<E>>;
+type EventHookFn<E> =
+  &'static dyn Fn(&dyn Widget<E>, &mut dyn MutCap<E>, &E) -> Option<UiEvents<E>>;
 
 
 /// A capability allowing for various widget related operations.
@@ -197,11 +195,7 @@ where
   /// events will reach the widget after the event that was hooked.
   ///
   /// Note that event hook functions are only able to inspect events and
-  /// not change or discard them. That restriction prevents conflicts
-  /// due to what effectively comes down to shared global state: widgets
-  /// could be racing to install an event hook handler and the order in
-  /// which these handlers end up being installed could influence the
-  /// handling of events.
+  /// not change or discard them.
   ///
   /// A widget (identified by the given `Id`) may only register one
   /// handler and subsequent requests will overwrite the previously

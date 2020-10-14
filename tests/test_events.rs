@@ -577,7 +577,7 @@ static mut HOOK_COUNT: u64 = 0;
 #[allow(clippy::trivially_copy_pass_by_ref)]
 fn count_event_hook(
   widget: &dyn Widget<Event>,
-  _cap: &dyn Cap,
+  _cap: &mut dyn MutCap<Event>,
   _event: &Event,
 ) -> Option<UiEvents> {
   assert!(widget.downcast_ref::<TestWidget>().is_some());
@@ -648,7 +648,11 @@ fn hook_events_handler() {
 
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn quit_event_hook(_: &dyn Widget<Event>, _cap: &dyn Cap, _event: &Event) -> Option<UiEvents> {
+fn quit_event_hook(
+  _: &dyn Widget<Event>,
+  _cap: &mut dyn MutCap<Event>,
+  _event: &Event,
+) -> Option<UiEvents> {
   Some(UiEvent::Quit.into())
 }
 
@@ -689,7 +693,11 @@ fn hook_events_with_return() {
 
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn emitting_event_hook(_: &dyn Widget<Event>, _cap: &dyn Cap, event: &Event) -> Option<UiEvents> {
+fn emitting_event_hook(
+  _: &dyn Widget<Event>,
+  _cap: &mut dyn MutCap<Event>,
+  event: &Event,
+) -> Option<UiEvents> {
   assert_eq!(*event, Event::Key('y'));
 
   Some(Event::Key('z').into())

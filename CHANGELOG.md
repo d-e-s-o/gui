@@ -7,6 +7,7 @@ Unreleased
   - Changed event hooks to target non-mutable `&dyn Widget`
 - Reordered `Cap` & `MutCap` parameter in various function signatures
 - Changed widget creation function from `FnMut` to `FnOnce`
+- Adjusted event hooks to accept `MutCap` instead of `Cap`
 
 
 0.5.0
