@@ -1,6 +1,6 @@
 [package]
 name = "gui-derive"
-version = "0.5.0"
+version = "0.6.0-alpha.0"
 edition = "2018"
 authors = ["Daniel Mueller <deso@posteo.net>"]
 license = "GPL-3.0-or-later"
@@ -31,5 +31,5 @@ default-features = false
 features = ["clone-impls", "derive", "extra-traits", "parsing", "printing"]
 
 [dev-dependencies.gui]
-version = "0.5"
+version = "=0.6.0-alpha.0"
 path = ".."

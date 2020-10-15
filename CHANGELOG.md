@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.0-alpha.0
+-------------
 - Separated widgets from their mutable data
   - Added data creation function alongside widget creation one
   - Added `data` and `data_mut` accessors to `Cap` and `MutCap`
