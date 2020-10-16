@@ -30,6 +30,14 @@ version = "1.0"
 default-features = false
 features = ["clone-impls", "derive", "extra-traits", "parsing", "printing"]
 
+[dev-dependencies.async-trait]
+version = "0.1.41"
+
 [dev-dependencies.gui]
 version = "=0.6.0-alpha.0"
 path = ".."
+
+[dev-dependencies.tokio]
+version = "0.3.1"
+default-features = false
+features = ["macros", "rt"]

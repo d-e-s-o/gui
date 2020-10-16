@@ -19,6 +19,8 @@
 
 use std::any::TypeId;
 
+use async_trait::async_trait;
+
 use crate::BBox;
 use crate::Cap;
 use crate::Handleable;
@@ -63,11 +65,12 @@ impl Object for Placeholder {
   }
 }
 
+#[async_trait(?Send)]
 impl<E> Handleable<E> for Placeholder
 where
   E: 'static,
 {
-  fn handle(&self, _cap: &mut dyn MutCap<E>, _event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, _cap: &mut dyn MutCap<E>, _event: E) -> Option<UiEvents<E>> {
     unreachable!()
   }
 }

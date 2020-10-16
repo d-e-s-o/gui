@@ -27,6 +27,8 @@ mod common;
 
 use std::any::Any;
 
+use async_trait::async_trait;
+
 use gui::Cap;
 use gui::derive::Handleable;
 use gui::derive::Widget;
@@ -142,10 +144,10 @@ fn creation_order_is_child_order() {
   assert!(it.next().is_none());
 }
 
-#[test]
+#[tokio::test]
 #[cfg(debug_assertions)]
 #[should_panic(expected = "The given Id belongs to a different Ui")]
-fn share_ids_between_ui_objects() {
+async fn share_ids_between_ui_objects() {
   let (mut ui1, root) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -164,7 +166,7 @@ fn share_ids_between_ui_objects() {
   // `widget` is registered to `ui1` and so using it in the context of
   // `ui2` is not as intended. On debug builds we have special detection
   // in place to provide a meaningful error, that should trigger here.
-  ui2.handle(UiEvent::Directed(widget, Box::new(())));
+  ui2.handle(UiEvent::Directed(widget, Box::new(()))).await;
 }
 
 #[test]
@@ -538,8 +540,9 @@ impl CreatingWidget {
   }
 }
 
+#[async_trait(?Send)]
 impl Handleable<Event> for CreatingWidget {
-  fn handle_custom(
+  async fn handle_custom(
     &self,
     cap: &mut dyn MutCap<Event>,
     event: Box<dyn Any>,
@@ -549,8 +552,10 @@ impl Handleable<Event> for CreatingWidget {
 }
 
 
-#[test]
-fn recursive_widget_creation() {
+/// Test that we can recursively create a widget from a widget's
+/// constructor.
+#[tokio::test]
+async fn recursive_widget_creation() {
   // We only create the root widget directly but it will take care of
   // recursively creating a bunch of more widgets.
   let (mut ui, _) = Ui::new(
@@ -559,7 +564,7 @@ fn recursive_widget_creation() {
   );
 
   let event = UiEvent::Custom(Box::new(0u64));
-  let result = ui.handle(event).unwrap();
+  let result = ui.handle(event).await.unwrap();
   // We expect three increments. Note that we have four widgets in
   // total, but we cannot easily have the event reach all four of them
   // because two are peers sharing a parent.
@@ -615,8 +620,9 @@ fn create_handler(widget: Id, cap: &mut dyn MutCap<Event>, event: Event) -> Opti
 }
 
 
-#[test]
-fn event_based_widget_creation() {
+/// Test dynamic creation of a widget based on an event.
+#[tokio::test]
+async fn event_based_widget_creation() {
   let (mut ui, root) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
@@ -630,7 +636,7 @@ fn event_based_widget_creation() {
   assert_eq!(ui.children(root).count(), 0);
 
   let event = Event::Key('z');
-  let result = ui.handle(event);
+  let result = ui.handle(event).await;
   assert!(result.is_none());
 
   // We must have created a widget.
@@ -651,8 +657,9 @@ fn recursive_operations_handler(
   None
 }
 
-#[test]
-fn recursive_widget_operations() {
+/// Check that widget operations on the own widget work properly.
+#[tokio::test]
+async fn recursive_widget_operations() {
   let (mut ui, _) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
@@ -662,5 +669,5 @@ fn recursive_widget_operations() {
     |id, _cap| Box::new(TestWidget::new(id)),
   );
 
-  ui.handle(UiEvent::Custom(Box::new(())));
+  ui.handle(UiEvent::Custom(Box::new(()))).await;
 }

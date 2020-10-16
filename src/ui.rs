@@ -22,7 +22,9 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
+use std::future::Future;
 use std::ops::Deref;
+use std::pin::Pin;
 use std::rc::Rc;
 use std::slice::Iter;
 #[cfg(debug_assertions)]
@@ -533,7 +535,7 @@ where
   /// This function performs the initial determination of which widget
   /// is supposed to handle the given event and then passes it down to
   /// the actual event handler.
-  pub fn handle<T>(&mut self, event: T) -> Option<UnhandledEvents<E>>
+  pub async fn handle<T>(&mut self, event: T) -> Option<UnhandledEvents<E>>
   where
     T: Into<UiEvent<E>>,
   {
@@ -562,21 +564,21 @@ where
     // Note that we guarantee that the event as it came in is received
     // by the widget before additional events as emitted by the hook.
     let events = ui_event.chain_opt(ui_events);
-    self.handle_ui_events(idx, events)
+    self.handle_ui_events(idx, events).await
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
-  fn handle_event(&mut self, idx: Index, event: E) -> Option<UnhandledEvents<E>> {
+  async fn handle_event(&mut self, idx: Index, event: E) -> Option<UnhandledEvents<E>> {
     // The clone we perform here allows us to decouple the Widget from
     // the Ui, which in turn makes it possible to pass a mutable Ui
     // reference (in the form of a MutCap) to an immutable widget. It is
     // nothing more but a reference count bump, though.
     let widget = self.widgets[idx.idx].1.clone();
-    let events = widget.handle(self, event);
+    let events = widget.handle(self, event).await;
     let parent_idx = self.widgets[idx.idx].0.parent_idx;
 
     if let Some(events) = events {
-      self.handle_ui_events(parent_idx, events)
+      self.handle_ui_events(parent_idx, events).await
     } else {
       // The event got handled.
       None
@@ -584,31 +586,37 @@ where
   }
 
   /// Handle a chain of `UiEvent` objects.
-  fn handle_ui_events(&mut self,
-                      idx: Option<Index>,
-                      events: UiEvents<E>) -> Option<UnhandledEvents<E>> {
-    match events {
-      ChainEvent::Event(event) => self.handle_ui_event(idx, event),
-      ChainEvent::Chain(event, chain) => OptionChain::chain(
-        self.handle_ui_event(idx, event),
-        self.handle_ui_events(idx, *chain),
-      ),
-    }
+  fn handle_ui_events(
+    &mut self,
+    idx: Option<Index>,
+    events: UiEvents<E>,
+  ) -> Pin<Box<dyn Future<Output = Option<UnhandledEvents<E>>> + '_>> {
+    Box::pin(async move {
+      match events {
+        ChainEvent::Event(event) => self.handle_ui_event(idx, event).await,
+        ChainEvent::Chain(event, chain) => OptionChain::chain(
+          self.handle_ui_event(idx, event).await,
+          self.handle_ui_events(idx, *chain).await,
+        ),
+      }
+    })
   }
 
   /// Handle a custom event.
-  fn handle_custom_event(&mut self,
-                         idx: Index,
-                         event: CustomEvent<'_>) -> Option<UnhandledEvents<E>> {
+  async fn handle_custom_event(
+    &mut self,
+    idx: Index,
+    event: CustomEvent<'_>,
+  ) -> Option<UnhandledEvents<E>> {
     let widget = self.widgets[idx.idx].1.clone();
     let events = match event {
-      CustomEvent::Owned(event) => widget.handle_custom(self, event),
-      CustomEvent::Borrowed(event) => widget.handle_custom_ref(self, event),
+      CustomEvent::Owned(event) => widget.handle_custom(self, event).await,
+      CustomEvent::Borrowed(event) => widget.handle_custom_ref(self, event).await,
     };
     let parent_idx = self.widgets[idx.idx].0.parent_idx;
 
     if let Some(events) = events {
-      self.handle_ui_events(parent_idx, events)
+      self.handle_ui_events(parent_idx, events).await
     } else {
       // The event got handled.
       None
@@ -616,13 +624,15 @@ where
   }
 
   /// Handle a `UiEvent`.
-  fn handle_ui_event(&mut self,
-                     idx: Option<Index>,
-                     event: UiEvent<E>) -> Option<UnhandledEvents<E>> {
+  async fn handle_ui_event(
+    &mut self,
+    idx: Option<Index>,
+    event: UiEvent<E>,
+  ) -> Option<UnhandledEvents<E>> {
     match event {
       UiEvent::Event(event) => {
         if let Some(idx) = idx {
-          self.handle_event(idx, event)
+          self.handle_event(idx, event).await
         } else {
           // There is no receiver for this event. That could have many
           // reasons, for example, event propagation could have reached the
@@ -635,7 +645,7 @@ where
       UiEvent::Custom(event) => {
         if let Some(idx) = idx {
           let event = CustomEvent::Owned(event);
-          self.handle_custom_event(idx, event)
+          self.handle_custom_event(idx, event).await
         } else {
           Some(UnhandledEvent::Custom(event).into())
         }
@@ -643,14 +653,14 @@ where
       UiEvent::Directed(id, event) => {
         let idx = self.validate(id);
         let event = CustomEvent::Owned(event);
-        self.handle_custom_event(idx, event)
+        self.handle_custom_event(idx, event).await
       },
       UiEvent::Returnable(src, dst, mut any) => {
         // First let the widget handle the event.
         let events1 = {
           let event = CustomEvent::Borrowed(any.as_mut());
           let idx = self.validate(dst);
-          self.handle_custom_event(idx, event)
+          self.handle_custom_event(idx, event).await
         };
 
         // Then pass the event back to the widget that originally
@@ -658,7 +668,7 @@ where
         let events2 = {
           let event = CustomEvent::Owned(any);
           let idx = self.validate(src);
-          self.handle_custom_event(idx, event)
+          self.handle_custom_event(idx, event).await
         };
         OptionChain::chain(events1, events2)
       },

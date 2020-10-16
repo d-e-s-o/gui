@@ -255,8 +255,8 @@ fn last_event_in_chain() {
   assert!(compare_ui_event(&event_chain.into_last(), &orig_event2.into()));
 }
 
-#[test]
-fn events_bubble_up_when_unhandled() {
+#[tokio::test]
+async fn events_bubble_up_when_unhandled() {
   let new_data = || TestWidgetDataBuilder::new().build();
   let (mut ui, r) = Ui::new(new_data, |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -274,15 +274,15 @@ fn events_bubble_up_when_unhandled() {
   let event = Event::Key(' ');
   ui.focus(w1);
 
-  let result = ui.handle(event);
+  let result = ui.handle(event).await;
   let expected = UnhandledEvent::Event(event).into();
   // An unhandled event should just be returned after every widget
   // forwarded it.
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
 
-#[test]
-fn targeted_event_returned_on_no_focus() {
+#[tokio::test]
+async fn targeted_event_returned_on_no_focus() {
   let new_data = || TestWidgetDataBuilder::new().build();
   let (mut ui, r) = Ui::new(new_data, |id, _cap| {
     Box::new(TestWidget::new(id))
@@ -295,7 +295,7 @@ fn targeted_event_returned_on_no_focus() {
   ui.focus(w);
   ui.hide(w);
 
-  let result = ui.handle(event);
+  let result = ui.handle(event).await;
   let expected = UnhandledEvent::Event(event).into();
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
@@ -318,8 +318,8 @@ fn key_handler(
   }
 }
 
-#[test]
-fn event_handling_with_focus() {
+#[tokio::test]
+async fn event_handling_with_focus() {
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -349,7 +349,7 @@ fn event_handling_with_focus() {
   // Send a key down event, received by `w2`, which it will
   // translate into a focus event for `w1`.
   let event = Event::Key('a');
-  ui.handle(event);
+  ui.handle(event).await;
 
   assert!(ui.is_focused(w1));
 }
@@ -363,8 +363,8 @@ fn custom_undirected_response_handler(
   Some(UiEvent::Custom(Box::new(value + 1)).into())
 }
 
-#[test]
-fn custom_undirected_response_event() {
+#[tokio::test]
+async fn custom_undirected_response_event() {
   let (mut ui, r) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
@@ -397,7 +397,7 @@ fn custom_undirected_response_event() {
   ui.focus(w1);
 
   let event = UiEvent::Custom(Box::new(42u64));
-  let result = ui.handle(event).unwrap();
+  let result = ui.handle(event).await.unwrap();
   // We expect three increments, one from each of the widgets.
   assert_eq!(*unwrap_custom::<_, u64>(result), 45);
 }
@@ -413,8 +413,8 @@ fn custom_directed_response_handler(
   None
 }
 
-#[test]
-fn custom_directed_response_event() {
+#[tokio::test]
+async fn custom_directed_response_event() {
   let (mut ui, r) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
@@ -448,15 +448,15 @@ fn custom_directed_response_event() {
   let rc = Rc::new(cell);
   let event = UiEvent::Custom(Box::new(Rc::clone(&rc)));
 
-  let result = ui.handle(event);
+  let result = ui.handle(event).await;
   assert!(result.is_none());
 
   let value = *(*rc).borrow();
   assert_eq!(value, 1338);
 }
 
-#[test]
-fn direct_custom_event() {
+#[tokio::test]
+async fn direct_custom_event() {
   let (mut ui, r) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
@@ -487,12 +487,12 @@ fn direct_custom_event() {
   ui.focus(c1);
 
   let event = UiEvent::Directed(w1, Box::new(10u64));
-  let result = ui.handle(event).unwrap();
+  let result = ui.handle(event).await.unwrap();
   assert_eq!(*unwrap_custom::<_, u64>(result), 13);
 }
 
-#[test]
-fn quit_event() {
+#[tokio::test]
+async fn quit_event() {
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -508,7 +508,7 @@ fn quit_event() {
     |id, _cap| Box::new(TestWidget::new(id)),
   );
 
-  let result = ui.handle(UiEvent::Quit);
+  let result = ui.handle(UiEvent::Quit).await;
   let expected = UnhandledEvent::Quit.into();
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
 }
@@ -536,8 +536,8 @@ fn chaining_handler(_: Id, _cap: &mut dyn MutCap<Event>, event: Box<dyn Any>) ->
   Some(event1.chain(event2))
 }
 
-#[test]
-fn chain_event_dispatch() {
+#[tokio::test]
+async fn chain_event_dispatch() {
   let (mut ui, r) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
@@ -568,7 +568,7 @@ fn chain_event_dispatch() {
   ui.focus(w1);
 
   let event = UiEvent::Custom(Box::new(1u64));
-  let result = ui.handle(event).unwrap().into_last();
+  let result = ui.handle(event).await.unwrap().into_last();
   assert_eq!(*unwrap_custom::<Event, u64>(result.into()), 8);
 }
 
@@ -611,8 +611,8 @@ fn hook_events_return_value() {
   assert!(ui.hook_events(w, None).is_some());
 }
 
-#[test]
-fn hook_events_handler() {
+#[tokio::test]
+async fn hook_events_handler() {
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -634,14 +634,14 @@ fn hook_events_handler() {
   assert_eq!(unsafe { HOOK_COUNT }, 0);
 
   let event = Event::Key(' ');
-  ui.handle(event).unwrap();
+  ui.handle(event).await.unwrap();
 
   assert_eq!(unsafe { HOOK_COUNT }, 1);
 
   ui.hook_events(c1, None);
 
   let event = Event::Key(' ');
-  ui.handle(event).unwrap();
+  ui.handle(event).await.unwrap();
 
   assert_eq!(unsafe { HOOK_COUNT }, 1);
 }
@@ -665,8 +665,8 @@ fn swallowing_event_handler(
 }
 
 
-#[test]
-fn hook_events_with_return() {
+#[tokio::test]
+async fn hook_events_with_return() {
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -685,7 +685,7 @@ fn hook_events_with_return() {
   ui.hook_events(w, Some(&quit_event_hook));
 
   let event = Event::Key(' ');
-  let result = ui.handle(event);
+  let result = ui.handle(event).await;
   let expected = UnhandledEvent::Quit.into();
 
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
@@ -719,8 +719,8 @@ fn checking_event_handler(_: Id, _cap: &mut dyn MutCap<Event>, event: Event) -> 
   None
 }
 
-#[test]
-fn hook_emitted_event_order() {
+#[tokio::test]
+async fn hook_emitted_event_order() {
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -739,7 +739,7 @@ fn hook_emitted_event_order() {
   ui.hook_events(w, Some(&emitting_event_hook));
 
   let event = Event::Key('y');
-  let result = ui.handle(event);
+  let result = ui.handle(event).await;
   assert!(result.is_none())
 }
 
@@ -766,8 +766,8 @@ fn returnable_event_handler(
 }
 
 
-#[test]
-fn custom_returnable_events() {
+#[tokio::test]
+async fn custom_returnable_events() {
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -794,7 +794,7 @@ fn custom_returnable_events() {
   let src = w1;
   let dst = w2;
   let event = UiEvent::Returnable(src, dst, Box::new(10u64));
-  let result = ui.handle(event).unwrap();
+  let result = ui.handle(event).await.unwrap();
 
   assert_eq!(*unwrap_custom::<_, u64>(result), 21);
 }

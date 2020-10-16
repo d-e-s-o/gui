@@ -1,3 +1,9 @@
+Unreleased
+----------
+- Converted all event handlers to async functions
+  - Added `async-trait` dependency in version `0.1`
+
+
 0.6.0-alpha.0
 -------------
 - Separated widgets from their mutable data

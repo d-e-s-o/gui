@@ -20,12 +20,15 @@
 use std::any::Any;
 use std::fmt::Debug;
 
+use async_trait::async_trait;
+
 use crate::MutCap;
 use crate::UiEvent;
 use crate::UiEvents;
 
 
 /// A trait representing an object capable of handling events.
+#[async_trait(?Send)]
 pub trait Handleable<E>: Debug
 where
   E: 'static,
@@ -38,7 +41,7 @@ where
   /// parent widget will receive it, or return a completely different
   /// event.
   #[allow(unused_variables)]
-  fn handle(&self, cap: &mut dyn MutCap<E>, event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, cap: &mut dyn MutCap<E>, event: E) -> Option<UiEvents<E>> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())
@@ -46,13 +49,21 @@ where
 
   /// Handle a custom event.
   #[allow(unused_variables)]
-  fn handle_custom(&self, cap: &mut dyn MutCap<E>, event: Box<dyn Any>) -> Option<UiEvents<E>> {
+  async fn handle_custom(
+    &self,
+    cap: &mut dyn MutCap<E>,
+    event: Box<dyn Any>,
+  ) -> Option<UiEvents<E>> {
     Some(UiEvent::Custom(event).into())
   }
 
   /// Handle a custom event without transferring ownership of it.
   #[allow(unused_variables)]
-  fn handle_custom_ref(&self, cap: &mut dyn MutCap<E>, event: &mut dyn Any) -> Option<UiEvents<E>> {
+  async fn handle_custom_ref(
+    &self,
+    cap: &mut dyn MutCap<E>,
+    event: &mut dyn Any,
+  ) -> Option<UiEvents<E>> {
     None
   }
 }

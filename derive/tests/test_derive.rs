@@ -25,6 +25,8 @@ use std::any::TypeId;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
+use async_trait::async_trait;
+
 use gui::BBox;
 use gui::Cap;
 use gui::ChainEvent;
@@ -179,11 +181,12 @@ where
   }
 }
 
+#[async_trait(?Send)]
 impl<E> Handleable<E> for TestGenericEvent<E>
 where
   E: Debug + MyEvent + 'static,
 {
-  fn handle(&self, _cap: &mut dyn MutCap<E>, mut event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, _cap: &mut dyn MutCap<E>, mut event: E) -> Option<UiEvents<E>> {
     event.modify();
     Some(UiEvent::Event(event).into())
   }
@@ -205,8 +208,8 @@ fn various_derive_combinations() {
   );
 }
 
-#[test]
-fn generic_widget() {
+#[tokio::test]
+async fn generic_widget() {
   type Event = ();
 
   let (mut ui, r) = Ui::<Event>::new(
@@ -219,11 +222,11 @@ fn generic_widget() {
     |id, _cap| Box::new(TestGeneric::<Event>::new(id)),
   );
 
-  ui.handle(UiEvent::Event(()));
+  ui.handle(UiEvent::Event(())).await;
 }
 
-#[test]
-fn generic_event() {
+#[tokio::test]
+async fn generic_event() {
   let (mut ui, r) = Ui::<CustomEvent>::new(
     || Box::new(()),
     |id, _cap| Box::new(TestGenericEvent::<CustomEvent>::new(id)),
@@ -236,7 +239,7 @@ fn generic_event() {
   ui.focus(r);
 
   let event = CustomEvent { value: 42 };
-  let result = ui.handle(UiEvent::Event(event)).unwrap();
+  let result = ui.handle(UiEvent::Event(event)).await.unwrap();
 
   match result {
     ChainEvent::Event(event) => match event {

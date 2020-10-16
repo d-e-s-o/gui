@@ -27,6 +27,8 @@ use std::fmt::Formatter;
 use std::fmt::Result;
 use std::ops::Deref;
 
+use async_trait::async_trait;
+
 use gui::ChainEvent;
 use gui::derive::Widget;
 use gui::Handleable;
@@ -150,8 +152,9 @@ impl TestWidget {
   }
 }
 
+#[async_trait(?Send)]
 impl Handleable<Event> for TestWidget {
-  fn handle(&self, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
+  async fn handle(&self, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
     // Also check that we can access the non-mutable version of the data.
     let _ = self.data::<TestWidgetData>(cap);
 
@@ -167,7 +170,11 @@ impl Handleable<Event> for TestWidget {
     }
   }
 
-  fn handle_custom(&self, cap: &mut dyn MutCap<Event>, event: Box<dyn Any>) -> Option<UiEvents> {
+  async fn handle_custom(
+    &self,
+    cap: &mut dyn MutCap<Event>,
+    event: Box<dyn Any>,
+  ) -> Option<UiEvents> {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.custom_handler.take() {
       Some(handler) => {
@@ -180,7 +187,7 @@ impl Handleable<Event> for TestWidget {
     }
   }
 
-  fn handle_custom_ref(
+  async fn handle_custom_ref(
     &self,
     cap: &mut dyn MutCap<Event>,
     event: &mut dyn Any,

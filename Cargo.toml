@@ -23,7 +23,15 @@ gitlab = { repository = "d-e-s-o/gui", branch = "master" }
 default = ["derive"]
 derive = ["gui-derive"]
 
+[dependencies.async-trait]
+version = "0.1.41"
+
 [dependencies.gui-derive]
 version = "=0.6.0-alpha.0"
 optional = true
 path = "derive"
+
+[dev-dependencies.tokio]
+version = "0.3.1"
+default-features = false
+features = ["macros", "rt"]
