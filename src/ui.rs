@@ -78,9 +78,10 @@ pub struct Id {
 
 impl Id {
   #[allow(unused_variables)]
-  fn new<E>(idx: usize, ui: &Ui<E>) -> Id
+  fn new<E, M>(idx: usize, ui: &Ui<E, M>) -> Id
   where
     E: 'static + Debug,
+    M: 'static + Debug,
   {
     Self {
       #[cfg(debug_assertions)]
@@ -102,9 +103,9 @@ impl Display for Id {
 pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
 type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
-type NewWidgetFn<E> = dyn FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>;
-type EventHookFn<E> =
-  &'static dyn Fn(&dyn Widget<E>, &mut dyn MutCap<E>, &E) -> Option<UiEvents<E>>;
+type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
+type EventHookFn<E, M> =
+  &'static dyn Fn(&dyn Widget<E, M>, &mut dyn MutCap<E, M>, &E) -> Option<UiEvents<E>>;
 
 
 /// A capability allowing for various widget related operations.
@@ -146,9 +147,10 @@ pub trait Cap: Debug {
 
 
 /// A mutable capability allowing for various widget related operations.
-pub trait MutCap<E>: Cap + Deref<Target = dyn Cap>
+pub trait MutCap<E, M>: Cap + Deref<Target = dyn Cap>
 where
   E: Debug,
+  M: Debug,
 {
   /// Retrieve a mutable reference to a widget's data.
   fn data_mut(&mut self, widget: Id) -> &mut dyn Any;
@@ -160,7 +162,7 @@ where
     &mut self,
     parent: Id,
     new_data: Box<NewDataFn>,
-    new_widget: Box<NewWidgetFn<E>>,
+    new_widget: Box<NewWidgetFn<E, M>>,
   ) -> Id;
 
   /// Show a widget, i.e., set its and its parents' visibility flag.
@@ -203,7 +205,11 @@ where
   /// handler and subsequent requests will overwrite the previously
   /// installed one. The method returns the handler that was previously
   /// installed, if any.
-  fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn<E>>) -> Option<EventHookFn<E>>;
+  fn hook_events(
+    &mut self,
+    widget: Id,
+    hook_fn: Option<EventHookFn<E, M>>,
+  ) -> Option<EventHookFn<E, M>>;
 }
 
 
@@ -217,9 +223,10 @@ fn get_next_ui_id() -> usize {
 
 /// This type contains data that is common to all widgets.
 #[derive(Debug)]
-struct WidgetData<E>
+struct WidgetData<E, M>
 where
   E: 'static,
+  M: 'static,
 {
   /// The `Id` of the parent widget.
   ///
@@ -233,12 +240,12 @@ where
   // for the `children` method present in `Cap`.
   children: Vec<Id>,
   /// An optional event hook that may be registered for the widget.
-  event_hook: Option<EventHook<E>>,
+  event_hook: Option<EventHook<E, M>>,
   /// Flag indicating the widget's visibility state.
   visible: bool,
 }
 
-impl<E> WidgetData<E> {
+impl<E, M> WidgetData<E, M> {
   fn new(parent_idx: Option<Index>, data: Box<dyn Any>) -> Self {
     Self {
       parent_idx,
@@ -252,11 +259,12 @@ impl<E> WidgetData<E> {
 
 
 /// A struct wrapping an `EventHookFn` while implementing `Debug`.
-struct EventHook<E>(EventHookFn<E>)
+struct EventHook<E, M>(EventHookFn<E, M>)
 where
-  E: 'static;
+  E: 'static,
+  M: 'static;
 
-impl<E> Debug for EventHook<E> {
+impl<E, M> Debug for EventHook<E, M> {
   fn fmt(&self, f: &mut Formatter<'_>) -> Result {
     write!(f, "{:p}", self.0)
   }
@@ -265,20 +273,23 @@ impl<E> Debug for EventHook<E> {
 
 /// A `Ui` is a container for related widgets.
 #[derive(Debug, Default)]
-pub struct Ui<E>
+pub struct Ui<E, M>
 where
   E: 'static + Debug,
+  M: 'static + Debug,
 {
   #[cfg(debug_assertions)]
   id: usize,
-  widgets: Vec<(WidgetData<E>, Rc<dyn Widget<E>>)>,
+  #[allow(clippy::type_complexity)]
+  widgets: Vec<(WidgetData<E, M>, Rc<dyn Widget<E, M>>)>,
   hooked: Rc<Vec<Index>>,
   focused: Option<Index>,
 }
 
-impl<E> Ui<E>
+impl<E, M> Ui<E, M>
 where
   E: 'static + Debug,
+  M: 'static + Debug,
 {
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
@@ -286,7 +297,7 @@ where
   pub fn new<D, W>(new_data: D, new_root_widget: W) -> (Self, Id)
   where
     D: FnOnce() -> Box<dyn Any>,
-    W: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+    W: FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>,
   {
     let mut ui = Self {
       #[cfg(debug_assertions)]
@@ -311,7 +322,7 @@ where
   pub fn add_ui_widget<D, W>(&mut self, parent: Id, new_data: D, new_widget: W) -> Id
   where
     D: FnOnce() -> Box<dyn Any>,
-    W: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+    W: FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>,
   {
     let parent_idx = self.validate(parent);
     self._add_widget(Some(parent_idx), new_data, new_widget)
@@ -321,7 +332,7 @@ where
   fn _add_widget<D, W>(&mut self, parent_idx: Option<Index>, new_data: D, new_widget: W) -> Id
   where
     D: FnOnce() -> Box<dyn Any>,
-    W: FnOnce(Id, &mut dyn MutCap<E>) -> Box<dyn Widget<E>>,
+    W: FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>,
   {
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
@@ -365,7 +376,7 @@ where
   }
 
   /// Lookup a widget from an `Index`.
-  fn lookup(&self, idx: Index) -> &dyn Widget<E> {
+  fn lookup(&self, idx: Index) -> &dyn Widget<E, M> {
     self.widgets[idx.idx].1.as_ref()
   }
 
@@ -379,7 +390,7 @@ where
   /// with respect to repeated reordering of the same widgets.
   fn show<F>(&mut self, idx: Index, reorder_fn: F)
   where
-    F: Fn(&mut Ui<E>, Index),
+    F: Fn(&mut Ui<E, M>, Index),
   {
     // Always run before making the widget visible. The reorder function
     // may check for visibility internally and relies in the value being
@@ -397,7 +408,7 @@ where
   /// Reorder the widget with the given `Index` as the last visible one.
   fn reorder<F>(&mut self, idx: Index, new_idx_fn: F)
   where
-    F: FnOnce(&Ui<E>, &Vec<Id>) -> usize,
+    F: FnOnce(&Ui<E, M>, &Vec<Id>) -> usize,
   {
     if let Some(parent_idx) = self.widgets[idx.idx].0.parent_idx {
       // First retrieve the index of the widget we are interested in
@@ -498,7 +509,7 @@ where
   }
 
   /// Recursively render the given widget and its children.
-  fn render_all(&self, idx: Index, widget: &dyn Widget<E>, renderer: &dyn Renderer, bbox: BBox) {
+  fn render_all(&self, idx: Index, widget: &dyn Widget<E, M>, renderer: &dyn Renderer, bbox: BBox) {
     if self.is_visible(idx) {
       // TODO: Ideally we would want to go without the recursion stuff we
       //       have. This may not be possible (efficiently) with safe
@@ -677,9 +688,10 @@ where
   }
 }
 
-impl<E> Cap for Ui<E>
+impl<E, M> Cap for Ui<E, M>
 where
   E: 'static + Debug,
+  M: 'static + Debug,
 {
   /// Retrieve a reference to a widget's data.
   fn data(&self, widget: Id) -> &dyn Any {
@@ -738,9 +750,10 @@ where
   }
 }
 
-impl<E> MutCap<E> for Ui<E>
+impl<E, M> MutCap<E, M> for Ui<E, M>
 where
   E: 'static + Debug,
+  M: 'static + Debug,
 {
   /// Retrieve a mutable reference to a widget's data.
   fn data_mut(&mut self, widget: Id) -> &mut dyn Any {
@@ -753,7 +766,7 @@ where
     &mut self,
     parent: Id,
     new_data: Box<NewDataFn>,
-    new_widget: Box<NewWidgetFn<E>>,
+    new_widget: Box<NewWidgetFn<E, M>>,
   ) -> Id {
     self.add_ui_widget(parent, new_data, new_widget)
   }
@@ -782,7 +795,11 @@ where
   }
 
   /// Install or remove an event hook handler.
-  fn hook_events(&mut self, widget: Id, hook_fn: Option<EventHookFn<E>>) -> Option<EventHookFn<E>> {
+  fn hook_events(
+    &mut self,
+    widget: Id,
+    hook_fn: Option<EventHookFn<E, M>>,
+  ) -> Option<EventHookFn<E, M>> {
     let idx = self.validate(widget);
     let data = &mut self.widgets[idx.idx].0;
     let result = self.hooked.binary_search(&idx);
@@ -808,9 +825,10 @@ where
   }
 }
 
-impl<E> Deref for Ui<E>
+impl<E, M> Deref for Ui<E, M>
 where
   E: 'static + Debug,
+  M: 'static + Debug,
 {
   type Target = dyn Cap;
 

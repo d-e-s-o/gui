@@ -67,8 +67,10 @@ use syn::WherePredicate;
 
 /// A type indicating whether or not to create a default implementation of Type::new().
 type New = Option<()>;
-/// A type representing an event type to parametrize a widget with.
+/// An event type to parametrize a widget with.
 type Event = Option<Type>;
+/// A message type to parametrize a widget with.
+type Message = Option<Type>;
 
 
 /// The error type used internally by this module.
@@ -123,6 +125,7 @@ type Result<T> = std::result::Result<T, Error>;
 /// ```rust
 /// # use std::any::TypeId;
 /// # type Event = ();
+/// # type Message = ();
 /// # #[derive(Debug)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
@@ -147,12 +150,12 @@ type Result<T> = std::result::Result<T, Error>;
 ///   }
 /// }
 ///
-/// impl gui::Widget<Event> for TestWidget {
+/// impl gui::Widget<Event, Message> for TestWidget {
 ///   fn type_id(&self) -> TypeId {
 ///     TypeId::of::<TestWidget>()
 ///   }
 /// }
-/// # impl gui::Handleable<Event> for TestWidget {}
+/// # impl gui::Handleable<Event, Message> for TestWidget {}
 /// ```
 #[proc_macro_derive(Widget, attributes(gui))]
 pub fn widget(input: TokenStream) -> TokenStream {
@@ -164,40 +167,41 @@ pub fn widget(input: TokenStream) -> TokenStream {
 
 fn expand_widget(input: TokenStream) -> Result<TokenStream> {
   let input = parse2::<DeriveInput>(input.into()).map_err(|_| "unable to parse input")?;
-  let (new, event) = parse_attributes(&input.attrs)?;
-  let tokens = expand_widget_input(new, &event, &input)?;
+  let (new, event, message) = parse_attributes(&input.attrs)?;
+  let tokens = expand_widget_input(new, &event, &message, &input)?;
   Ok(tokens.into())
 }
 
 /// Parse the macro's attributes.
-fn parse_attributes(attributes: &[Attribute]) -> Result<(New, Event)> {
-  let (new, event) = attributes
+fn parse_attributes(attributes: &[Attribute]) -> Result<(New, Event, Message)> {
+  let (new, event, message) = attributes
     .iter()
     .map(|attr| parse_attribute(attr))
-    .fold(Ok((None, None)), |result1, result2| {
+    .fold(Ok((None, None, None)), |result1, result2| {
       match (result1, result2) {
-        (Ok((new1, event1)), Ok((new2, event2))) => Ok((new2.or(new1), event2.or(event1))),
+        (Ok((new1, event1, message1)), Ok((new2, event2, message2))) => {
+          Ok((new2.or(new1), event2.or(event1), message2.or(message1)))
+        },
         (Err(x), _) | (_, Err(x)) => Err(x),
       }
     })?;
 
   // If no attribute is given we do not create a default implementation
   // of new().
-  Ok((new, event))
+  Ok((new, event, message))
 }
 
 /// Parse a single item in a #[gui(list...)] attribute list.
-fn parse_gui_attribute(item: Attr) -> Result<(New, Event)> {
+fn parse_gui_attribute(item: Attr) -> Result<(New, Event, Message)> {
   match item {
     Attr::Ident(ref ident) if ident == "default_new" => {
-      Ok((Some(()), None))
+      Ok((Some(()), None, None))
     },
     Attr::Binding(binding) => {
-      // Unfortunately we can't use a pattern guard here. See issue
-      // https://github.com/rust-lang/rust/issues/15287 for more
-      // details.
       if binding.ident == "Event" {
-        Ok((None, Some(binding.ty)))
+        Ok((None, Some(binding.ty), None))
+      } else if binding.ident == "Message" {
+        Ok((None, None, Some(binding.ty)))
       } else {
         Err(Error::from("encountered unknown binding attribute"))
       }
@@ -207,16 +211,18 @@ fn parse_gui_attribute(item: Attr) -> Result<(New, Event)> {
 }
 
 /// Parse a #[gui(list...)] attribute list.
-fn parse_gui_attributes(list: AttrList) -> Result<(New, Event)> {
+fn parse_gui_attributes(list: AttrList) -> Result<(New, Event, Message)> {
   let mut new = None;
   let mut event = None;
+  let mut message = None;
 
   for item in list.0 {
-    let (this_new, this_event) = parse_gui_attribute(item)?;
+    let (this_new, this_event, this_message) = parse_gui_attribute(item)?;
     new = this_new.or(new);
     event = this_event.or(event);
+    message = this_message.or(message);
   }
-  Ok((new, event))
+  Ok((new, event, message))
 }
 
 
@@ -255,7 +261,7 @@ impl Parse for Attr {
 
 
 /// Parse a single attribute, e.g., #[Event = MyEvent].
-fn parse_attribute(attribute: &Attribute) -> Result<(New, Event)> {
+fn parse_attribute(attribute: &Attribute) -> Result<(New, Event, Message)> {
   if attribute.path.is_ident("gui") {
     let tokens = attribute.tokens.clone();
     let attr = parse2::<AttrList>(tokens).map_err(|err| {
@@ -264,16 +270,21 @@ fn parse_attribute(attribute: &Attribute) -> Result<(New, Event)> {
 
     parse_gui_attributes(attr)
   } else {
-    Ok((None, None))
+    Ok((None, None, None))
   }
 }
 
 /// Expand the input with the implementation of the required traits.
-fn expand_widget_input(new: New, event: &Event, input: &DeriveInput) -> Result<Tokens> {
+fn expand_widget_input(
+  new: New,
+  event: &Event,
+  message: &Message,
+  input: &DeriveInput,
+) -> Result<Tokens> {
   match input.data {
     Data::Struct(ref data) => {
       check_struct_fields(&data.fields)?;
-      Ok(expand_widget_traits(new, event, input))
+      Ok(expand_widget_traits(new, event, message, input))
     },
     _ => Err(Error::from("#[derive(Widget)] is only defined for structs")),
   }
@@ -303,11 +314,11 @@ fn check_struct_fields(fields: &Fields) -> Result<()> {
 }
 
 /// Expand the struct input with the implementation of the required traits.
-fn expand_widget_traits(new: New, event: &Event, input: &DeriveInput) -> Tokens {
+fn expand_widget_traits(new: New, event: &Event, message: &Message, input: &DeriveInput) -> Tokens {
   let new_impl = expand_new_impl(new, input);
   let renderer = expand_renderer_trait(input);
   let object = expand_object_trait(input);
-  let widget = expand_widget_trait(event, input);
+  let widget = expand_widget_trait(event, message, input);
 
   quote! {
     #new_impl
@@ -379,18 +390,25 @@ fn expand_object_trait(input: &DeriveInput) -> Tokens {
 }
 
 /// Expand an implementation for the `gui::Widget` trait.
-fn expand_widget_trait(event: &Event, input: &DeriveInput) -> Tokens {
+fn expand_widget_trait(event: &Event, message: &Message, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
-  let generic = event.is_none();
-  let (generics, ty_generics, where_clause) = split_for_impl(&input.generics, generic);
+  let (generics, ty_generics, where_clause) = split_for_impl(&input.generics, event, message);
 
-  let widget = if let Some(event) = event {
-    quote! { ::gui::Widget<#event> }
+  let event = if let Some(event) = event {
+    quote! { #event }
   } else {
-    let event = Ident::new("__E", Span::call_site());
-    quote! { ::gui::Widget<#event> }
+    let ident = Ident::new("__E", Span::call_site());
+    quote! { #ident }
   };
 
+  let message = if let Some(message) = message {
+    quote! { #message }
+  } else {
+    let ident = Ident::new("__M", Span::call_site());
+    quote! { #ident }
+  };
+
+  let widget = quote! { ::gui::Widget<#event, #message> };
   quote! {
     impl #generics #widget for #name #ty_generics #where_clause {
       fn type_id(&self) -> ::std::any::TypeId {
@@ -412,12 +430,13 @@ fn expand_widget_trait(event: &Event, input: &DeriveInput) -> Tokens {
 /// ```rust
 /// # use gui_derive::Widget;
 /// # type Event = ();
+/// # type Message = ();
 /// # #[derive(Debug, Widget)]
-/// # #[gui(Event = Event)]
+/// # #[gui(Event = Event, Message = Message)]
 /// # struct TestWidget {
 /// #   id: gui::Id,
 /// # }
-/// impl gui::Handleable<Event> for TestWidget {}
+/// impl gui::Handleable<Event, Message> for TestWidget {}
 /// # fn main() {}
 /// ```
 #[proc_macro_derive(Handleable, attributes(gui))]
@@ -430,15 +449,19 @@ pub fn handleable(input: TokenStream) -> TokenStream {
 
 fn expand_handleable(input: TokenStream) -> Result<TokenStream> {
   let input = parse2::<DeriveInput>(input.into()).map_err(|_| "unable to parse input")?;
-  let (_, event) = parse_attributes(&input.attrs)?;
-  let tokens = expand_handleable_input(&event, &input)?;
+  let (_, event, message) = parse_attributes(&input.attrs)?;
+  let tokens = expand_handleable_input(&event, &message, &input)?;
   Ok(tokens.into())
 }
 
 /// Expand the input with the implementation of the required traits.
-fn expand_handleable_input(event: &Event, input: &DeriveInput) -> Result<Tokens> {
+fn expand_handleable_input(
+  event: &Event,
+  message: &Message,
+  input: &DeriveInput,
+) -> Result<Tokens> {
   match input.data {
-    Data::Struct(_) => Ok(expand_handleable_trait(event, input)),
+    Data::Struct(_) => Ok(expand_handleable_trait(event, message, input)),
     _ => Err(Error::from("#[derive(Handleable)] is only defined for structs")),
   }
 }
@@ -452,7 +475,7 @@ fn extend_generics(generics: &Generics, ident: Ident) -> Generics {
   generics
 }
 
-/// Extract an extended where clause of the given Generics object.
+/// Extended a where clause with the provided identifier.
 fn extend_where_clause(where_clause: &Option<WhereClause>, ident: &Ident) -> WhereClause {
   if let Some(where_clause) = where_clause {
     let predicate = quote! { #ident: 'static };
@@ -473,39 +496,58 @@ fn extend_where_clause(where_clause: &Option<WhereClause>, ident: &Ident) -> Whe
 }
 
 /// Split a type's generics into the pieces required for impl'ing a
-/// trait for that type, while correctly handling a potential generic
-/// event type.
-fn split_for_impl(generics: &Generics,
-                  generic: bool) -> (Generics, TypeGenerics<'_>, Option<WhereClause>) {
+/// trait for that type, while correctly handling potential generic
+/// event and types.
+fn split_for_impl<'g>(
+  generics: &'g Generics,
+  event: &Event,
+  message: &Message,
+) -> (Generics, TypeGenerics<'g>, Option<WhereClause>) {
   let (_, ty_generics, _) = generics.split_for_impl();
+  let generics = generics.clone();
+  let where_clause = generics.where_clause.clone();
 
-  if generic {
-    let event = Ident::new("__E", Span::call_site());
-    let generics = extend_generics(&generics, event.clone());
-    let where_clause = extend_where_clause(&generics.where_clause, &event);
-
-    (generics, ty_generics, Some(where_clause))
+  let (generics, where_clause) = if event.is_none() {
+    let ident = Ident::new("__E", Span::call_site());
+    let generics = extend_generics(&generics, ident.clone());
+    let where_clause = extend_where_clause(&where_clause, &ident);
+    (generics, Some(where_clause))
   } else {
-    let generics = generics.clone();
-    let where_clause = generics.where_clause.clone();
+    (generics, where_clause)
+  };
 
-    (generics, ty_generics, where_clause)
-  }
+  let (generics, where_clause) = if message.is_none() {
+    let ident = Ident::new("__M", Span::call_site());
+    let generics = extend_generics(&generics, ident.clone());
+    let where_clause = extend_where_clause(&where_clause, &ident);
+    (generics, Some(where_clause))
+  } else {
+    (generics, where_clause)
+  };
+
+  (generics, ty_generics, where_clause)
 }
 
 /// Expand an implementation for the `gui::Handleable` trait.
-fn expand_handleable_trait(event: &Event, input: &DeriveInput) -> Tokens {
+fn expand_handleable_trait(event: &Event, message: &Message, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
-  let generic = event.is_none();
-  let (generics, ty_generics, where_clause) = split_for_impl(&input.generics, generic);
+  let (generics, ty_generics, where_clause) = split_for_impl(&input.generics, event, message);
 
-  let handleable = if let Some(event) = event {
-    quote! { ::gui::Handleable<#event> }
+  let event = if let Some(event) = event {
+    quote! { #event }
   } else {
-    let event = Ident::new("__E", Span::call_site());
-    quote! { ::gui::Handleable<#event> }
+    let ident = Ident::new("__E", Span::call_site());
+    quote! { #ident }
   };
 
+  let message = if let Some(message) = message {
+    quote! { #message }
+  } else {
+    let ident = Ident::new("__M", Span::call_site());
+    quote! { #ident }
+  };
+
+  let handleable = quote! { ::gui::Handleable<#event, #message> };
   quote! {
     impl #generics #handleable for #name #ty_generics #where_clause {}
   }
@@ -523,9 +565,10 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    let (new, event) = parse_attributes(&input.attrs).unwrap();
+    let (new, event, message) = parse_attributes(&input.attrs).unwrap();
     assert_eq!(new, None);
     assert_eq!(event, None);
+    assert_eq!(message, None);
   }
 
   #[test]
@@ -536,9 +579,10 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    let (new, event) = parse_attributes(&input.attrs).unwrap();
+    let (new, event, message) = parse_attributes(&input.attrs).unwrap();
     assert_eq!(new, Some(()));
     assert_eq!(event, None);
+    assert_eq!(message, None);
   }
 
   #[test]
@@ -549,12 +593,53 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    let (new, event) = parse_attributes(&input.attrs).unwrap();
+    let (new, event, message) = parse_attributes(&input.attrs).unwrap();
     assert_eq!(new, None);
+    assert_eq!(message, None);
 
     let tokens = quote! { FooBarBazEvent };
     let foobar = parse2::<Type>(tokens).unwrap();
     assert_eq!(event, Some(foobar));
+  }
+
+  /// Test that we can handle the `Message` attribute properly.
+  #[test]
+  fn custom_message() {
+    let tokens = quote! {
+      #[gui(Message = SomeMessage)]
+      struct Foo { }
+    };
+
+    let input = parse2::<DeriveInput>(tokens).unwrap();
+    let (new, event, message) = parse_attributes(&input.attrs).unwrap();
+    assert_eq!(new, None);
+    assert_eq!(event, None);
+
+    let tokens = quote! { SomeMessage };
+    let some_message = parse2::<Type>(tokens).unwrap();
+    assert_eq!(message, Some(some_message));
+  }
+
+  /// Test that we can handle both the `Event` and `Message` attributes
+  /// properly together.
+  #[test]
+  fn custom_event_and_message() {
+    let tokens = quote! {
+      #[gui(Event = FooBar, Message = FooBaz)]
+      struct Foo { }
+    };
+
+    let input = parse2::<DeriveInput>(tokens).unwrap();
+    let (new, event, message) = parse_attributes(&input.attrs).unwrap();
+    assert_eq!(new, None);
+
+    let tokens = quote! { FooBar };
+    let foobar = parse2::<Type>(tokens).unwrap();
+    assert_eq!(event, Some(foobar));
+
+    let tokens = quote! { FooBaz };
+    let foobaz = parse2::<Type>(tokens).unwrap();
+    assert_eq!(message, Some(foobaz));
   }
 
   #[test]
@@ -566,8 +651,9 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    let (new, event) = parse_attributes(&input.attrs).unwrap();
+    let (new, event, message) = parse_attributes(&input.attrs).unwrap();
     assert_eq!(new, Some(()));
+    assert_eq!(message, None);
 
     let tokens = quote! { () };
     let parens = parse2::<Type>(tokens).unwrap();
@@ -583,7 +669,7 @@ mod tests {
     };
 
     let input = parse2::<DeriveInput>(tokens).unwrap();
-    let (_, event) = parse_attributes(&input.attrs).unwrap();
+    let (_, event, _) = parse_attributes(&input.attrs).unwrap();
 
     let tokens = quote! { Event2 };
     let event2 = parse2::<Type>(tokens).unwrap();

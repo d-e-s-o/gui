@@ -51,6 +51,7 @@ pub enum Event {
 }
 
 pub type UiEvents = GuiEvents<Event>;
+pub type Message = ();
 
 struct Handler<T>(T);
 
@@ -68,9 +69,9 @@ impl<T> Deref for Handler<T> {
   }
 }
 
-type EventFn = dyn Fn(Id, &mut dyn MutCap<Event>, Event) -> Option<UiEvents>;
-type CustomFn = dyn Fn(Id, &mut dyn MutCap<Event>, Box<dyn Any>) -> Option<UiEvents>;
-type CustomRefFn = dyn Fn(Id, &mut dyn MutCap<Event>, &mut dyn Any) -> Option<UiEvents>;
+type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvents>;
+type CustomFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Box<dyn Any>) -> Option<UiEvents>;
+type CustomRefFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, &mut dyn Any) -> Option<UiEvents>;
 
 type EventHandler = Handler<Box<EventFn>>;
 type CustomHandler = Handler<Box<CustomFn>>;
@@ -105,7 +106,7 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::handle`.
   pub fn event_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, &mut dyn MutCap<Event>, Event) -> Option<UiEvents>,
+    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvents>,
   {
     self.event_handler = Some(Handler(Box::new(handler)));
     self
@@ -114,7 +115,7 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::handle_custom`.
   pub fn custom_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, &mut dyn MutCap<Event>, Box<dyn Any>) -> Option<UiEvents>,
+    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Box<dyn Any>) -> Option<UiEvents>,
   {
     self.custom_handler = Some(Handler(Box::new(handler)));
     self
@@ -123,7 +124,7 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::handle_custom_ref`.
   pub fn custom_ref_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, &mut dyn MutCap<Event>, &mut dyn Any) -> Option<UiEvents>,
+    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, &mut dyn Any) -> Option<UiEvents>,
   {
     self.custom_ref_handler = Some(Handler(Box::new(handler)));
     self
@@ -141,7 +142,7 @@ impl TestWidgetDataBuilder {
 }
 
 #[derive(Debug, Widget)]
-#[gui(Event = Event)]
+#[gui(Event = Event, Message = Message)]
 pub struct TestWidget {
   id: Id,
 }
@@ -153,8 +154,8 @@ impl TestWidget {
 }
 
 #[async_trait(?Send)]
-impl Handleable<Event> for TestWidget {
-  async fn handle(&self, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
+impl Handleable<Event, Message> for TestWidget {
+  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<UiEvents> {
     // Also check that we can access the non-mutable version of the data.
     let _ = self.data::<TestWidgetData>(cap);
 
@@ -172,7 +173,7 @@ impl Handleable<Event> for TestWidget {
 
   async fn handle_custom(
     &self,
-    cap: &mut dyn MutCap<Event>,
+    cap: &mut dyn MutCap<Event, Message>,
     event: Box<dyn Any>,
   ) -> Option<UiEvents> {
     let data = self.data_mut::<TestWidgetData>(cap);
@@ -189,7 +190,7 @@ impl Handleable<Event> for TestWidget {
 
   async fn handle_custom_ref(
     &self,
-    cap: &mut dyn MutCap<Event>,
+    cap: &mut dyn MutCap<Event, Message>,
     event: &mut dyn Any,
   ) -> Option<UiEvents> {
     let data = self.data_mut::<TestWidgetData>(cap);

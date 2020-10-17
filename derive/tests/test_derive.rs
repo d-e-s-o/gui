@@ -45,8 +45,8 @@ use gui::UnhandledEvent;
 use gui::Widget;
 
 
-#[allow(unused)]
 type Event = ();
+type Message = ();
 
 
 #[derive(Debug, Widget, Handleable)]
@@ -60,12 +60,12 @@ struct TestWidget {
 // purposes.
 #[deny(unused_imports)]
 #[derive(Debug, Widget)]
-#[gui(default_new, Event = ())]
+#[gui(default_new, Event = (), Message = ())]
 struct TestWidgetCustom {
   id: Id,
 }
 
-impl Handleable<Event> for TestWidgetCustom {}
+impl Handleable<Event, Message> for TestWidgetCustom {}
 
 
 #[derive(Debug, Widget, Handleable)]
@@ -113,7 +113,7 @@ impl Object for TestHandleable {
   }
 }
 
-impl Widget<Event> for TestHandleable {
+impl Widget<Event, Message> for TestHandleable {
   fn type_id(&self) -> TypeId {
     TypeId::of::<TestHandleable>()
   }
@@ -121,17 +121,19 @@ impl Widget<Event> for TestHandleable {
 
 
 #[derive(Debug, Widget, Handleable)]
-struct TestGeneric<T>
+struct TestGeneric<E, M>
 where
-  T: Debug + 'static,
+  E: Debug + 'static,
+  M: Debug + 'static,
 {
   id: Id,
-  _data: PhantomData<T>,
+  _data: PhantomData<(E, M)>,
 }
 
-impl<T> TestGeneric<T>
+impl<E, M> TestGeneric<E, M>
 where
-  T: Debug + 'static,
+  E: Debug + 'static,
+  M: Debug + 'static,
 {
   pub fn new(id: Id) -> Self {
     Self {
@@ -182,11 +184,12 @@ where
 }
 
 #[async_trait(?Send)]
-impl<E> Handleable<E> for TestGenericEvent<E>
+impl<E, M> Handleable<E, M> for TestGenericEvent<E>
 where
   E: Debug + MyEvent + 'static,
+  M: 'static,
 {
-  async fn handle(&self, _cap: &mut dyn MutCap<E>, mut event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, _cap: &mut dyn MutCap<E, M>, mut event: E) -> Option<UiEvents<E>> {
     event.modify();
     Some(UiEvent::Event(event).into())
   }
@@ -210,16 +213,14 @@ fn various_derive_combinations() {
 
 #[tokio::test]
 async fn generic_widget() {
-  type Event = ();
-
-  let (mut ui, r) = Ui::<Event>::new(
+  let (mut ui, r) = Ui::<Event, Message>::new(
     || Box::new(()),
-    |id, _cap| Box::new(TestGeneric::<Event>::new(id)),
+    |id, _cap| Box::new(TestGeneric::<Event, Message>::new(id)),
   );
   let _ = ui.add_ui_widget(
     r,
     || Box::new(()),
-    |id, _cap| Box::new(TestGeneric::<Event>::new(id)),
+    |id, _cap| Box::new(TestGeneric::<Event, Message>::new(id)),
   );
 
   ui.handle(UiEvent::Event(())).await;
@@ -227,7 +228,7 @@ async fn generic_widget() {
 
 #[tokio::test]
 async fn generic_event() {
-  let (mut ui, r) = Ui::<CustomEvent>::new(
+  let (mut ui, r) = Ui::<CustomEvent, Message>::new(
     || Box::new(()),
     |id, _cap| Box::new(TestGenericEvent::<CustomEvent>::new(id)),
   );

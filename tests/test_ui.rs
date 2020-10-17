@@ -39,6 +39,7 @@ use gui::Ui;
 use gui::UiEvent;
 
 use crate::common::Event;
+use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
 use crate::common::UiEvents;
@@ -494,7 +495,7 @@ fn repeated_hide_preserves_order() {
 
 fn counting_handler(
   _widget: Id,
-  _cap: &mut dyn MutCap<Event>,
+  _cap: &mut dyn MutCap<Event, Message>,
   event: Box<dyn Any>,
 ) -> Option<UiEvents> {
   let value = *event.downcast::<u64>().unwrap();
@@ -503,18 +504,18 @@ fn counting_handler(
 
 
 /// Check if we need to create another `CreatingWidget`.
-fn need_more(id: Id, cap: &mut dyn MutCap<Event>) -> bool {
+fn need_more(id: Id, cap: &mut dyn MutCap<Event, Message>) -> bool {
   cap.parent_id(id).is_none()
 }
 
 #[derive(Debug, Widget)]
-#[gui(Event = Event)]
+#[gui(Event = Event, Message = Message)]
 struct CreatingWidget {
   id: Id,
 }
 
 impl CreatingWidget {
-  pub fn new(id: Id, cap: &mut dyn MutCap<Event>) -> Self {
+  pub fn new(id: Id, cap: &mut dyn MutCap<Event, Message>) -> Self {
     let child = cap.add_widget(
       id,
       Box::new(|| {
@@ -541,10 +542,10 @@ impl CreatingWidget {
 }
 
 #[async_trait(?Send)]
-impl Handleable<Event> for CreatingWidget {
+impl Handleable<Event, Message> for CreatingWidget {
   async fn handle_custom(
     &self,
-    cap: &mut dyn MutCap<Event>,
+    cap: &mut dyn MutCap<Event, Message>,
     event: Box<dyn Any>,
   ) -> Option<UiEvents> {
     counting_handler(self.id, cap, event)
@@ -605,7 +606,11 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(widget: Id, cap: &mut dyn MutCap<Event>, event: Event) -> Option<UiEvents> {
+fn create_handler(
+  widget: Id,
+  cap: &mut dyn MutCap<Event, Message>,
+  event: Event,
+) -> Option<UiEvents> {
   match event {
     Event::Key(key) if key == 'z' => {
       cap.add_widget(
@@ -646,7 +651,7 @@ async fn event_based_widget_creation() {
 
 fn recursive_operations_handler(
   widget: Id,
-  cap: &mut dyn MutCap<Event>,
+  cap: &mut dyn MutCap<Event, Message>,
   _event: Box<dyn Any>,
 ) -> Option<UiEvents> {
   // Check that we can use the supplied `MutCap` object to retrieve our

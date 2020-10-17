@@ -29,9 +29,10 @@ use crate::UiEvents;
 
 /// A trait representing an object capable of handling events.
 #[async_trait(?Send)]
-pub trait Handleable<E>: Debug
+pub trait Handleable<E, M>: Debug
 where
   E: 'static,
+  M: 'static,
 {
   /// Handle an `Event`.
   ///
@@ -41,7 +42,7 @@ where
   /// parent widget will receive it, or return a completely different
   /// event.
   #[allow(unused_variables)]
-  async fn handle(&self, cap: &mut dyn MutCap<E>, event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, cap: &mut dyn MutCap<E, M>, event: E) -> Option<UiEvents<E>> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())
@@ -51,7 +52,7 @@ where
   #[allow(unused_variables)]
   async fn handle_custom(
     &self,
-    cap: &mut dyn MutCap<E>,
+    cap: &mut dyn MutCap<E, M>,
     event: Box<dyn Any>,
   ) -> Option<UiEvents<E>> {
     Some(UiEvent::Custom(event).into())
@@ -61,9 +62,17 @@ where
   #[allow(unused_variables)]
   async fn handle_custom_ref(
     &self,
-    cap: &mut dyn MutCap<E>,
+    cap: &mut dyn MutCap<E, M>,
     event: &mut dyn Any,
   ) -> Option<UiEvents<E>> {
     None
+  }
+
+  /// React to a message.
+  ///
+  /// This method is the handler for the `MutCap::send` invocation.
+  #[allow(unused_variables)]
+  async fn react(&self, message: M, cap: &mut dyn MutCap<E, M>) -> Option<M> {
+    Some(message)
   }
 }

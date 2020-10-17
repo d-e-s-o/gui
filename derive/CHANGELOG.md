@@ -1,3 +1,9 @@
+Unreleased
+----------
+- Added support for generic `Message` type for `Widget` and `Handleable`
+  derive macros
+
+
 0.5.0
 -----
 - Fixed build breakage from using private `__rt` member from `quote`

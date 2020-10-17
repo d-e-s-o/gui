@@ -66,18 +66,20 @@ impl Object for Placeholder {
 }
 
 #[async_trait(?Send)]
-impl<E> Handleable<E> for Placeholder
+impl<E, M> Handleable<E, M> for Placeholder
 where
   E: 'static,
+  M: 'static,
 {
-  async fn handle(&self, _cap: &mut dyn MutCap<E>, _event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, _cap: &mut dyn MutCap<E, M>, _event: E) -> Option<UiEvents<E>> {
     unreachable!()
   }
 }
 
-impl<E> Widget<E> for Placeholder
+impl<E, M> Widget<E, M> for Placeholder
 where
   E: 'static,
+  M: 'static,
 {
   fn type_id(&self) -> TypeId {
     TypeId::of::<Placeholder>()

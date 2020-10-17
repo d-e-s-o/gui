@@ -33,9 +33,10 @@ use crate::Renderable;
 /// relationships, the `Ui` is responsible for dispatching events to
 /// widgets and rendering them. Hence, a widget usable for the `Ui`
 /// needs to implement `Handleable`, `Renderable`, and `Object`.
-pub trait Widget<E>: Handleable<E> + Renderable + Object + Debug
+pub trait Widget<E, M>: Handleable<E, M> + Renderable + Object + Debug
 where
   E: 'static,
+  M: 'static,
 {
   /// Get the `TypeId` of `self`.
   fn type_id(&self) -> TypeId;
@@ -56,22 +57,24 @@ where
   ///
   /// Note: This function will panic if the data associated with the
   ///       object is not of type `D`.
-  fn data_mut<'c, D>(&self, cap: &'c mut dyn MutCap<E>) -> &'c mut D
+  fn data_mut<'c, D>(&self, cap: &'c mut dyn MutCap<E, M>) -> &'c mut D
   where
     Self: Sized,
     D: 'static,
     E: Debug,
+    M: Debug,
   {
     cap.data_mut(self.id()).downcast_mut::<D>().unwrap()
   }
 }
 
-impl<E> dyn Widget<E>
+impl<E, M> dyn Widget<E, M>
 where
   E: 'static,
+  M: 'static,
 {
   /// Check if the widget is of type `T`.
-  pub fn is<T: Widget<E>>(&self) -> bool {
+  pub fn is<T: Widget<E, M>>(&self) -> bool {
     let t = TypeId::of::<T>();
     let own_t = Widget::type_id(self);
 
@@ -79,18 +82,18 @@ where
   }
 
   /// Downcast the widget reference to type `T`.
-  pub fn downcast_ref<T: Widget<E>>(&self) -> Option<&T> {
+  pub fn downcast_ref<T: Widget<E, M>>(&self) -> Option<&T> {
     if self.is::<T>() {
-      unsafe { Some(&*(self as *const dyn Widget<E> as *const T)) }
+      unsafe { Some(&*(self as *const dyn Widget<E, M> as *const T)) }
     } else {
       None
     }
   }
 
   /// Downcast the widget reference to type `T`.
-  pub fn downcast_mut<T: Widget<E>>(&mut self) -> Option<&mut T> {
+  pub fn downcast_mut<T: Widget<E, M>>(&mut self) -> Option<&mut T> {
     if self.is::<T>() {
-      unsafe { Some(&mut *(self as *mut dyn Widget<E> as *mut T)) }
+      unsafe { Some(&mut *(self as *mut dyn Widget<E, M> as *mut T)) }
     } else {
       None
     }
