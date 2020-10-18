@@ -1,7 +1,9 @@
 Unreleased
 ----------
-- Added additional generic `Message` type to `Ui`, `Widget`, and
-  more structs & traits
+- Introduced asynchronous message passing mechanism
+  - Added additional generic `Message` type to `Ui`, `Widget`, and
+    more structs & traits
+  - Added `MutCap::send` method
 - Converted all event handlers to async functions
   - Added `async-trait` dependency in version `0.1`
 

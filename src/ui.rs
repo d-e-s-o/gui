@@ -32,6 +32,8 @@ use std::sync::atomic::AtomicUsize;
 #[cfg(debug_assertions)]
 use std::sync::atomic::Ordering;
 
+use async_trait::async_trait;
+
 use crate::BBox;
 use crate::ChainEvent;
 use crate::CustomEvent;
@@ -147,6 +149,7 @@ pub trait Cap: Debug {
 
 
 /// A mutable capability allowing for various widget related operations.
+#[async_trait(?Send)]
 pub trait MutCap<E, M>: Cap + Deref<Target = dyn Cap>
 where
   E: Debug,
@@ -210,6 +213,9 @@ where
     widget: Id,
     hook_fn: Option<EventHookFn<E, M>>,
   ) -> Option<EventHookFn<E, M>>;
+
+  /// Send the provided message to the given widget.
+  async fn send(&mut self, widget: Id, message: M) -> Option<M>;
 }
 
 
@@ -750,6 +756,7 @@ where
   }
 }
 
+#[async_trait(?Send)]
 impl<E, M> MutCap<E, M> for Ui<E, M>
 where
   E: 'static + Debug,
@@ -822,6 +829,14 @@ where
     let prev_hook = data.event_hook.take();
     data.event_hook = hook_fn.map(|x| EventHook(x));
     prev_hook.map(|x| x.0)
+  }
+
+  /// Send the provided message to the given widget.
+  async fn send(&mut self, widget: Id, message: M) -> Option<M> {
+    let idx = self.validate(widget);
+    let widget = self.widgets[idx.idx].1.clone();
+
+    widget.react(message, self).await
   }
 }
 
