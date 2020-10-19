@@ -216,6 +216,10 @@ where
 
   /// Send the provided message to the given widget.
   async fn send(&mut self, widget: Id, message: M) -> Option<M>;
+
+  /// Send the provided message to the given widget, without
+  /// transferring ownership of the message.
+  async fn call(&mut self, widget: Id, message: &mut M) -> Option<M>;
 }
 
 
@@ -837,6 +841,15 @@ where
     let widget = self.widgets[idx.idx].1.clone();
 
     widget.react(message, self).await
+  }
+
+  /// Send the provided message to the given widget, without
+  /// transferring ownership of the message.
+  async fn call(&mut self, widget: Id, message: &mut M) -> Option<M> {
+    let idx = self.validate(widget);
+    let widget = self.widgets[idx.idx].1.clone();
+
+    widget.respond(message, self).await
   }
 }
 

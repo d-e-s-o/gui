@@ -97,6 +97,14 @@ impl Handleable<Event, Message> for ForwardingWidget {
     cap.send(self.next, Message::new(message.value + 1)).await;
     None
   }
+
+  async fn respond(
+    &self,
+    message: &mut Message,
+    cap: &mut dyn MutCap<Event, Message>,
+  ) -> Option<Message> {
+    cap.call(self.next, message).await
+  }
 }
 
 static mut FINAL_FORWARDED_VALUE: u64 = 0;
@@ -132,4 +140,34 @@ async fn forward_message() {
   let result = ui.send(w2, Message::new(1337)).await;
   assert_eq!(result, None);
   assert_eq!(unsafe { FINAL_FORWARDED_VALUE }, 1339);
+}
+
+/// Test that "calling" another widget works as it should.
+#[tokio::test]
+async fn call_message() {
+  let (mut ui, root) = Ui::new(
+    || {
+      TestWidgetDataBuilder::new()
+        .respond_handler(|m, _| {
+          m.value *= 2;
+          None
+        })
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    root,
+    || Box::new(()),
+    |id, _cap| Box::new(ForwardingWidget::new(id, root)),
+  );
+  let w2 = ui.add_ui_widget(
+    root,
+    || Box::new(()),
+    |id, _cap| Box::new(ForwardingWidget::new(id, w1)),
+  );
+
+  let mut message = Message::new(1337);
+  ui.call(w2, &mut message).await;
+  assert_eq!(message.value, 2674);
 }

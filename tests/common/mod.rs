@@ -86,11 +86,13 @@ type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEv
 type CustomFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Box<dyn Any>) -> Option<UiEvents>;
 type CustomRefFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, &mut dyn Any) -> Option<UiEvents>;
 type ReactFn = dyn Fn(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
+type RespondFn = dyn Fn(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 
 type EventHandler = Handler<Box<EventFn>>;
 type CustomHandler = Handler<Box<CustomFn>>;
 type CustomRefHandler = Handler<Box<CustomRefFn>>;
 type ReactHandler = Handler<Box<ReactFn>>;
+type RespondHandler = Handler<Box<RespondFn>>;
 
 
 #[derive(Debug)]
@@ -99,6 +101,7 @@ pub struct TestWidgetData {
   custom_handler: Option<CustomHandler>,
   custom_ref_handler: Option<CustomRefHandler>,
   react_handler: Option<ReactHandler>,
+  respond_handler: Option<RespondHandler>,
 }
 
 #[derive(Debug)]
@@ -107,6 +110,7 @@ pub struct TestWidgetDataBuilder {
   custom_handler: Option<CustomHandler>,
   custom_ref_handler: Option<CustomRefHandler>,
   react_handler: Option<ReactHandler>,
+  respond_handler: Option<RespondHandler>,
 }
 
 #[allow(unused)]
@@ -118,6 +122,7 @@ impl TestWidgetDataBuilder {
       custom_handler: None,
       custom_ref_handler: None,
       react_handler: None,
+      respond_handler: None,
     }
   }
 
@@ -157,6 +162,15 @@ impl TestWidgetDataBuilder {
     self
   }
 
+  /// Set a handler for `Handleable::respond`.
+  pub fn respond_handler<F>(mut self, handler: F) -> Self
+  where
+    F: 'static + Fn(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>,
+  {
+    self.respond_handler = Some(Handler(Box::new(handler)));
+    self
+  }
+
   /// Build the `TestWidget` object.
   pub fn build(self) -> Box<dyn Any> {
     let data = TestWidgetData {
@@ -164,6 +178,7 @@ impl TestWidgetDataBuilder {
       custom_handler: self.custom_handler,
       custom_ref_handler: self.custom_ref_handler,
       react_handler: self.react_handler,
+      respond_handler: self.respond_handler,
     };
     Box::new(data)
   }
@@ -241,6 +256,24 @@ impl Handleable<Event, Message> for TestWidget {
         let data = self.data_mut::<TestWidgetData>(cap);
         data.react_handler = Some(handler);
         message
+      },
+      None => None,
+    }
+  }
+
+  async fn respond(
+    &self,
+    message: &mut Message,
+    cap: &mut dyn MutCap<Event, Message>,
+  ) -> Option<Message> {
+    let data = self.data_mut::<TestWidgetData>(cap);
+    match data.respond_handler.take() {
+      Some(handler) => {
+        let result = handler(message, cap);
+
+        let data = self.data_mut::<TestWidgetData>(cap);
+        data.respond_handler = Some(handler);
+        result
       },
       None => None,
     }

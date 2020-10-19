@@ -75,4 +75,12 @@ where
   async fn react(&self, message: M, cap: &mut dyn MutCap<E, M>) -> Option<M> {
     Some(message)
   }
+
+  /// Respond to a message.
+  ///
+  /// This is the handler for the `MutCap::call` invocation.
+  #[allow(unused_variables)]
+  async fn respond(&self, message: &mut M, cap: &mut dyn MutCap<E, M>) -> Option<M> {
+    None
+  }
 }
