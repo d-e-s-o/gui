@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.0-alpha.1
+-------------
 - Added support for generic `Message` type for `Widget` and `Handleable`
   derive macros
 

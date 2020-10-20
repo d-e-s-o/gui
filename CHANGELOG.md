@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.0-alpha.1
+-------------
 - Introduced asynchronous message passing mechanism
   - Added additional generic `Message` type to `Ui`, `Widget`, and
     more structs & traits
