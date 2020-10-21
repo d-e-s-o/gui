@@ -367,7 +367,10 @@ where
 
     // TODO: Consider making NewWidgetFn return an Rc instead of a Box
     //       to begin with as Rc::from(Box) is a non-trivial operation.
-    let widget = Rc::from(new_widget(id, self));
+    let widget = Rc::<dyn Widget<E, M>>::from(new_widget(id, self));
+    // As a help for the user, check that the widget's ID is actually
+    // the correct one that we provided.
+    debug_assert_eq!(widget.id(), id, "Created widget does not have provided Id");
     // Replace our placeholder with the actual widget we just created.
     // Note that because we store the children separately as part of an
     // `WidgetData` object there is no need for us to do anything about

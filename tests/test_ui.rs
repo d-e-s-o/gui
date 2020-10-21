@@ -145,6 +145,23 @@ fn creation_order_is_child_order() {
   assert!(it.next().is_none());
 }
 
+/// Check that wrong `Id` usage is flagged when assertions are enabled.
+#[tokio::test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "Created widget does not have provided Id")]
+async fn incorrect_widget_id() {
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let _ = ui.add_ui_widget(
+    root,
+    || TestWidgetDataBuilder::new().build(),
+    // Initialize the widget with the ID of the root widget.
+    |_id, _cap| Box::new(TestWidget::new(root)),
+  );
+}
+
 #[tokio::test]
 #[cfg(debug_assertions)]
 #[should_panic(expected = "The given Id belongs to a different Ui")]
