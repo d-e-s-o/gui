@@ -1,7 +1,7 @@
 // lib.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -41,6 +41,7 @@
 
 mod event;
 mod handleable;
+mod mergeable;
 mod object;
 mod placeholder;
 mod renderable;
@@ -59,6 +60,7 @@ pub use self::event::UiEvents;
 pub use self::event::UnhandledEvent;
 pub use self::event::UnhandledEvents;
 pub use self::handleable::Handleable;
+pub use self::mergeable::Mergeable;
 pub use self::object::Object;
 pub use self::renderable::Renderable;
 pub use self::renderer::BBox;

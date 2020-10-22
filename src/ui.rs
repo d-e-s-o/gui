@@ -37,7 +37,7 @@ use async_trait::async_trait;
 use crate::BBox;
 use crate::ChainEvent;
 use crate::CustomEvent;
-use crate::EventChain;
+use crate::Mergeable;
 use crate::OptionChain;
 use crate::Placeholder;
 use crate::Renderer;
@@ -101,13 +101,64 @@ impl Display for Id {
 }
 
 
+/// An internally used trait for abstracting over the invocation of
+/// event hooks.
+trait Hooker<E, M>
+where
+  E: Debug,
+  M: Debug,
+{
+  fn invoke(&self, ui: &mut Ui<E, M>, event: &E) -> Option<E>;
+}
+
+struct Hooked {}
+
+impl<E, M> Hooker<E, M> for Hooked
+where
+  E: Debug + Mergeable,
+  M: Debug,
+{
+  fn invoke(&self, ui: &mut Ui<E, M>, event: &E) -> Option<E> {
+    let mut result = None;
+
+    for idx in ui.hooked.clone().as_ref() {
+      match &ui.widgets[idx.idx].0.event_hook {
+        Some(hook_fn) => {
+          let widget = ui.widgets[idx.idx].1.clone();
+          let event = hook_fn.0(widget.as_ref(), ui, event);
+
+          result = match (result, event) {
+            (Some(e1), Some(e2)) => Some(e1.merge_with(e2)),
+            (Some(e), None) | (None, Some(e)) => Some(e),
+            (None, None) => None,
+          }
+        },
+        None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
+      };
+    }
+    result
+  }
+}
+
+struct NotHooked {}
+
+impl<E, M> Hooker<E, M> for NotHooked
+where
+  E: Debug,
+  M: Debug,
+{
+  fn invoke(&self, _ui: &mut Ui<E, M>, _event: &E) -> Option<E> {
+    None
+  }
+}
+
+
 /// An iterator over the children of a widget.
 pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
 type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
 type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
-type EventHookFn<E, M> =
-  &'static dyn Fn(&dyn Widget<E, M>, &mut dyn MutCap<E, M>, &E) -> Option<UiEvents<E>>;
+type EventHookFn<E, M> = &'static dyn Fn(&dyn Widget<E, M>, &mut dyn MutCap<E, M>, &E) -> Option<E>;
 
 
 /// A capability allowing for various widget related operations.
@@ -197,9 +248,15 @@ where
   /// handler gets to inspect the event before any widget gets a chance
   /// to handle it "officially" through the `Handleable::handle` method.
   ///
-  /// Event hook handlers are allowed to emit events on its own, just as
-  /// "normal" event handlers. It is guaranteed that these emitted
-  /// events will reach the widget after the event that was hooked.
+  /// Event hook handlers are allowed to emit an event on their own,
+  /// just as "normal" event handlers. The events of all hooks get
+  /// merged into a single event. As such, they must be mergeable. Note
+  /// that the order in which multiple event hooks are invoked relative
+  /// to each other is unspecified, and that should be taken into
+  /// account when providing a `Mergeable` implementation for the
+  /// provided event type.
+  /// Furthermore, the final merged event is not passed to widgets, but
+  /// returned straight back as `UnhandledEvents`.
   ///
   /// Note that event hook functions are only able to inspect events and
   /// not change or discard them.
@@ -212,7 +269,9 @@ where
     &mut self,
     widget: Id,
     hook_fn: Option<EventHookFn<E, M>>,
-  ) -> Option<EventHookFn<E, M>>;
+  ) -> Option<EventHookFn<E, M>>
+  where
+    E: Mergeable;
 
   /// Send the provided message to the given widget.
   async fn send(&mut self, widget: Id, message: M) -> Option<M>;
@@ -282,7 +341,6 @@ impl<E, M> Debug for EventHook<E, M> {
 
 
 /// A `Ui` is a container for related widgets.
-#[derive(Debug, Default)]
 pub struct Ui<E, M>
 where
   E: 'static + Debug,
@@ -292,6 +350,7 @@ where
   id: usize,
   #[allow(clippy::type_complexity)]
   widgets: Vec<(WidgetData<E, M>, Rc<dyn Widget<E, M>>)>,
+  hooker: &'static dyn Hooker<E, M>,
   hooked: Rc<Vec<Index>>,
   focused: Option<Index>,
 }
@@ -309,10 +368,13 @@ where
     D: FnOnce() -> Box<dyn Any>,
     W: FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>,
   {
+    static NOT_HOOKED: NotHooked = NotHooked {};
+
     let mut ui = Self {
       #[cfg(debug_assertions)]
       id: get_next_ui_id(),
       widgets: Default::default(),
+      hooker: &NOT_HOOKED,
       hooked: Default::default(),
       focused: None,
     };
@@ -537,23 +599,6 @@ where
     }
   }
 
-  /// Invoke all registered event hooks for the given event.
-  fn invoke_event_hooks(&mut self, event: &E) -> Option<UiEvents<E>> {
-    let mut result = None;
-
-    for idx in self.hooked.clone().as_ref() {
-      match &self.widgets[idx.idx].0.event_hook {
-        Some(hook_fn) => {
-          let widget = self.widgets[idx.idx].1.clone();
-          let event = hook_fn.0(widget.as_ref(), self, event);
-          result = OptionChain::chain(result, event);
-        },
-        None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
-      };
-    }
-    result
-  }
-
   /// Handle an event.
   ///
   /// This function performs the initial determination of which widget
@@ -565,10 +610,10 @@ where
   {
     let ui_event = event.into();
 
-    let ui_events = if let UiEvent::Event(event) = &ui_event {
+    let hook_event = if let UiEvent::Event(event) = &ui_event {
       // Invoke the hooks before passing the event to the widgets on the
       // "official" route.
-      self.invoke_event_hooks(event)
+      self.hooker.invoke(self, &event)
     } else {
       None
     };
@@ -585,10 +630,10 @@ where
       _ => None,
     };
 
-    // Note that we guarantee that the event as it came in is received
-    // by the widget before additional events as emitted by the hook.
-    let events = ui_event.chain_opt(ui_events);
-    self.handle_ui_events(idx, events).await
+    // Any hook emitted events are not passed to the widgets themselves,
+    // but just returned.
+    let unhandled = self.handle_ui_event(idx, ui_event).await;
+    OptionChain::chain(unhandled, hook_event.map(UnhandledEvent::Event))
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
@@ -813,7 +858,13 @@ where
     &mut self,
     widget: Id,
     hook_fn: Option<EventHookFn<E, M>>,
-  ) -> Option<EventHookFn<E, M>> {
+  ) -> Option<EventHookFn<E, M>>
+  where
+    E: Mergeable,
+  {
+    static HOOKED: Hooked = Hooked {};
+    self.hooker = &HOOKED;
+
     let idx = self.validate(widget);
     let data = &mut self.widgets[idx.idx].0;
     let result = self.hooked.binary_search(&idx);
@@ -853,6 +904,19 @@ where
     let widget = self.widgets[idx.idx].1.clone();
 
     widget.respond(message, self).await
+  }
+}
+
+impl<E, M> Debug for Ui<E, M>
+where
+  E: 'static + Debug,
+  M: 'static + Debug,
+{
+  fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    let mut debug = f.debug_struct("Ui");
+    #[cfg(debug_assertions)]
+    let _ = debug.field("id", &self.id);
+    debug.finish()
   }
 }
 

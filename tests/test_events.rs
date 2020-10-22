@@ -584,7 +584,7 @@ fn count_event_hook(
   widget: &dyn Widget<Event, Message>,
   _cap: &mut dyn MutCap<Event, Message>,
   _event: &Event,
-) -> Option<UiEvents> {
+) -> Option<Event> {
   assert!(widget.downcast_ref::<TestWidget>().is_some());
 
   unsafe {
@@ -653,83 +653,27 @@ async fn hook_events_handler() {
 
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn quit_event_hook(
-  _: &dyn Widget<Event, Message>,
-  _cap: &mut dyn MutCap<Event, Message>,
-  _event: &Event,
-) -> Option<UiEvents> {
-  Some(UiEvent::Quit.into())
-}
-
-fn swallowing_event_handler(
-  _: Id,
-  _cap: &mut dyn MutCap<Event, Message>,
-  _event: Event,
-) -> Option<UiEvents> {
-  None
-}
-
-
-#[tokio::test]
-async fn hook_events_with_return() {
-  let (mut ui, r) = Ui::new(
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w = ui.add_ui_widget(
-    r,
-    || {
-      TestWidgetDataBuilder::new()
-        .event_handler(swallowing_event_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-
-  ui.focus(w);
-  ui.hook_events(w, Some(&quit_event_hook));
-
-  let event = Event::Key(' ');
-  let result = ui.handle(event).await;
-  let expected = UnhandledEvent::Quit.into();
-
-  assert!(compare_unhandled_events(&result.unwrap(), &expected));
-}
-
-
-#[allow(clippy::trivially_copy_pass_by_ref)]
 fn emitting_event_hook(
   _: &dyn Widget<Event, Message>,
   _cap: &mut dyn MutCap<Event, Message>,
   event: &Event,
-) -> Option<UiEvents> {
+) -> Option<Event> {
   assert_eq!(*event, Event::Key('y'));
-
-  Some(Event::Key('z').into())
+  Some(Event::Key('z'))
 }
-
-static mut FIRST: bool = true;
 
 fn checking_event_handler(
   _: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
 ) -> Option<UiEvents> {
-  unsafe {
-    if FIRST {
-      assert_eq!(event, Event::Key('y'));
-    } else {
-      assert_eq!(event, Event::Key('z'));
-    };
-
-    FIRST = false;
-  }
-
+  assert_eq!(event, Event::Key('y'));
   None
 }
 
+/// Test that hook emitted events are not seen by widgets.
 #[tokio::test]
-async fn hook_emitted_event_order() {
+async fn hook_emitted_events() {
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -749,7 +693,55 @@ async fn hook_emitted_event_order() {
 
   let event = Event::Key('y');
   let result = ui.handle(event).await;
-  assert!(result.is_none())
+
+  let expected = UnhandledEvent::Event(Event::Key('z')).into();
+  assert!(compare_unhandled_events(&result.unwrap(), &expected))
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn different_emitting_event_hook(
+  _: &dyn Widget<Event, Message>,
+  _cap: &mut dyn MutCap<Event, Message>,
+  event: &Event,
+) -> Option<Event> {
+  assert_eq!(*event, Event::Key('y'));
+  Some(Event::Key('a'))
+}
+
+/// Check that hook emitted events are attempted to be merged.
+#[tokio::test]
+#[should_panic(expected = "`(left == right)`\n  left: `\'a\'`,\n right: `\'z\'`")]
+async fn hook_event_merging() {
+  let (mut ui, r) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    r,
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(checking_event_handler)
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w2 = ui.add_ui_widget(
+    r,
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(checking_event_handler)
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+
+  // We register two event hooks that emit different events that are not
+  // actually mergeable by our definition. So we expect a panic.
+  ui.hook_events(w1, Some(&emitting_event_hook));
+  ui.hook_events(w2, Some(&different_emitting_event_hook));
+
+  let event = Event::Key('y');
+  let _ = ui.handle(event).await;
 }
 
 

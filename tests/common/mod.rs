@@ -33,6 +33,7 @@ use gui::ChainEvent;
 use gui::derive::Widget;
 use gui::Handleable;
 use gui::Id;
+use gui::Mergeable;
 use gui::MutCap;
 use gui::UiEvents as GuiEvents;
 use gui::UnhandledEvent;
@@ -51,6 +52,21 @@ pub enum Event {
 }
 
 pub type UiEvents = GuiEvents<Event>;
+
+impl Mergeable for Event {
+  fn merge_with(self, other: Self) -> Self {
+    match other {
+      Self::Empty => self,
+      Self::Key(c1) => match self {
+        Self::Empty => other,
+        Self::Key(c2) => {
+          assert_eq!(c1, c2);
+          self
+        },
+      },
+    }
+  }
+}
 
 #[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq)]

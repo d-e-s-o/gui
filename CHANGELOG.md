@@ -1,3 +1,10 @@
+Unreleased
+----------
+- Adjusted event hooks to return a single event
+  - Introduced `Mergeable` trait to combine events emitted from an event
+    hook
+
+
 0.6.0-alpha.1
 -------------
 - Introduced asynchronous message passing mechanism
