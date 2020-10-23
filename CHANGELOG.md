@@ -3,6 +3,7 @@ Unreleased
 - Adjusted event hooks to return a single event
   - Introduced `Mergeable` trait to combine events emitted from an event
     hook
+- Introduced post-hook support
 
 
 0.6.0-alpha.1

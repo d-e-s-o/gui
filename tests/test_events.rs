@@ -579,13 +579,17 @@ async fn chain_event_dispatch() {
 
 static mut HOOK_COUNT: u64 = 0;
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
 fn count_event_hook(
   widget: &dyn Widget<Event, Message>,
   _cap: &mut dyn MutCap<Event, Message>,
-  _event: &Event,
+  event: Option<&Event>,
 ) -> Option<Event> {
   assert!(widget.downcast_ref::<TestWidget>().is_some());
+  let is_pre_hook = event.is_some();
+  // For each event we should always increment our count twice: once for
+  // the pre-hook and once for the post-hook. That means that when the
+  // count is an integer multiple of two, we should be in a pre-hook.
+  assert!((unsafe { HOOK_COUNT } % 2 == 0) == is_pre_hook);
 
   unsafe {
     HOOK_COUNT += 1;
@@ -641,25 +645,28 @@ async fn hook_events_handler() {
   let event = Event::Key(' ');
   ui.handle(event).await.unwrap();
 
-  assert_eq!(unsafe { HOOK_COUNT }, 1);
+  assert_eq!(unsafe { HOOK_COUNT }, 2);
 
   ui.hook_events(c1, None);
 
   let event = Event::Key(' ');
   ui.handle(event).await.unwrap();
 
-  assert_eq!(unsafe { HOOK_COUNT }, 1);
+  assert_eq!(unsafe { HOOK_COUNT }, 2);
 }
 
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
 fn emitting_event_hook(
   _: &dyn Widget<Event, Message>,
   _cap: &mut dyn MutCap<Event, Message>,
-  event: &Event,
+  event: Option<&Event>,
 ) -> Option<Event> {
-  assert_eq!(*event, Event::Key('y'));
-  Some(Event::Key('z'))
+  if let Some(event) = event {
+    assert_eq!(event, &Event::Key('y'));
+    Some(Event::Key('z'))
+  } else {
+    None
+  }
 }
 
 fn checking_event_handler(
@@ -698,13 +705,11 @@ async fn hook_emitted_events() {
   assert!(compare_unhandled_events(&result.unwrap(), &expected))
 }
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
 fn different_emitting_event_hook(
   _: &dyn Widget<Event, Message>,
   _cap: &mut dyn MutCap<Event, Message>,
-  event: &Event,
+  _event: Option<&Event>,
 ) -> Option<Event> {
-  assert_eq!(*event, Event::Key('y'));
   Some(Event::Key('a'))
 }
 

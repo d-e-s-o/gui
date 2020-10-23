@@ -108,7 +108,7 @@ where
   E: Debug,
   M: Debug,
 {
-  fn invoke(&self, ui: &mut Ui<E, M>, event: &E) -> Option<E>;
+  fn invoke(&self, ui: &mut Ui<E, M>, event: Option<&E>) -> Option<E>;
 }
 
 struct Hooked {}
@@ -118,7 +118,7 @@ where
   E: Debug + Mergeable,
   M: Debug,
 {
-  fn invoke(&self, ui: &mut Ui<E, M>, event: &E) -> Option<E> {
+  fn invoke(&self, ui: &mut Ui<E, M>, event: Option<&E>) -> Option<E> {
     let mut result = None;
 
     for idx in ui.hooked.clone().as_ref() {
@@ -147,7 +147,7 @@ where
   E: Debug,
   M: Debug,
 {
-  fn invoke(&self, _ui: &mut Ui<E, M>, _event: &E) -> Option<E> {
+  fn invoke(&self, _ui: &mut Ui<E, M>, _event: Option<&E>) -> Option<E> {
     None
   }
 }
@@ -158,7 +158,8 @@ pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
 type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
 type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
-type EventHookFn<E, M> = &'static dyn Fn(&dyn Widget<E, M>, &mut dyn MutCap<E, M>, &E) -> Option<E>;
+type EventHookFn<E, M> =
+  &'static dyn Fn(&dyn Widget<E, M>, &mut dyn MutCap<E, M>, Option<&E>) -> Option<E>;
 
 
 /// A capability allowing for various widget related operations.
@@ -246,7 +247,10 @@ where
   /// all events originating outside of the UI, i.e., those that come in
   /// through the `Ui::handle` method. For such events, the event hook
   /// handler gets to inspect the event before any widget gets a chance
-  /// to handle it "officially" through the `Handleable::handle` method.
+  /// to handle it "officially" through the `Handleable::handle` method
+  /// (pre-hook).
+  /// Furthermore, after widgets handled the event, the hook will be
+  /// invoked again, this time without an actual event (post-hook).
   ///
   /// Event hook handlers are allowed to emit an event on their own,
   /// just as "normal" event handlers. The events of all hooks get
@@ -610,12 +614,12 @@ where
   {
     let ui_event = event.into();
 
-    let hook_event = if let UiEvent::Event(event) = &ui_event {
+    let (hook_event, hooked) = if let UiEvent::Event(event) = &ui_event {
       // Invoke the hooks before passing the event to the widgets on the
       // "official" route.
-      self.hooker.invoke(self, &event)
+      (self.hooker.invoke(self, Some(&event)), true)
     } else {
-      None
+      (None, false)
     };
 
     // Determine the target widget from where to start handling.
@@ -633,7 +637,14 @@ where
     // Any hook emitted events are not passed to the widgets themselves,
     // but just returned.
     let unhandled = self.handle_ui_event(idx, ui_event).await;
-    OptionChain::chain(unhandled, hook_event.map(UnhandledEvent::Event))
+    let unhandled = OptionChain::chain(unhandled, hook_event.map(UnhandledEvent::Event));
+
+    if hooked {
+      let hook_event = self.hooker.invoke(self, None);
+      OptionChain::chain(unhandled, hook_event.map(UnhandledEvent::Event))
+    } else {
+      unhandled
+    }
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
