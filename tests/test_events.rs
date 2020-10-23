@@ -21,6 +21,8 @@ mod common;
 
 use std::any::Any;
 use std::cell::RefCell;
+use std::future::Future;
+use std::pin::Pin;
 use std::rc::Rc;
 
 use gui::Cap;
@@ -579,22 +581,24 @@ async fn chain_event_dispatch() {
 
 static mut HOOK_COUNT: u64 = 0;
 
-fn count_event_hook(
-  widget: &dyn Widget<Event, Message>,
-  _cap: &mut dyn MutCap<Event, Message>,
-  event: Option<&Event>,
-) -> Option<Event> {
-  assert!(widget.downcast_ref::<TestWidget>().is_some());
-  let is_pre_hook = event.is_some();
-  // For each event we should always increment our count twice: once for
-  // the pre-hook and once for the post-hook. That means that when the
-  // count is an integer multiple of two, we should be in a pre-hook.
-  assert!((unsafe { HOOK_COUNT } % 2 == 0) == is_pre_hook);
+fn count_event_hook<'f>(
+  widget: &'f dyn Widget<Event, Message>,
+  _cap: &'f mut dyn MutCap<Event, Message>,
+  event: Option<&'f Event>,
+) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
+  Box::pin(async move {
+    assert!(widget.downcast_ref::<TestWidget>().is_some());
+    let is_pre_hook = event.is_some();
+    // For each event we should always increment our count twice: once for
+    // the pre-hook and once for the post-hook. That means that when the
+    // count is an integer multiple of two, we should be in a pre-hook.
+    assert!((unsafe { HOOK_COUNT } % 2 == 0) == is_pre_hook);
 
-  unsafe {
-    HOOK_COUNT += 1;
-  }
-  None
+    unsafe {
+      HOOK_COUNT += 1;
+    }
+    None
+  })
 }
 
 /// Check that `MutCap::hook_events` behaves as expected.
@@ -656,17 +660,19 @@ async fn hook_events_handler() {
 }
 
 
-fn emitting_event_hook(
-  _: &dyn Widget<Event, Message>,
-  _cap: &mut dyn MutCap<Event, Message>,
-  event: Option<&Event>,
-) -> Option<Event> {
-  if let Some(event) = event {
-    assert_eq!(event, &Event::Key('y'));
-    Some(Event::Key('z'))
-  } else {
-    None
-  }
+fn emitting_event_hook<'f>(
+  _: &'f dyn Widget<Event, Message>,
+  _cap: &'f mut dyn MutCap<Event, Message>,
+  event: Option<&'f Event>,
+) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
+  Box::pin(async move {
+    if let Some(event) = event {
+      assert_eq!(event, &Event::Key('y'));
+      Some(Event::Key('z'))
+    } else {
+      None
+    }
+  })
 }
 
 fn checking_event_handler(
@@ -705,12 +711,14 @@ async fn hook_emitted_events() {
   assert!(compare_unhandled_events(&result.unwrap(), &expected))
 }
 
-fn different_emitting_event_hook(
-  _: &dyn Widget<Event, Message>,
-  _cap: &mut dyn MutCap<Event, Message>,
-  _event: Option<&Event>,
-) -> Option<Event> {
-  Some(Event::Key('a'))
+fn different_emitting_event_hook<'f>(
+  _: &'f dyn Widget<Event, Message>,
+  _cap: &'f mut dyn MutCap<Event, Message>,
+  _event: Option<&'f Event>,
+) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
+  Box::pin(async {
+    Some(Event::Key('a'))
+  })
 }
 
 /// Check that hook emitted events are attempted to be merged.
@@ -803,4 +811,71 @@ async fn custom_returnable_events() {
   let result = ui.handle(event).await.unwrap();
 
   assert_eq!(*unwrap_custom::<_, u64>(result), 21);
+}
+
+
+fn send_message_hook<'f>(
+  _: &'f dyn Widget<Event, Message>,
+  cap: &'f mut dyn MutCap<Event, Message>,
+  event: Option<&'f Event>,
+) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
+  Box::pin(async move {
+    if let Some(event) = event {
+      let root = cap.root_id();
+      cap.send(root, Message::new(event.unwrap_int() * 2)).await;
+    }
+    None
+  })
+}
+
+static mut RECEIVED_VALUE: u64 = 42;
+
+/// Check that we can send a message from a hook.
+#[tokio::test]
+async fn hook_can_send_message() {
+  let (mut ui, r) = Ui::new(
+    || {
+      TestWidgetDataBuilder::new()
+        .react_handler(|m, _| {
+          unsafe {
+            RECEIVED_VALUE = m.value;
+          }
+          None
+        })
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let c1 = ui.add_ui_widget(
+    r,
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(move |_, _, _| None)
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    c1,
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(move |_, _, _| None)
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+
+  ui.focus(w1);
+  assert_eq!(unsafe { RECEIVED_VALUE }, 42);
+
+  // Without a hook nothing should happen.
+  let result = ui.handle(Event::Int(3)).await;
+  assert!(result.is_none());
+  assert_eq!(unsafe { RECEIVED_VALUE }, 42);
+
+  ui.hook_events(c1, Some(&send_message_hook));
+
+  let result = ui.handle(Event::Int(3)).await;
+  assert!(result.is_none());
+  assert_eq!(unsafe { RECEIVED_VALUE }, 6);
 }

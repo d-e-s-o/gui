@@ -103,29 +103,31 @@ impl Display for Id {
 
 /// An internally used trait for abstracting over the invocation of
 /// event hooks.
+#[async_trait(?Send)]
 trait Hooker<E, M>
 where
   E: Debug,
   M: Debug,
 {
-  fn invoke(&self, ui: &mut Ui<E, M>, event: Option<&E>) -> Option<E>;
+  async fn invoke(&self, ui: &mut Ui<E, M>, event: Option<&E>) -> Option<E>;
 }
 
 struct Hooked {}
 
+#[async_trait(?Send)]
 impl<E, M> Hooker<E, M> for Hooked
 where
   E: Debug + Mergeable,
   M: Debug,
 {
-  fn invoke(&self, ui: &mut Ui<E, M>, event: Option<&E>) -> Option<E> {
+  async fn invoke(&self, ui: &mut Ui<E, M>, event: Option<&E>) -> Option<E> {
     let mut result = None;
 
     for idx in ui.hooked.clone().as_ref() {
       match &ui.widgets[idx.idx].0.event_hook {
         Some(hook_fn) => {
           let widget = ui.widgets[idx.idx].1.clone();
-          let event = hook_fn.0(widget.as_ref(), ui, event);
+          let event = hook_fn.0(widget.as_ref(), ui, event).await;
 
           result = match (result, event) {
             (Some(e1), Some(e2)) => Some(e1.merge_with(e2)),
@@ -142,12 +144,13 @@ where
 
 struct NotHooked {}
 
+#[async_trait(?Send)]
 impl<E, M> Hooker<E, M> for NotHooked
 where
   E: Debug,
   M: Debug,
 {
-  fn invoke(&self, _ui: &mut Ui<E, M>, _event: Option<&E>) -> Option<E> {
+  async fn invoke(&self, _ui: &mut Ui<E, M>, _event: Option<&E>) -> Option<E> {
     None
   }
 }
@@ -158,8 +161,11 @@ pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
 type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
 type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
-type EventHookFn<E, M> =
-  &'static dyn Fn(&dyn Widget<E, M>, &mut dyn MutCap<E, M>, Option<&E>) -> Option<E>;
+type EventHookFn<E, M> = &'static dyn for<'f> Fn(
+  &'f dyn Widget<E, M>,
+  &'f mut dyn MutCap<E, M>,
+  Option<&'f E>,
+) -> Pin<Box<dyn Future<Output = Option<E>> + 'f>>;
 
 
 /// A capability allowing for various widget related operations.
@@ -617,7 +623,7 @@ where
     let (hook_event, hooked) = if let UiEvent::Event(event) = &ui_event {
       // Invoke the hooks before passing the event to the widgets on the
       // "official" route.
-      (self.hooker.invoke(self, Some(&event)), true)
+      (self.hooker.invoke(self, Some(&event)).await, true)
     } else {
       (None, false)
     };
@@ -640,7 +646,7 @@ where
     let unhandled = OptionChain::chain(unhandled, hook_event.map(UnhandledEvent::Event));
 
     if hooked {
-      let hook_event = self.hooker.invoke(self, None);
+      let hook_event = self.hooker.invoke(self, None).await;
       OptionChain::chain(unhandled, hook_event.map(UnhandledEvent::Event))
     } else {
       unhandled

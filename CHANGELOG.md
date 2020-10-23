@@ -1,5 +1,6 @@
 Unreleased
 ----------
+- Converted event hooks to async functions
 - Adjusted event hooks to return a single event
   - Introduced `Mergeable` trait to combine events emitted from an event
     hook

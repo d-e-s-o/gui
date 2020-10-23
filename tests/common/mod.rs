@@ -49,6 +49,19 @@ pub enum Event {
   Empty,
   /// An event containing a key.
   Key(char),
+  /// An integer.
+  Int(u64),
+}
+
+#[allow(unused)]
+impl Event {
+  /// Unwrap the value of the `Event::Int` variant.
+  pub fn unwrap_int(self) -> u64 {
+    match self {
+      Event::Empty | Event::Key(..) => unreachable!(),
+      Event::Int(value) => value,
+    }
+  }
 }
 
 pub type UiEvents = GuiEvents<Event>;
@@ -63,6 +76,12 @@ impl Mergeable for Event {
           assert_eq!(c1, c2);
           self
         },
+        Self::Int(..) => unreachable!(),
+      },
+      Self::Int(i1) => match self {
+        Self::Empty => other,
+        Self::Key(..) => unreachable!(),
+        Self::Int(i2) => Self::Int(i1 + i2),
       },
     }
   }
