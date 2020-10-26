@@ -736,11 +736,6 @@ where
           Some(UnhandledEvent::Custom(event).into())
         }
       },
-      UiEvent::Directed(id, event) => {
-        let idx = self.validate(id);
-        let event = CustomEvent::Owned(event);
-        self.handle_custom_event(idx, event).await
-      },
       UiEvent::Returnable(src, dst, mut any) => {
         // First let the widget handle the event.
         let events1 = {

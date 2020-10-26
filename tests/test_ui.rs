@@ -184,7 +184,8 @@ async fn share_ids_between_ui_objects() {
   // `widget` is registered to `ui1` and so using it in the context of
   // `ui2` is not as intended. On debug builds we have special detection
   // in place to provide a meaningful error, that should trigger here.
-  ui2.handle(UiEvent::Directed(widget, Box::new(()))).await;
+  let message = Message::new(0);
+  ui2.send(widget, message).await;
 }
 
 #[test]

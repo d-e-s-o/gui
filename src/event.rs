@@ -1,7 +1,7 @@
 // event.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -53,12 +53,6 @@ pub enum UiEvent<E> {
   Event(E),
   /// A custom event that can contain arbitrary data.
   Custom(Box<dyn Any>),
-  /// A custom event directed to a certain widget.
-  ///
-  /// This custom event is destined for a particular widget, described
-  /// by the given `Id`. That is the only widget that will receive the
-  /// event.
-  Directed(Id, Box<dyn Any>),
   /// A custom event that is guaranteed to be returned back to the
   /// issuer. The first `Id` represents the source (i.e., the widget the
   /// event will be returned to), while the second one identifies the

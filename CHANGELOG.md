@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Removed `UiEvent::Directed` variant
+
+
 0.6.0-alpha.2
 -------------
 - Converted event hooks to async functions

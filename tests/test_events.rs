@@ -63,7 +63,6 @@ where
       }
     },
     UiEvent::Custom(_) |
-    UiEvent::Directed(_, _) |
     UiEvent::Returnable(_, _, _) => panic!("Cannot compare custom events"),
   }
 }
@@ -456,42 +455,6 @@ async fn custom_directed_response_event() {
 
   let value = *(*rc).borrow();
   assert_eq!(value, 1338);
-}
-
-#[tokio::test]
-async fn direct_custom_event() {
-  let (mut ui, r) = Ui::new(
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(custom_undirected_response_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let c1 = ui.add_ui_widget(
-    r,
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(custom_undirected_response_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w1 = ui.add_ui_widget(
-    c1,
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(custom_undirected_response_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-
-  ui.focus(c1);
-
-  let event = UiEvent::Directed(w1, Box::new(10u64));
-  let result = ui.handle(event).await.unwrap();
-  assert_eq!(*unwrap_custom::<_, u64>(result), 13);
 }
 
 #[tokio::test]
