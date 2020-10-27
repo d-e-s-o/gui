@@ -692,12 +692,11 @@ where
   async fn handle_custom_event(
     &mut self,
     idx: Index,
-    event: CustomEvent<'_>,
+    event: CustomEvent,
   ) -> Option<UnhandledEvents<E>> {
     let widget = self.widgets[idx.idx].1.clone();
     let events = match event {
       CustomEvent::Owned(event) => widget.handle_custom(self, event).await,
-      CustomEvent::Borrowed(event) => widget.handle_custom_ref(self, event).await,
     };
     let parent_idx = self.widgets[idx.idx].0.parent_idx;
 
@@ -735,23 +734,6 @@ where
         } else {
           Some(UnhandledEvent::Custom(event).into())
         }
-      },
-      UiEvent::Returnable(src, dst, mut any) => {
-        // First let the widget handle the event.
-        let events1 = {
-          let event = CustomEvent::Borrowed(any.as_mut());
-          let idx = self.validate(dst);
-          self.handle_custom_event(idx, event).await
-        };
-
-        // Then pass the event back to the widget that originally
-        // emitted it.
-        let events2 = {
-          let event = CustomEvent::Owned(any);
-          let idx = self.validate(src);
-          self.handle_custom_event(idx, event).await
-        };
-        OptionChain::chain(events1, events2)
       },
       UiEvent::Quit => Some(UnhandledEvent::Quit.into()),
     }

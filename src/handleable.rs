@@ -58,16 +58,6 @@ where
     Some(UiEvent::Custom(event).into())
   }
 
-  /// Handle a custom event without transferring ownership of it.
-  #[allow(unused_variables)]
-  async fn handle_custom_ref(
-    &self,
-    cap: &mut dyn MutCap<E, M>,
-    event: &mut dyn Any,
-  ) -> Option<UiEvents<E>> {
-    None
-  }
-
   /// React to a message.
   ///
   /// This method is the handler for the `MutCap::send` invocation.

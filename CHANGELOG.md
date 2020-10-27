@@ -1,6 +1,6 @@
 Unreleased
 ----------
-- Removed `UiEvent::Directed` variant
+- Removed `UiEvent::Directed` & `UiEvent::Returnable` variants
 
 
 0.6.0-alpha.2

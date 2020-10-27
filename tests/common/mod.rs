@@ -119,13 +119,11 @@ impl<T> Deref for Handler<T> {
 
 type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvents>;
 type CustomFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Box<dyn Any>) -> Option<UiEvents>;
-type CustomRefFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, &mut dyn Any) -> Option<UiEvents>;
 type ReactFn = dyn Fn(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 type RespondFn = dyn Fn(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 
 type EventHandler = Handler<Box<EventFn>>;
 type CustomHandler = Handler<Box<CustomFn>>;
-type CustomRefHandler = Handler<Box<CustomRefFn>>;
 type ReactHandler = Handler<Box<ReactFn>>;
 type RespondHandler = Handler<Box<RespondFn>>;
 
@@ -134,7 +132,6 @@ type RespondHandler = Handler<Box<RespondFn>>;
 pub struct TestWidgetData {
   event_handler: Option<EventHandler>,
   custom_handler: Option<CustomHandler>,
-  custom_ref_handler: Option<CustomRefHandler>,
   react_handler: Option<ReactHandler>,
   respond_handler: Option<RespondHandler>,
 }
@@ -143,7 +140,6 @@ pub struct TestWidgetData {
 pub struct TestWidgetDataBuilder {
   event_handler: Option<EventHandler>,
   custom_handler: Option<CustomHandler>,
-  custom_ref_handler: Option<CustomRefHandler>,
   react_handler: Option<ReactHandler>,
   respond_handler: Option<RespondHandler>,
 }
@@ -155,7 +151,6 @@ impl TestWidgetDataBuilder {
     Self {
       event_handler: None,
       custom_handler: None,
-      custom_ref_handler: None,
       react_handler: None,
       respond_handler: None,
     }
@@ -176,15 +171,6 @@ impl TestWidgetDataBuilder {
     F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Box<dyn Any>) -> Option<UiEvents>,
   {
     self.custom_handler = Some(Handler(Box::new(handler)));
-    self
-  }
-
-  /// Set a handler for `Handleable::handle_custom_ref`.
-  pub fn custom_ref_handler<F>(mut self, handler: F) -> Self
-  where
-    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, &mut dyn Any) -> Option<UiEvents>,
-  {
-    self.custom_ref_handler = Some(Handler(Box::new(handler)));
     self
   }
 
@@ -211,7 +197,6 @@ impl TestWidgetDataBuilder {
     let data = TestWidgetData {
       event_handler: self.event_handler,
       custom_handler: self.custom_handler,
-      custom_ref_handler: self.custom_ref_handler,
       react_handler: self.react_handler,
       respond_handler: self.respond_handler,
     };
@@ -263,23 +248,6 @@ impl Handleable<Event, Message> for TestWidget {
         event
       },
       None => Some(gui::UiEvent::Custom(event).into()),
-    }
-  }
-
-  async fn handle_custom_ref(
-    &self,
-    cap: &mut dyn MutCap<Event, Message>,
-    event: &mut dyn Any,
-  ) -> Option<UiEvents> {
-    let data = self.data_mut::<TestWidgetData>(cap);
-    match data.custom_ref_handler.take() {
-      Some(handler) => {
-        let event = handler(self.id, cap, event);
-        let data = self.data_mut::<TestWidgetData>(cap);
-        data.custom_ref_handler = Some(handler);
-        event
-      },
-      None => None,
     }
   }
 

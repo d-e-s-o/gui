@@ -62,8 +62,7 @@ where
         _ => false,
       }
     },
-    UiEvent::Custom(_) |
-    UiEvent::Returnable(_, _, _) => panic!("Cannot compare custom events"),
+    UiEvent::Custom(_) => panic!("Cannot compare custom events"),
   }
 }
 
@@ -718,62 +717,6 @@ async fn hook_event_merging() {
 
   let event = Event::Key('y');
   let _ = ui.handle(event).await;
-}
-
-
-fn returned_event_handler(
-  _: Id,
-  _cap: &mut dyn MutCap<Event, Message>,
-  event: Box<dyn Any>,
-) -> Option<UiEvents> {
-  let value = *event.downcast::<u64>().unwrap();
-  Some(UiEvent::Custom(Box::new(value + 1)).into())
-}
-
-fn returnable_event_handler(
-  _: Id,
-  _cap: &mut dyn MutCap<Event, Message>,
-  event: &mut dyn Any,
-) -> Option<UiEvents> {
-  match event.downcast_mut::<u64>() {
-    Some(value) => *value *= 2,
-    None => panic!("encountered unexpected custom event"),
-  };
-  None
-}
-
-
-#[tokio::test]
-async fn custom_returnable_events() {
-  let (mut ui, r) = Ui::new(
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w1 = ui.add_ui_widget(
-    r,
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(returned_event_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w2 = ui.add_ui_widget(
-    r,
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_ref_handler(returnable_event_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-
-  let src = w1;
-  let dst = w2;
-  let event = UiEvent::Returnable(src, dst, Box::new(10u64));
-  let result = ui.handle(event).await.unwrap();
-
-  assert_eq!(*unwrap_custom::<_, u64>(result), 21);
 }
 
 
