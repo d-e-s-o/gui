@@ -37,6 +37,7 @@ use gui::UnhandledEvent;
 use gui::UnhandledEvents;
 use gui::Widget;
 
+use crate::common::unwrap_event;
 use crate::common::Event;
 use crate::common::Message;
 use crate::common::TestWidget;
@@ -355,21 +356,25 @@ async fn event_handling_with_focus() {
   assert!(ui.is_focused(w1));
 }
 
-fn custom_undirected_response_handler(
+fn incrementing_event_handler(
   _: Id,
   _cap: &mut dyn MutCap<Event, Message>,
-  event: Box<dyn Any>,
+  event: Event,
 ) -> Option<UiEvents> {
-  let value = *event.downcast::<u64>().unwrap();
-  Some(UiEvent::Custom(Box::new(value + 1)).into())
+  let event = match event {
+    Event::Empty | Event::Key(..) => unreachable!(),
+    Event::Int(value) => Event::Int(value + 1),
+  };
+  Some(event.into())
 }
 
+/// Check that events are propagated as expected.
 #[tokio::test]
-async fn custom_undirected_response_event() {
+async fn event_propagation() {
   let (mut ui, r) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
-        .custom_handler(custom_undirected_response_handler)
+        .event_handler(incrementing_event_handler)
         .build()
     },
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -378,7 +383,7 @@ async fn custom_undirected_response_event() {
     r,
     || {
       TestWidgetDataBuilder::new()
-        .custom_handler(custom_undirected_response_handler)
+        .event_handler(incrementing_event_handler)
         .build()
     },
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -387,7 +392,7 @@ async fn custom_undirected_response_event() {
     c1,
     || {
       TestWidgetDataBuilder::new()
-        .custom_handler(custom_undirected_response_handler)
+        .event_handler(incrementing_event_handler)
         .build()
     },
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -397,10 +402,10 @@ async fn custom_undirected_response_event() {
   // will travel through the widget and all its parents.
   ui.focus(w1);
 
-  let event = UiEvent::Custom(Box::new(42u64));
+  let event = Event::Int(42);
   let result = ui.handle(event).await.unwrap();
   // We expect three increments, one from each of the widgets.
-  assert_eq!(*unwrap_custom::<_, u64>(result), 45);
+  assert_eq!(unwrap_event(result).unwrap_int(), 45);
 }
 
 fn custom_directed_response_handler(

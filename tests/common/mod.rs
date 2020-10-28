@@ -284,6 +284,22 @@ impl Handleable<Event, Message> for TestWidget {
 }
 
 #[allow(unused)]
+pub fn unwrap_event<E>(events: UnhandledEvents<E>) -> E
+where
+  E: Debug,
+{
+  match events {
+    ChainEvent::Event(event) => {
+      match event {
+        UnhandledEvent::Event(event) => event,
+        _ => panic!("Unexpected event: {:?}", event),
+      }
+    },
+    ChainEvent::Chain(_, _) => panic!("Unexpected event: {:?}", events),
+  }
+}
+
+#[allow(unused)]
 pub fn unwrap_custom<E, T>(events: UnhandledEvents<E>) -> Box<T>
 where
   E: Debug,

@@ -25,8 +25,6 @@
 
 mod common;
 
-use std::any::Any;
-
 use async_trait::async_trait;
 
 use gui::Cap;
@@ -36,14 +34,13 @@ use gui::Handleable;
 use gui::Id;
 use gui::MutCap;
 use gui::Ui;
-use gui::UiEvent;
 
+use crate::common::unwrap_event;
 use crate::common::Event;
 use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
 use crate::common::UiEvents;
-use crate::common::unwrap_custom;
 
 
 #[test]
@@ -514,10 +511,13 @@ fn repeated_hide_preserves_order() {
 fn counting_handler(
   _widget: Id,
   _cap: &mut dyn MutCap<Event, Message>,
-  event: Box<dyn Any>,
+  event: Event,
 ) -> Option<UiEvents> {
-  let value = *event.downcast::<u64>().unwrap();
-  Some(UiEvent::Custom(Box::new(value + 1)).into())
+  let event = match event {
+    Event::Empty | Event::Key(..) => unreachable!(),
+    Event::Int(value) => Event::Int(value + 1),
+  };
+  Some(event.into())
 }
 
 
@@ -538,7 +538,7 @@ impl CreatingWidget {
       id,
       Box::new(|| {
         TestWidgetDataBuilder::new()
-          .custom_handler(counting_handler)
+          .event_handler(counting_handler)
           .build()
       }),
       Box::new(|id, _cap| Box::new(TestWidget::new(id))),
@@ -561,11 +561,7 @@ impl CreatingWidget {
 
 #[async_trait(?Send)]
 impl Handleable<Event, Message> for CreatingWidget {
-  async fn handle_custom(
-    &self,
-    cap: &mut dyn MutCap<Event, Message>,
-    event: Box<dyn Any>,
-  ) -> Option<UiEvents> {
+  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<UiEvents> {
     counting_handler(self.id, cap, event)
   }
 }
@@ -582,12 +578,12 @@ async fn recursive_widget_creation() {
     |id, cap| Box::new(CreatingWidget::new(id, cap)),
   );
 
-  let event = UiEvent::Custom(Box::new(0u64));
+  let event = Event::Int(0u64);
   let result = ui.handle(event).await.unwrap();
   // We expect three increments. Note that we have four widgets in
   // total, but we cannot easily have the event reach all four of them
   // because two are peers sharing a parent.
-  assert_eq!(*unwrap_custom::<_, u64>(result), 3);
+  assert_eq!(unwrap_event(result).unwrap_int(), 3);
 }
 
 
@@ -670,27 +666,30 @@ async fn event_based_widget_creation() {
 fn recursive_operations_handler(
   widget: Id,
   cap: &mut dyn MutCap<Event, Message>,
-  _event: Box<dyn Any>,
+  _event: Event,
 ) -> Option<UiEvents> {
   // Check that we can use the supplied `MutCap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);
   cap.focus(widget);
   cap.is_focused(widget);
-  None
+  Some(Event::Int(42).into())
 }
 
 /// Check that widget operations on the own widget work properly.
 #[tokio::test]
 async fn recursive_widget_operations() {
-  let (mut ui, _) = Ui::new(
+  let (mut ui, root) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
-        .custom_handler(recursive_operations_handler)
+        .event_handler(recursive_operations_handler)
         .build()
     },
     |id, _cap| Box::new(TestWidget::new(id)),
   );
 
-  ui.handle(UiEvent::Custom(Box::new(()))).await;
+  ui.focus(root);
+
+  let result = ui.handle(Event::Empty).await.unwrap();
+  assert_eq!(unwrap_event(result).unwrap_int(), 42);
 }
