@@ -49,7 +49,6 @@ mod renderer;
 mod ui;
 mod widget;
 
-use self::event::CustomEvent;
 use self::placeholder::Placeholder;
 
 pub use self::event::ChainEvent;

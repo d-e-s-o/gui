@@ -118,12 +118,10 @@ impl<T> Deref for Handler<T> {
 }
 
 type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvents>;
-type CustomFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Box<dyn Any>) -> Option<UiEvents>;
 type ReactFn = dyn Fn(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 type RespondFn = dyn Fn(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 
 type EventHandler = Handler<Box<EventFn>>;
-type CustomHandler = Handler<Box<CustomFn>>;
 type ReactHandler = Handler<Box<ReactFn>>;
 type RespondHandler = Handler<Box<RespondFn>>;
 
@@ -131,7 +129,6 @@ type RespondHandler = Handler<Box<RespondFn>>;
 #[derive(Debug)]
 pub struct TestWidgetData {
   event_handler: Option<EventHandler>,
-  custom_handler: Option<CustomHandler>,
   react_handler: Option<ReactHandler>,
   respond_handler: Option<RespondHandler>,
 }
@@ -139,7 +136,6 @@ pub struct TestWidgetData {
 #[derive(Debug)]
 pub struct TestWidgetDataBuilder {
   event_handler: Option<EventHandler>,
-  custom_handler: Option<CustomHandler>,
   react_handler: Option<ReactHandler>,
   respond_handler: Option<RespondHandler>,
 }
@@ -150,7 +146,6 @@ impl TestWidgetDataBuilder {
   pub fn new() -> Self {
     Self {
       event_handler: None,
-      custom_handler: None,
       react_handler: None,
       respond_handler: None,
     }
@@ -162,15 +157,6 @@ impl TestWidgetDataBuilder {
     F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvents>,
   {
     self.event_handler = Some(Handler(Box::new(handler)));
-    self
-  }
-
-  /// Set a handler for `Handleable::handle_custom`.
-  pub fn custom_handler<F>(mut self, handler: F) -> Self
-  where
-    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Box<dyn Any>) -> Option<UiEvents>,
-  {
-    self.custom_handler = Some(Handler(Box::new(handler)));
     self
   }
 
@@ -196,7 +182,6 @@ impl TestWidgetDataBuilder {
   pub fn build(self) -> Box<dyn Any> {
     let data = TestWidgetData {
       event_handler: self.event_handler,
-      custom_handler: self.custom_handler,
       react_handler: self.react_handler,
       respond_handler: self.respond_handler,
     };
@@ -231,23 +216,6 @@ impl Handleable<Event, Message> for TestWidget {
         event
       },
       None => Some(event.into()),
-    }
-  }
-
-  async fn handle_custom(
-    &self,
-    cap: &mut dyn MutCap<Event, Message>,
-    event: Box<dyn Any>,
-  ) -> Option<UiEvents> {
-    let data = self.data_mut::<TestWidgetData>(cap);
-    match data.custom_handler.take() {
-      Some(handler) => {
-        let event = handler(self.id, cap, event);
-        let data = self.data_mut::<TestWidgetData>(cap);
-        data.custom_handler = Some(handler);
-        event
-      },
-      None => Some(gui::UiEvent::Custom(event).into()),
     }
   }
 
@@ -292,23 +260,6 @@ where
     ChainEvent::Event(event) => {
       match event {
         UnhandledEvent::Event(event) => event,
-        _ => panic!("Unexpected event: {:?}", event),
-      }
-    },
-    ChainEvent::Chain(_, _) => panic!("Unexpected event: {:?}", events),
-  }
-}
-
-#[allow(unused)]
-pub fn unwrap_custom<E, T>(events: UnhandledEvents<E>) -> Box<T>
-where
-  E: Debug,
-  T: 'static,
-{
-  match events {
-    ChainEvent::Event(event) => {
-      match event {
-        UnhandledEvent::Custom(event) => event.downcast::<T>().unwrap(),
         _ => panic!("Unexpected event: {:?}", event),
       }
     },

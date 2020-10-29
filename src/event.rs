@@ -17,31 +17,12 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use std::any::Any;
-
-
-/// An event type containing custom and arbitrary data.
-///
-/// Custom events are the means for transferring arbitrary data between
-/// widgets.
-#[derive(Debug)]
-pub(crate) enum CustomEvent {
-  /// An event that is sent in full to another widget.
-  ///
-  /// Ownership of the event is transferred to a widget. Custom events
-  /// of this type are considered the safe default. They represent a
-  /// unidirectional message from one widget to another.
-  Owned(Box<dyn Any>),
-}
-
 
 /// An event that the `Ui` can process.
 #[derive(Debug)]
 pub enum UiEvent<E> {
   /// An `Event` that can be handled by a `Handleable`.
   Event(E),
-  /// A custom event that can contain arbitrary data.
-  Custom(Box<dyn Any>),
   /// A request to quit the application has been made.
   Quit,
 }
@@ -66,8 +47,6 @@ impl<E> From<E> for UiEvent<E> {
 pub enum UnhandledEvent<E> {
   /// An `Event` that can be handled by a `Handleable`.
   Event(E),
-  /// A custom event that can contain arbitrary data.
-  Custom(Box<dyn Any>),
   /// A request to quit the application has been made.
   Quit,
 }

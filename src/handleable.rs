@@ -17,13 +17,11 @@
 // * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
 // *************************************************************************
 
-use std::any::Any;
 use std::fmt::Debug;
 
 use async_trait::async_trait;
 
 use crate::MutCap;
-use crate::UiEvent;
 use crate::UiEvents;
 
 
@@ -46,16 +44,6 @@ where
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())
-  }
-
-  /// Handle a custom event.
-  #[allow(unused_variables)]
-  async fn handle_custom(
-    &self,
-    cap: &mut dyn MutCap<E, M>,
-    event: Box<dyn Any>,
-  ) -> Option<UiEvents<E>> {
-    Some(UiEvent::Custom(event).into())
   }
 
   /// React to a message.

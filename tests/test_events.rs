@@ -19,11 +19,8 @@
 
 mod common;
 
-use std::any::Any;
-use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
-use std::rc::Rc;
 
 use gui::Cap;
 use gui::ChainEvent;
@@ -43,7 +40,6 @@ use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
 use crate::common::UiEvents;
-use crate::common::unwrap_custom;
 
 
 fn compare_ui_event<E>(event1: &UiEvent<E>, event2: &UiEvent<E>) -> bool
@@ -63,7 +59,6 @@ where
         _ => false,
       }
     },
-    UiEvent::Custom(_) => panic!("Cannot compare custom events"),
   }
 }
 
@@ -104,7 +99,6 @@ where
         _ => false,
       }
     },
-    UnhandledEvent::Custom(_) => panic!("Cannot compare custom events"),
   }
 }
 
@@ -408,59 +402,6 @@ async fn event_propagation() {
   assert_eq!(unwrap_event(result).unwrap_int(), 45);
 }
 
-fn custom_directed_response_handler(
-  _: Id,
-  _cap: &mut dyn MutCap<Event, Message>,
-  event: Box<dyn Any>,
-) -> Option<UiEvents> {
-  let cell = *event.downcast::<Rc<RefCell<u64>>>().unwrap();
-  let value = *cell.borrow();
-  cell.replace(value + 1);
-  None
-}
-
-#[tokio::test]
-async fn custom_directed_response_event() {
-  let (mut ui, r) = Ui::new(
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(custom_directed_response_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let c1 = ui.add_ui_widget(
-    r,
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(custom_directed_response_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w1 = ui.add_ui_widget(
-    c1,
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(custom_directed_response_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-
-  ui.focus(w1);
-
-  let cell = RefCell::new(1337u64);
-  let rc = Rc::new(cell);
-  let event = UiEvent::Custom(Box::new(Rc::clone(&rc)));
-
-  let result = ui.handle(event).await;
-  assert!(result.is_none());
-
-  let value = *(*rc).borrow();
-  assert_eq!(value, 1338);
-}
-
 #[tokio::test]
 async fn quit_event() {
   let (mut ui, r) = Ui::new(
@@ -481,69 +422,6 @@ async fn quit_event() {
   let result = ui.handle(UiEvent::Quit).await;
   let expected = UnhandledEvent::Quit.into();
   assert!(compare_unhandled_events(&result.unwrap(), &expected));
-}
-
-
-static mut ACCUMULATOR: u64 = 0;
-
-fn accumulating_handler(
-  _: Id,
-  _cap: &mut dyn MutCap<Event, Message>,
-  event: Box<dyn Any>,
-) -> Option<UiEvents> {
-  let value = *event.downcast::<u64>().unwrap();
-
-  unsafe {
-    ACCUMULATOR += value;
-    Some(UiEvent::Custom(Box::new(ACCUMULATOR)).into())
-  }
-}
-
-fn chaining_handler(
-  _: Id,
-  _cap: &mut dyn MutCap<Event, Message>,
-  event: Box<dyn Any>,
-) -> Option<UiEvents> {
-  let value = event.downcast::<u64>().unwrap();
-  let event1 = UiEvent::Custom(Box::new(*value));
-  let event2 = UiEvent::Custom(Box::new(*value + 1));
-  Some(event1.chain(event2))
-}
-
-#[tokio::test]
-async fn chain_event_dispatch() {
-  let (mut ui, r) = Ui::new(
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(accumulating_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let c1 = ui.add_ui_widget(
-    r,
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(chaining_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w1 = ui.add_ui_widget(
-    c1,
-    || {
-      TestWidgetDataBuilder::new()
-        .custom_handler(chaining_handler)
-        .build()
-    },
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-
-  ui.focus(w1);
-
-  let event = UiEvent::Custom(Box::new(1u64));
-  let result = ui.handle(event).await.unwrap().into_last();
-  assert_eq!(*unwrap_custom::<Event, u64>(result.into()), 8);
 }
 
 static mut HOOK_COUNT: u64 = 0;

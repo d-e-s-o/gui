@@ -36,7 +36,6 @@ use async_trait::async_trait;
 
 use crate::BBox;
 use crate::ChainEvent;
-use crate::CustomEvent;
 use crate::Mergeable;
 use crate::OptionChain;
 use crate::Placeholder;
@@ -632,8 +631,7 @@ where
     let idx = match ui_event {
       // All currently defined "ordinary" events go to the currently
       // focused widget.
-      UiEvent::Event(_) |
-      UiEvent::Custom(_) => self.focused,
+      UiEvent::Event(_) => self.focused,
       // All others either carry an explicit target with them (e.g.,
       // some custom event) or have no target at all (for example the
       // Quit event).
@@ -688,26 +686,6 @@ where
     })
   }
 
-  /// Handle a custom event.
-  async fn handle_custom_event(
-    &mut self,
-    idx: Index,
-    event: CustomEvent,
-  ) -> Option<UnhandledEvents<E>> {
-    let widget = self.widgets[idx.idx].1.clone();
-    let events = match event {
-      CustomEvent::Owned(event) => widget.handle_custom(self, event).await,
-    };
-    let parent_idx = self.widgets[idx.idx].0.parent_idx;
-
-    if let Some(events) = events {
-      self.handle_ui_events(parent_idx, events).await
-    } else {
-      // The event got handled.
-      None
-    }
-  }
-
   /// Handle a `UiEvent`.
   async fn handle_ui_event(
     &mut self,
@@ -725,14 +703,6 @@ where
           // to send an event to the focused widget and no widget had the
           // focus. In any case, return the event as-is.
           Some(UnhandledEvent::Event(event).into())
-        }
-      },
-      UiEvent::Custom(event) => {
-        if let Some(idx) = idx {
-          let event = CustomEvent::Owned(event);
-          self.handle_custom_event(idx, event).await
-        } else {
-          Some(UnhandledEvent::Custom(event).into())
         }
       },
       UiEvent::Quit => Some(UnhandledEvent::Quit.into()),
