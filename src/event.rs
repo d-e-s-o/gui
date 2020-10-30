@@ -19,7 +19,7 @@
 
 
 /// An event that the `Ui` can process.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum UiEvent<E> {
   /// An `Event` that can be handled by a `Handleable`.
   Event(E),
@@ -43,7 +43,7 @@ impl<E> From<E> for UiEvent<E> {
 // conversion should only happen from within the `Ui` proper and after
 // making sure that `UiEvent` variants dealing solely with addressing
 // are no longer present.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum UnhandledEvent<E> {
   /// An `Event` that can be handled by a `Handleable`.
   Event(E),
@@ -60,7 +60,7 @@ impl<E> From<E> for UnhandledEvent<E> {
 
 
 /// An event potentially comprising multiple event objects.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ChainEvent<E> {
   /// An arbitrary event.
   Event(E),

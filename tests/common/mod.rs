@@ -35,6 +35,7 @@ use gui::Handleable;
 use gui::Id;
 use gui::Mergeable;
 use gui::MutCap;
+use gui::UiEvent as GuiEvent;
 use gui::UiEvents as GuiEvents;
 use gui::UnhandledEvent;
 use gui::UnhandledEvents;
@@ -64,6 +65,8 @@ impl Event {
   }
 }
 
+#[allow(unused)]
+pub type UiEvent = GuiEvent<Event>;
 pub type UiEvents = GuiEvents<Event>;
 
 impl Mergeable for Event {

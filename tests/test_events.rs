@@ -29,9 +29,7 @@ use gui::Id;
 use gui::MutCap;
 use gui::OptionChain;
 use gui::Ui;
-use gui::UiEvent;
 use gui::UnhandledEvent;
-use gui::UnhandledEvents;
 use gui::Widget;
 
 use crate::common::unwrap_event;
@@ -39,91 +37,8 @@ use crate::common::Event;
 use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
+use crate::common::UiEvent;
 use crate::common::UiEvents;
-
-
-fn compare_ui_event<E>(event1: &UiEvent<E>, event2: &UiEvent<E>) -> bool
-where
-  E: PartialEq,
-{
-  match *event1 {
-    UiEvent::Event(ref event1) => {
-      match *event2 {
-        UiEvent::Event(ref event2) => event1 == event2,
-        _ => false,
-      }
-    },
-    UiEvent::Quit => {
-      match *event2 {
-        UiEvent::Quit => true,
-        _ => false,
-      }
-    },
-  }
-}
-
-fn compare_ui_events(event1: &UiEvents, event2: &UiEvents) -> bool {
-  match *event1 {
-    ChainEvent::Event(ref event1) => {
-      match *event2 {
-        ChainEvent::Event(ref event2) => compare_ui_event(event1, event2),
-        _ => false,
-      }
-    },
-    ChainEvent::Chain(ref event1, ref chain1) => {
-      match *event2 {
-        ChainEvent::Chain(ref event2, ref chain2) => {
-          compare_ui_event(event1, event2) &&
-          compare_ui_events(chain1, chain2)
-        },
-        _ => false,
-      }
-    },
-  }
-}
-
-fn compare_unhandled<E>(event1: &UnhandledEvent<E>, event2: &UnhandledEvent<E>) -> bool
-where
-  E: PartialEq,
-{
-  match *event1 {
-    UnhandledEvent::Event(ref event1) => {
-      match *event2 {
-        UnhandledEvent::Event(ref event2) => event1 == event2,
-        _ => false,
-      }
-    },
-    UnhandledEvent::Quit => {
-      match *event2 {
-        UnhandledEvent::Quit => true,
-        _ => false,
-      }
-    },
-  }
-}
-
-fn compare_unhandled_events<E>(events1: &UnhandledEvents<E>, events2: &UnhandledEvents<E>) -> bool
-where
-  E: PartialEq,
-{
-  match *events1 {
-    ChainEvent::Event(ref event1) => {
-      match *events2 {
-        ChainEvent::Event(ref event2) => compare_unhandled(event1, event2),
-        _ => false,
-      }
-    },
-    ChainEvent::Chain(ref event1, ref unhandled1) => {
-      match *events2 {
-        ChainEvent::Chain(ref event2, ref unhandled2) => {
-          compare_unhandled(event1, event2) &&
-          compare_unhandled_events(unhandled1, unhandled2)
-        },
-        _ => false,
-      }
-    },
-  }
-}
 
 
 #[test]
@@ -132,7 +47,7 @@ fn convert_event_into() {
   let orig_event = event;
   let ui_event = UiEvent::from(event);
 
-  assert!(compare_ui_event(&ui_event, &UiEvent::Event(orig_event)));
+  assert_eq!(ui_event, UiEvent::Event(orig_event));
 }
 
 #[test]
@@ -142,13 +57,13 @@ fn chain_event() {
   let event2 = UiEvent::Quit;
   let orig_event2 = UiEvent::Quit;
 
-  let event = event1.chain(event2);
+  let event = EventChain::<UiEvent>::chain(event1, event2);
   let expected = ChainEvent::Chain(
     orig_event1.into(),
     Box::new(orig_event2.into()),
   );
 
-  assert!(compare_ui_events(&event, &expected));
+  assert_eq!(event, expected);
 }
 
 #[test]
@@ -160,8 +75,8 @@ fn chain_event_chain() {
   let event3 = UiEvent::Quit;
   let orig_event3 = UiEvent::Quit;
 
-  let event_chain = ChainEvent::Chain(event1.into(), Box::new(event2.into()));
-  let event = event_chain.chain(event3);
+  let event_chain = ChainEvent::<UiEvent>::Chain(event1.into(), Box::new(event2.into()));
+  let event = EventChain::<UiEvent>::chain(event_chain, event3);
   let expected = ChainEvent::Chain(
     orig_event1.into(),
     Box::new(
@@ -172,34 +87,34 @@ fn chain_event_chain() {
     ),
   );
 
-  assert!(compare_ui_events(&event, &expected));
+  assert_eq!(event, expected);
 }
 
 #[test]
 fn event_and_option_chain() {
   let event = Event::Empty;
   let orig_event = event;
-  let result = event.chain_opt(None as Option<Event>);
+  let result = EventChain::<UiEvent>::chain_opt(event, None as Option<Event>);
 
-  assert!(compare_ui_events(&result, &orig_event.into()));
+  assert_eq!(result, orig_event.into());
 
   let event1 = Event::Key('%');
   let orig_event1 = event1;
   let event2 = UiEvent::Quit;
   let orig_event2 = UiEvent::Quit;
 
-  let result = event1.chain_opt(Some(event2));
+  let result = EventChain::<UiEvent>::chain_opt(event1, Some(event2));
   let expected = ChainEvent::Chain(
     orig_event1.into(),
     Box::new(orig_event2.into())
   );
 
-  assert!(compare_ui_events(&result, &expected));
+  assert_eq!(result, expected);
 }
 
 #[test]
 fn option_and_option_chain() {
-  let result = OptionChain::<_, UiEvent<Event>>::chain(
+  let result = OptionChain::<_, UiEvent>::chain(
     None as Option<Event>,
     None as Option<Event>,
   );
@@ -207,34 +122,34 @@ fn option_and_option_chain() {
 
   let event = Event::Key('1');
   let orig_event = event;
-  let result = OptionChain::chain(None as Option<Event>, Some(event));
+  let result = OptionChain::<_, UiEvent>::chain(None as Option<Event>, Some(event));
 
-  assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
+  assert_eq!(result.unwrap(), orig_event.into());
 
   let event = Event::Key('u');
   let orig_event = event;
-  let result = OptionChain::chain(Some(event), None as Option<Event>);
+  let result = OptionChain::<_, UiEvent>::chain(Some(event), None as Option<Event>);
 
-  assert!(compare_ui_events(&result.unwrap(), &orig_event.into()));
+  assert_eq!(result.unwrap(), orig_event.into());
 
   let event = Event::Key('2');
   let orig_event = event;
-  let result = (None as Option<Event>).opt_chain(event);
+  let result = OptionChain::<_, UiEvent>::opt_chain(None as Option<Event>, event);
 
-  assert!(compare_ui_events(&result, &orig_event.into()));
+  assert_eq!(result, orig_event.into());
 
   let event1 = Event::Key('z');
   let orig_event1 = event1;
   let event2 = Event::Key('u');
   let orig_event2 = event2;
 
-  let result = OptionChain::chain(Some(event1),Some(event2));
+  let result = OptionChain::<_, UiEvent>::chain(Some(event1),Some(event2));
   let expected = ChainEvent::Chain(
     orig_event1.into(),
     Box::new(orig_event2.into())
   );
 
-  assert!(compare_ui_events(&result.unwrap(), &expected));
+  assert_eq!(result.unwrap(), expected);
 }
 
 #[test]
@@ -243,12 +158,12 @@ fn last_event_in_chain() {
   let event2 = Event::Key('z');
   let orig_event2 = event2;
 
-  let event_chain = ChainEvent::Chain(
-    event1.into(),
+  let event_chain = ChainEvent::<Event>::Chain(
+    event1,
     Box::new(event2.into())
   );
 
-  assert!(compare_ui_event(&event_chain.into_last(), &orig_event2.into()));
+  assert_eq!(event_chain.into_last(), orig_event2);
 }
 
 #[tokio::test]
@@ -274,7 +189,7 @@ async fn events_bubble_up_when_unhandled() {
   let expected = UnhandledEvent::Event(event).into();
   // An unhandled event should just be returned after every widget
   // forwarded it.
-  assert!(compare_unhandled_events(&result.unwrap(), &expected));
+  assert_eq!(result.unwrap(), expected);
 }
 
 #[tokio::test]
@@ -293,7 +208,7 @@ async fn targeted_event_returned_on_no_focus() {
 
   let result = ui.handle(event).await;
   let expected = UnhandledEvent::Event(event).into();
-  assert!(compare_unhandled_events(&result.unwrap(), &expected));
+  assert_eq!(result.unwrap(), expected);
 }
 
 fn key_handler(
@@ -421,7 +336,7 @@ async fn quit_event() {
 
   let result = ui.handle(UiEvent::Quit).await;
   let expected = UnhandledEvent::Quit.into();
-  assert!(compare_unhandled_events(&result.unwrap(), &expected));
+  assert_eq!(result.unwrap(), expected);
 }
 
 static mut HOOK_COUNT: u64 = 0;
@@ -553,7 +468,7 @@ async fn hook_emitted_events() {
   let result = ui.handle(event).await;
 
   let expected = UnhandledEvent::Event(Event::Key('z')).into();
-  assert!(compare_unhandled_events(&result.unwrap(), &expected))
+  assert_eq!(result.unwrap(), expected)
 }
 
 fn different_emitting_event_hook<'f>(
@@ -659,12 +574,12 @@ async fn hook_can_send_message() {
 
   // Without a hook nothing should happen.
   let result = ui.handle(Event::Int(3)).await;
-  assert!(result.is_none());
+  assert_eq!(result, None);
   assert_eq!(unsafe { RECEIVED_VALUE }, 42);
 
   ui.hook_events(c1, Some(&send_message_hook));
 
   let result = ui.handle(Event::Int(3)).await;
-  assert!(result.is_none());
+  assert_eq!(result, None);
   assert_eq!(unsafe { RECEIVED_VALUE }, 6);
 }
