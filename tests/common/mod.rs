@@ -29,16 +29,13 @@ use std::ops::Deref;
 
 use async_trait::async_trait;
 
-use gui::ChainEvent;
 use gui::derive::Widget;
 use gui::Handleable;
 use gui::Id;
 use gui::Mergeable;
 use gui::MutCap;
 use gui::UiEvent as GuiEvent;
-use gui::UiEvents as GuiEvents;
 use gui::UnhandledEvent;
-use gui::UnhandledEvents;
 use gui::Widget;
 
 
@@ -67,7 +64,6 @@ impl Event {
 
 #[allow(unused)]
 pub type UiEvent = GuiEvent<Event>;
-pub type UiEvents = GuiEvents<Event>;
 
 impl Mergeable for Event {
   fn merge_with(self, other: Self) -> Self {
@@ -120,7 +116,7 @@ impl<T> Deref for Handler<T> {
   }
 }
 
-type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvents>;
+type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvent>;
 type ReactFn = dyn Fn(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 type RespondFn = dyn Fn(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 
@@ -157,7 +153,7 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::handle`.
   pub fn event_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvents>,
+    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvent>,
   {
     self.event_handler = Some(Handler(Box::new(handler)));
     self
@@ -206,7 +202,7 @@ impl TestWidget {
 
 #[async_trait(?Send)]
 impl Handleable<Event, Message> for TestWidget {
-  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<UiEvents> {
+  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<UiEvent> {
     // Also check that we can access the non-mutable version of the data.
     let _ = self.data::<TestWidgetData>(cap);
 
@@ -255,17 +251,12 @@ impl Handleable<Event, Message> for TestWidget {
 }
 
 #[allow(unused)]
-pub fn unwrap_event<E>(events: UnhandledEvents<E>) -> E
+pub fn unwrap_event<E>(event: UnhandledEvent<E>) -> E
 where
   E: Debug,
 {
-  match events {
-    ChainEvent::Event(event) => {
-      match event {
-        UnhandledEvent::Event(event) => event,
-        _ => panic!("Unexpected event: {:?}", event),
-      }
-    },
-    ChainEvent::Chain(_, _) => panic!("Unexpected event: {:?}", events),
+  match event {
+    UnhandledEvent::Event(event) => event,
+    _ => panic!("Unexpected event: {:?}", event),
   }
 }

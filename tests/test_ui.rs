@@ -40,7 +40,7 @@ use crate::common::Event;
 use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
-use crate::common::UiEvents;
+use crate::common::UiEvent;
 
 
 #[test]
@@ -512,7 +512,7 @@ fn counting_handler(
   _widget: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<UiEvents> {
+) -> Option<UiEvent> {
   let event = match event {
     Event::Empty | Event::Key(..) => unreachable!(),
     Event::Int(value) => Event::Int(value + 1),
@@ -561,7 +561,7 @@ impl CreatingWidget {
 
 #[async_trait(?Send)]
 impl Handleable<Event, Message> for CreatingWidget {
-  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<UiEvents> {
+  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<UiEvent> {
     counting_handler(self.id, cap, event)
   }
 }
@@ -624,7 +624,7 @@ fn create_handler(
   widget: Id,
   cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<UiEvents> {
+) -> Option<UiEvent> {
   match event {
     Event::Key(key) if key == 'z' => {
       cap.add_widget(
@@ -667,7 +667,7 @@ fn recursive_operations_handler(
   widget: Id,
   cap: &mut dyn MutCap<Event, Message>,
   _event: Event,
-) -> Option<UiEvents> {
+) -> Option<UiEvent> {
   // Check that we can use the supplied `MutCap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);

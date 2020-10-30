@@ -35,15 +35,11 @@ use std::sync::atomic::Ordering;
 use async_trait::async_trait;
 
 use crate::BBox;
-use crate::ChainEvent;
 use crate::Mergeable;
-use crate::OptionChain;
 use crate::Placeholder;
 use crate::Renderer;
 use crate::UiEvent;
-use crate::UiEvents;
 use crate::UnhandledEvent;
-use crate::UnhandledEvents;
 use crate::Widget;
 
 
@@ -108,7 +104,24 @@ where
   E: Debug,
   M: Debug,
 {
-  async fn invoke(&self, ui: &mut Ui<E, M>, event: Option<&E>) -> Option<E>;
+  async fn invoke(
+    &self,
+    ui: &mut Ui<E, M>,
+    pre_hook_event: Option<E>,
+    unhandled: Option<E>,
+    event: Option<&E>,
+  ) -> Option<E>;
+}
+
+fn merge<E>(e1: Option<E>, e2: Option<E>) -> Option<E>
+where
+  E: Mergeable,
+{
+  match (e1, e2) {
+    (Some(e1), Some(e2)) => Some(e1.merge_with(e2)),
+    (Some(e), None) | (None, Some(e)) => Some(e),
+    (None, None) => None,
+  }
 }
 
 struct Hooked {}
@@ -119,7 +132,13 @@ where
   E: Debug + Mergeable,
   M: Debug,
 {
-  async fn invoke(&self, ui: &mut Ui<E, M>, event: Option<&E>) -> Option<E> {
+  async fn invoke(
+    &self,
+    ui: &mut Ui<E, M>,
+    pre_hook_event: Option<E>,
+    unhandled: Option<E>,
+    event: Option<&E>,
+  ) -> Option<E> {
     let mut result = None;
 
     for idx in ui.hooked.clone().as_ref() {
@@ -128,16 +147,12 @@ where
           let widget = ui.widgets[idx.idx].1.clone();
           let event = hook_fn.0(widget.as_ref(), ui, event).await;
 
-          result = match (result, event) {
-            (Some(e1), Some(e2)) => Some(e1.merge_with(e2)),
-            (Some(e), None) | (None, Some(e)) => Some(e),
-            (None, None) => None,
-          }
+          result = merge(result, event);
         },
         None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
       };
     }
-    result
+    merge(merge(pre_hook_event, unhandled), result)
   }
 }
 
@@ -149,8 +164,15 @@ where
   E: Debug,
   M: Debug,
 {
-  async fn invoke(&self, _ui: &mut Ui<E, M>, _event: Option<&E>) -> Option<E> {
-    None
+  async fn invoke(
+    &self,
+    _ui: &mut Ui<E, M>,
+    pre_hook_event: Option<E>,
+    unhandled: Option<E>,
+    _event: Option<&E>,
+  ) -> Option<E> {
+    debug_assert!(pre_hook_event.is_none());
+    unhandled
   }
 }
 
@@ -265,7 +287,7 @@ where
   /// account when providing a `Mergeable` implementation for the
   /// provided event type.
   /// Furthermore, the final merged event is not passed to widgets, but
-  /// returned straight back as `UnhandledEvents`.
+  /// returned straight back as an `UnhandledEvent`.
   ///
   /// Note that event hook functions are only able to inspect events and
   /// not change or discard them.
@@ -613,7 +635,7 @@ where
   /// This function performs the initial determination of which widget
   /// is supposed to handle the given event and then passes it down to
   /// the actual event handler.
-  pub async fn handle<T>(&mut self, event: T) -> Option<UnhandledEvents<E>>
+  pub async fn handle<T>(&mut self, event: T) -> Option<UnhandledEvent<E>>
   where
     T: Into<UiEvent<E>>,
   {
@@ -622,7 +644,10 @@ where
     let (hook_event, hooked) = if let UiEvent::Event(event) = &ui_event {
       // Invoke the hooks before passing the event to the widgets on the
       // "official" route.
-      (self.hooker.invoke(self, Some(&event)).await, true)
+      (
+        self.hooker.invoke(self, None, None, Some(&event)).await,
+        true,
+      )
     } else {
       (None, false)
     };
@@ -641,47 +666,44 @@ where
     // Any hook emitted events are not passed to the widgets themselves,
     // but just returned.
     let unhandled = self.handle_ui_event(idx, ui_event).await;
-    let unhandled = OptionChain::chain(unhandled, hook_event.map(UnhandledEvent::Event));
 
     if hooked {
-      let hook_event = self.hooker.invoke(self, None).await;
-      OptionChain::chain(unhandled, hook_event.map(UnhandledEvent::Event))
+      // TODO: For now we assume that no unknown event was passed out.
+      let unhandled = match unhandled {
+        Some(UnhandledEvent::Event(event)) => Some(event),
+        Some(..) => unimplemented!(),
+        None => None,
+      };
+      self
+        .hooker
+        .invoke(self, hook_event, unhandled, None)
+        .await
+        .map(UnhandledEvent::Event)
     } else {
       unhandled
     }
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
-  async fn handle_event(&mut self, idx: Index, event: E) -> Option<UnhandledEvents<E>> {
-    // The clone we perform here allows us to decouple the Widget from
-    // the Ui, which in turn makes it possible to pass a mutable Ui
-    // reference (in the form of a MutCap) to an immutable widget. It is
-    // nothing more but a reference count bump, though.
-    let widget = self.widgets[idx.idx].1.clone();
-    let events = widget.handle(self, event).await;
-    let parent_idx = self.widgets[idx.idx].0.parent_idx;
-
-    if let Some(events) = events {
-      self.handle_ui_events(parent_idx, events).await
-    } else {
-      // The event got handled.
-      None
-    }
-  }
-
-  /// Handle a chain of `UiEvent` objects.
-  fn handle_ui_events(
+  fn handle_event(
     &mut self,
-    idx: Option<Index>,
-    events: UiEvents<E>,
-  ) -> Pin<Box<dyn Future<Output = Option<UnhandledEvents<E>>> + '_>> {
+    idx: Index,
+    event: E,
+  ) -> Pin<Box<dyn Future<Output = Option<UnhandledEvent<E>>> + '_>> {
     Box::pin(async move {
-      match events {
-        ChainEvent::Event(event) => self.handle_ui_event(idx, event).await,
-        ChainEvent::Chain(event, chain) => OptionChain::chain(
-          self.handle_ui_event(idx, event).await,
-          self.handle_ui_events(idx, *chain).await,
-        ),
+      // The clone we perform here allows us to decouple the Widget from
+      // the Ui, which in turn makes it possible to pass a mutable Ui
+      // reference (in the form of a MutCap) to an immutable widget. It is
+      // nothing more but a reference count bump, though.
+      let widget = self.widgets[idx.idx].1.clone();
+      let event = widget.handle(self, event).await;
+      let parent_idx = self.widgets[idx.idx].0.parent_idx;
+
+      if let Some(event) = event {
+        self.handle_ui_event(parent_idx, event).await
+      } else {
+        // The event got handled.
+        None
       }
     })
   }
@@ -691,7 +713,7 @@ where
     &mut self,
     idx: Option<Index>,
     event: UiEvent<E>,
-  ) -> Option<UnhandledEvents<E>> {
+  ) -> Option<UnhandledEvent<E>> {
     match event {
       UiEvent::Event(event) => {
         if let Some(idx) = idx {
@@ -702,10 +724,10 @@ where
           // root widget which does not contain a parent or we were trying
           // to send an event to the focused widget and no widget had the
           // focus. In any case, return the event as-is.
-          Some(UnhandledEvent::Event(event).into())
+          Some(UnhandledEvent::Event(event))
         }
       },
-      UiEvent::Quit => Some(UnhandledEvent::Quit.into()),
+      UiEvent::Quit => Some(UnhandledEvent::Quit),
     }
   }
 }

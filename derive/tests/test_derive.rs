@@ -29,7 +29,6 @@ use async_trait::async_trait;
 
 use gui::BBox;
 use gui::Cap;
-use gui::ChainEvent;
 use gui::derive::Handleable;
 use gui::derive::Widget;
 use gui::Handleable;
@@ -40,7 +39,6 @@ use gui::Renderable;
 use gui::Renderer;
 use gui::Ui;
 use gui::UiEvent;
-use gui::UiEvents;
 use gui::UnhandledEvent;
 use gui::Widget;
 
@@ -189,9 +187,9 @@ where
   E: Debug + MyEvent + 'static,
   M: 'static,
 {
-  async fn handle(&self, _cap: &mut dyn MutCap<E, M>, mut event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, _cap: &mut dyn MutCap<E, M>, mut event: E) -> Option<UiEvent<E>> {
     event.modify();
-    Some(UiEvent::Event(event).into())
+    Some(UiEvent::Event(event))
   }
 }
 
@@ -243,10 +241,7 @@ async fn generic_event() {
   let result = ui.handle(UiEvent::Event(event)).await.unwrap();
 
   match result {
-    ChainEvent::Event(event) => match event {
-      UnhandledEvent::Event(event) => assert_eq!(event.value, 84),
-      _ => panic!("Unexpected event: {:?}", event),
-    },
-    ChainEvent::Chain(_, _) => panic!("Unexpected event: {:?}", result),
-  };
+    UnhandledEvent::Event(event) => assert_eq!(event.value, 84),
+    _ => panic!("Unexpected event: {:?}", result),
+  }
 }

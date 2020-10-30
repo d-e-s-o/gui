@@ -22,7 +22,7 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 
 use crate::MutCap;
-use crate::UiEvents;
+use crate::UiEvent;
 
 
 /// A trait representing an object capable of handling events.
@@ -40,7 +40,7 @@ where
   /// parent widget will receive it, or return a completely different
   /// event.
   #[allow(unused_variables)]
-  async fn handle(&self, cap: &mut dyn MutCap<E, M>, event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, cap: &mut dyn MutCap<E, M>, event: E) -> Option<UiEvent<E>> {
     // By default we just pass through the event, which will cause it to
     // bubble up to the parent.
     Some(event.into())

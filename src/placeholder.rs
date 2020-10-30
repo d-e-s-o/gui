@@ -29,7 +29,7 @@ use crate::MutCap;
 use crate::Object;
 use crate::Renderable;
 use crate::Renderer;
-use crate::UiEvents;
+use crate::UiEvent;
 use crate::Widget;
 
 
@@ -71,7 +71,7 @@ where
   E: 'static,
   M: 'static,
 {
-  async fn handle(&self, _cap: &mut dyn MutCap<E, M>, _event: E) -> Option<UiEvents<E>> {
+  async fn handle(&self, _cap: &mut dyn MutCap<E, M>, _event: E) -> Option<UiEvent<E>> {
     unreachable!()
   }
 }

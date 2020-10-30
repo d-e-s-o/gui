@@ -38,7 +38,6 @@ use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
 use crate::common::UiEvent;
-use crate::common::UiEvents;
 
 
 #[test]
@@ -186,7 +185,7 @@ async fn events_bubble_up_when_unhandled() {
   ui.focus(w1);
 
   let result = ui.handle(event).await;
-  let expected = UnhandledEvent::Event(event).into();
+  let expected = UnhandledEvent::Event(event);
   // An unhandled event should just be returned after every widget
   // forwarded it.
   assert_eq!(result.unwrap(), expected);
@@ -207,7 +206,7 @@ async fn targeted_event_returned_on_no_focus() {
   ui.hide(w);
 
   let result = ui.handle(event).await;
-  let expected = UnhandledEvent::Event(event).into();
+  let expected = UnhandledEvent::Event(event);
   assert_eq!(result.unwrap(), expected);
 }
 
@@ -215,7 +214,7 @@ fn key_handler(
   cap: &mut dyn MutCap<Event, Message>,
   event: Event,
   to_focus: Option<Id>,
-) -> Option<UiEvents> {
+) -> Option<UiEvent> {
   match event {
     Event::Key(key) if key == 'a' => {
       if let Some(id) = to_focus {
@@ -269,7 +268,7 @@ fn incrementing_event_handler(
   _: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<UiEvents> {
+) -> Option<UiEvent> {
   let event = match event {
     Event::Empty | Event::Key(..) => unreachable!(),
     Event::Int(value) => Event::Int(value + 1),
@@ -335,7 +334,7 @@ async fn quit_event() {
   );
 
   let result = ui.handle(UiEvent::Quit).await;
-  let expected = UnhandledEvent::Quit.into();
+  let expected = UnhandledEvent::Quit;
   assert_eq!(result.unwrap(), expected);
 }
 
@@ -439,7 +438,7 @@ fn checking_event_handler(
   _: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<UiEvents> {
+) -> Option<UiEvent> {
   assert_eq!(event, Event::Key('y'));
   None
 }
@@ -467,7 +466,7 @@ async fn hook_emitted_events() {
   let event = Event::Key('y');
   let result = ui.handle(event).await;
 
-  let expected = UnhandledEvent::Event(Event::Key('z')).into();
+  let expected = UnhandledEvent::Event(Event::Key('z'));
   assert_eq!(result.unwrap(), expected)
 }
 
