@@ -2,6 +2,7 @@ Unreleased
 ----------
 - Removed custom event variants & infrastructure
 - Adjusted event handlers to return a single event only
+  - Removed event chaining logic
 
 
 0.6.0-alpha.2

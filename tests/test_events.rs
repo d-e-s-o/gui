@@ -23,11 +23,8 @@ use std::future::Future;
 use std::pin::Pin;
 
 use gui::Cap;
-use gui::ChainEvent;
-use gui::EventChain;
 use gui::Id;
 use gui::MutCap;
-use gui::OptionChain;
 use gui::Ui;
 use gui::UnhandledEvent;
 use gui::Widget;
@@ -47,122 +44,6 @@ fn convert_event_into() {
   let ui_event = UiEvent::from(event);
 
   assert_eq!(ui_event, UiEvent::Event(orig_event));
-}
-
-#[test]
-fn chain_event() {
-  let event1 = Event::Key('a');
-  let orig_event1 = event1;
-  let event2 = UiEvent::Quit;
-  let orig_event2 = UiEvent::Quit;
-
-  let event = EventChain::<UiEvent>::chain(event1, event2);
-  let expected = ChainEvent::Chain(
-    orig_event1.into(),
-    Box::new(orig_event2.into()),
-  );
-
-  assert_eq!(event, expected);
-}
-
-#[test]
-fn chain_event_chain() {
-  let event1 = Event::Key('a');
-  let orig_event1 = event1;
-  let event2 = Event::Key('z');
-  let orig_event2 = event2;
-  let event3 = UiEvent::Quit;
-  let orig_event3 = UiEvent::Quit;
-
-  let event_chain = ChainEvent::<UiEvent>::Chain(event1.into(), Box::new(event2.into()));
-  let event = EventChain::<UiEvent>::chain(event_chain, event3);
-  let expected = ChainEvent::Chain(
-    orig_event1.into(),
-    Box::new(
-      ChainEvent::Chain(
-        orig_event2.into(),
-        Box::new(orig_event3.into())
-      )
-    ),
-  );
-
-  assert_eq!(event, expected);
-}
-
-#[test]
-fn event_and_option_chain() {
-  let event = Event::Empty;
-  let orig_event = event;
-  let result = EventChain::<UiEvent>::chain_opt(event, None as Option<Event>);
-
-  assert_eq!(result, orig_event.into());
-
-  let event1 = Event::Key('%');
-  let orig_event1 = event1;
-  let event2 = UiEvent::Quit;
-  let orig_event2 = UiEvent::Quit;
-
-  let result = EventChain::<UiEvent>::chain_opt(event1, Some(event2));
-  let expected = ChainEvent::Chain(
-    orig_event1.into(),
-    Box::new(orig_event2.into())
-  );
-
-  assert_eq!(result, expected);
-}
-
-#[test]
-fn option_and_option_chain() {
-  let result = OptionChain::<_, UiEvent>::chain(
-    None as Option<Event>,
-    None as Option<Event>,
-  );
-  assert!(result.is_none());
-
-  let event = Event::Key('1');
-  let orig_event = event;
-  let result = OptionChain::<_, UiEvent>::chain(None as Option<Event>, Some(event));
-
-  assert_eq!(result.unwrap(), orig_event.into());
-
-  let event = Event::Key('u');
-  let orig_event = event;
-  let result = OptionChain::<_, UiEvent>::chain(Some(event), None as Option<Event>);
-
-  assert_eq!(result.unwrap(), orig_event.into());
-
-  let event = Event::Key('2');
-  let orig_event = event;
-  let result = OptionChain::<_, UiEvent>::opt_chain(None as Option<Event>, event);
-
-  assert_eq!(result, orig_event.into());
-
-  let event1 = Event::Key('z');
-  let orig_event1 = event1;
-  let event2 = Event::Key('u');
-  let orig_event2 = event2;
-
-  let result = OptionChain::<_, UiEvent>::chain(Some(event1),Some(event2));
-  let expected = ChainEvent::Chain(
-    orig_event1.into(),
-    Box::new(orig_event2.into())
-  );
-
-  assert_eq!(result.unwrap(), expected);
-}
-
-#[test]
-fn last_event_in_chain() {
-  let event1 = Event::Key('a');
-  let event2 = Event::Key('z');
-  let orig_event2 = event2;
-
-  let event_chain = ChainEvent::<Event>::Chain(
-    event1,
-    Box::new(event2.into())
-  );
-
-  assert_eq!(event_chain.into_last(), orig_event2);
 }
 
 #[tokio::test]
