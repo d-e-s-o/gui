@@ -33,27 +33,3 @@ impl<E> From<E> for UiEvent<E> {
     UiEvent::Event(event)
   }
 }
-
-
-/// An event that the `Ui` did not process.
-///
-/// An unhandled event comprises the variants of a `UiEvent` that are
-/// not concerned with addressing.
-// Note that we do not provide a conversion from `UiEvent` because
-// conversion should only happen from within the `Ui` proper and after
-// making sure that `UiEvent` variants dealing solely with addressing
-// are no longer present.
-#[derive(Debug, PartialEq)]
-pub enum UnhandledEvent<E> {
-  /// An `Event` that can be handled by a `Handleable`.
-  Event(E),
-  /// A request to quit the application has been made.
-  Quit,
-}
-
-/// A convenience conversion from a single event into an `UnhandledEvent`.
-impl<E> From<E> for UnhandledEvent<E> {
-  fn from(event: E) -> Self {
-    UnhandledEvent::Event(event)
-  }
-}

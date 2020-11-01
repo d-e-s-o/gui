@@ -39,7 +39,6 @@ use gui::Renderable;
 use gui::Renderer;
 use gui::Ui;
 use gui::UiEvent;
-use gui::UnhandledEvent;
 use gui::Widget;
 
 
@@ -241,7 +240,7 @@ async fn generic_event() {
   let result = ui.handle(UiEvent::Event(event)).await.unwrap();
 
   match result {
-    UnhandledEvent::Event(event) => assert_eq!(event.value, 84),
+    UiEvent::Event(event) => assert_eq!(event.value, 84),
     _ => panic!("Unexpected event: {:?}", result),
   }
 }

@@ -26,7 +26,6 @@ use gui::Cap;
 use gui::Id;
 use gui::MutCap;
 use gui::Ui;
-use gui::UnhandledEvent;
 use gui::Widget;
 
 use crate::common::unwrap_event;
@@ -66,7 +65,7 @@ async fn events_bubble_up_when_unhandled() {
   ui.focus(w1);
 
   let result = ui.handle(event).await;
-  let expected = UnhandledEvent::Event(event);
+  let expected = UiEvent::Event(event);
   // An unhandled event should just be returned after every widget
   // forwarded it.
   assert_eq!(result.unwrap(), expected);
@@ -87,7 +86,7 @@ async fn targeted_event_returned_on_no_focus() {
   ui.hide(w);
 
   let result = ui.handle(event).await;
-  let expected = UnhandledEvent::Event(event);
+  let expected = UiEvent::Event(event);
   assert_eq!(result.unwrap(), expected);
 }
 
@@ -215,7 +214,7 @@ async fn quit_event() {
   );
 
   let result = ui.handle(UiEvent::Quit).await;
-  let expected = UnhandledEvent::Quit;
+  let expected = UiEvent::Quit;
   assert_eq!(result.unwrap(), expected);
 }
 
@@ -347,7 +346,7 @@ async fn hook_emitted_events() {
   let event = Event::Key('y');
   let result = ui.handle(event).await;
 
-  let expected = UnhandledEvent::Event(Event::Key('z'));
+  let expected = UiEvent::Event(Event::Key('z'));
   assert_eq!(result.unwrap(), expected)
 }
 

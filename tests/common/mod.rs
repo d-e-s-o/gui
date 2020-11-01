@@ -35,7 +35,6 @@ use gui::Id;
 use gui::Mergeable;
 use gui::MutCap;
 use gui::UiEvent as GuiEvent;
-use gui::UnhandledEvent;
 use gui::Widget;
 
 
@@ -251,12 +250,12 @@ impl Handleable<Event, Message> for TestWidget {
 }
 
 #[allow(unused)]
-pub fn unwrap_event<E>(event: UnhandledEvent<E>) -> E
+pub fn unwrap_event<E>(event: GuiEvent<E>) -> E
 where
   E: Debug,
 {
   match event {
-    UnhandledEvent::Event(event) => event,
+    GuiEvent::Event(event) => event,
     _ => panic!("Unexpected event: {:?}", event),
   }
 }

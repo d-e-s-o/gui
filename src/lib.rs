@@ -52,7 +52,6 @@ mod widget;
 use self::placeholder::Placeholder;
 
 pub use self::event::UiEvent;
-pub use self::event::UnhandledEvent;
 pub use self::handleable::Handleable;
 pub use self::mergeable::Mergeable;
 pub use self::object::Object;

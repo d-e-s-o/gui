@@ -39,7 +39,6 @@ use crate::Mergeable;
 use crate::Placeholder;
 use crate::Renderer;
 use crate::UiEvent;
-use crate::UnhandledEvent;
 use crate::Widget;
 
 
@@ -287,7 +286,7 @@ where
   /// account when providing a `Mergeable` implementation for the
   /// provided event type.
   /// Furthermore, the final merged event is not passed to widgets, but
-  /// returned straight back as an `UnhandledEvent`.
+  /// returned straight back.
   ///
   /// Note that event hook functions are only able to inspect events and
   /// not change or discard them.
@@ -635,7 +634,7 @@ where
   /// This function performs the initial determination of which widget
   /// is supposed to handle the given event and then passes it down to
   /// the actual event handler.
-  pub async fn handle<T>(&mut self, event: T) -> Option<UnhandledEvent<E>>
+  pub async fn handle<T>(&mut self, event: T) -> Option<UiEvent<E>>
   where
     T: Into<UiEvent<E>>,
   {
@@ -670,7 +669,7 @@ where
     if hooked {
       // TODO: For now we assume that no unknown event was passed out.
       let unhandled = match unhandled {
-        Some(UnhandledEvent::Event(event)) => Some(event),
+        Some(UiEvent::Event(event)) => Some(event),
         Some(..) => unimplemented!(),
         None => None,
       };
@@ -678,7 +677,7 @@ where
         .hooker
         .invoke(self, hook_event, unhandled, None)
         .await
-        .map(UnhandledEvent::Event)
+        .map(UiEvent::Event)
     } else {
       unhandled
     }
@@ -689,7 +688,7 @@ where
     &mut self,
     idx: Index,
     event: E,
-  ) -> Pin<Box<dyn Future<Output = Option<UnhandledEvent<E>>> + '_>> {
+  ) -> Pin<Box<dyn Future<Output = Option<UiEvent<E>>> + '_>> {
     Box::pin(async move {
       // The clone we perform here allows us to decouple the Widget from
       // the Ui, which in turn makes it possible to pass a mutable Ui
@@ -709,11 +708,7 @@ where
   }
 
   /// Handle a `UiEvent`.
-  async fn handle_ui_event(
-    &mut self,
-    idx: Option<Index>,
-    event: UiEvent<E>,
-  ) -> Option<UnhandledEvent<E>> {
+  async fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent<E>) -> Option<UiEvent<E>> {
     match event {
       UiEvent::Event(event) => {
         if let Some(idx) = idx {
@@ -724,10 +719,10 @@ where
           // root widget which does not contain a parent or we were trying
           // to send an event to the focused widget and no widget had the
           // focus. In any case, return the event as-is.
-          Some(UnhandledEvent::Event(event))
+          Some(UiEvent::Event(event))
         }
       },
-      UiEvent::Quit => Some(UnhandledEvent::Quit),
+      UiEvent::Quit => Some(UiEvent::Quit),
     }
   }
 }
