@@ -39,7 +39,6 @@
 //! strives for being completely agnostic of the underlying system and
 //! its rendering machinery as well as event dispatching.
 
-mod event;
 mod handleable;
 mod mergeable;
 mod object;
@@ -51,7 +50,6 @@ mod widget;
 
 use self::placeholder::Placeholder;
 
-pub use self::event::UiEvent;
 pub use self::handleable::Handleable;
 pub use self::mergeable::Mergeable;
 pub use self::object::Object;

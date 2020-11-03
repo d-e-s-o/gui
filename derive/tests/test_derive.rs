@@ -38,7 +38,6 @@ use gui::Object;
 use gui::Renderable;
 use gui::Renderer;
 use gui::Ui;
-use gui::UiEvent;
 use gui::Widget;
 
 
@@ -186,9 +185,9 @@ where
   E: Debug + MyEvent + 'static,
   M: 'static,
 {
-  async fn handle(&self, _cap: &mut dyn MutCap<E, M>, mut event: E) -> Option<UiEvent<E>> {
+  async fn handle(&self, _cap: &mut dyn MutCap<E, M>, mut event: E) -> Option<E> {
     event.modify();
-    Some(UiEvent::Event(event))
+    Some(event)
   }
 }
 
@@ -220,7 +219,7 @@ async fn generic_widget() {
     |id, _cap| Box::new(TestGeneric::<Event, Message>::new(id)),
   );
 
-  ui.handle(UiEvent::Event(())).await;
+  ui.handle(()).await;
 }
 
 #[tokio::test]
@@ -237,10 +236,6 @@ async fn generic_event() {
   ui.focus(r);
 
   let event = CustomEvent { value: 42 };
-  let result = ui.handle(UiEvent::Event(event)).await.unwrap();
-
-  match result {
-    UiEvent::Event(event) => assert_eq!(event.value, 84),
-    _ => panic!("Unexpected event: {:?}", result),
-  }
+  let result = ui.handle(event).await.unwrap();
+  assert_eq!(result.value, 84);
 }

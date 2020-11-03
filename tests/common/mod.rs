@@ -34,7 +34,6 @@ use gui::Handleable;
 use gui::Id;
 use gui::Mergeable;
 use gui::MutCap;
-use gui::UiEvent as GuiEvent;
 use gui::Widget;
 
 
@@ -60,9 +59,6 @@ impl Event {
     }
   }
 }
-
-#[allow(unused)]
-pub type UiEvent = GuiEvent<Event>;
 
 impl Mergeable for Event {
   fn merge_with(self, other: Self) -> Self {
@@ -115,7 +111,7 @@ impl<T> Deref for Handler<T> {
   }
 }
 
-type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvent>;
+type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<Event>;
 type ReactFn = dyn Fn(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 type RespondFn = dyn Fn(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 
@@ -152,7 +148,7 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::handle`.
   pub fn event_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<UiEvent>,
+    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<Event>,
   {
     self.event_handler = Some(Handler(Box::new(handler)));
     self
@@ -201,7 +197,7 @@ impl TestWidget {
 
 #[async_trait(?Send)]
 impl Handleable<Event, Message> for TestWidget {
-  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<UiEvent> {
+  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<Event> {
     // Also check that we can access the non-mutable version of the data.
     let _ = self.data::<TestWidgetData>(cap);
 
@@ -213,7 +209,7 @@ impl Handleable<Event, Message> for TestWidget {
         data.event_handler = Some(handler);
         event
       },
-      None => Some(event.into()),
+      None => Some(event),
     }
   }
 
@@ -246,16 +242,5 @@ impl Handleable<Event, Message> for TestWidget {
       },
       None => None,
     }
-  }
-}
-
-#[allow(unused)]
-pub fn unwrap_event<E>(event: GuiEvent<E>) -> E
-where
-  E: Debug,
-{
-  match event {
-    GuiEvent::Event(event) => event,
-    _ => panic!("Unexpected event: {:?}", event),
   }
 }

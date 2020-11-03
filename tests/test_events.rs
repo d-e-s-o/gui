@@ -28,22 +28,10 @@ use gui::MutCap;
 use gui::Ui;
 use gui::Widget;
 
-use crate::common::unwrap_event;
 use crate::common::Event;
 use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
-use crate::common::UiEvent;
-
-
-#[test]
-fn convert_event_into() {
-  let event = Event::Key(' ');
-  let orig_event = event;
-  let ui_event = UiEvent::from(event);
-
-  assert_eq!(ui_event, UiEvent::Event(orig_event));
-}
 
 #[tokio::test]
 async fn events_bubble_up_when_unhandled() {
@@ -65,10 +53,9 @@ async fn events_bubble_up_when_unhandled() {
   ui.focus(w1);
 
   let result = ui.handle(event).await;
-  let expected = UiEvent::Event(event);
   // An unhandled event should just be returned after every widget
   // forwarded it.
-  assert_eq!(result.unwrap(), expected);
+  assert_eq!(result.unwrap(), event);
 }
 
 #[tokio::test]
@@ -86,25 +73,24 @@ async fn targeted_event_returned_on_no_focus() {
   ui.hide(w);
 
   let result = ui.handle(event).await;
-  let expected = UiEvent::Event(event);
-  assert_eq!(result.unwrap(), expected);
+  assert_eq!(result.unwrap(), event);
 }
 
 fn key_handler(
   cap: &mut dyn MutCap<Event, Message>,
   event: Event,
   to_focus: Option<Id>,
-) -> Option<UiEvent> {
+) -> Option<Event> {
   match event {
     Event::Key(key) if key == 'a' => {
       if let Some(id) = to_focus {
         cap.focus(id);
         None
       } else {
-        Some(event.into())
+        Some(event)
       }
     },
-    _ => Some(event.into()),
+    _ => Some(event),
   }
 }
 
@@ -148,12 +134,12 @@ fn incrementing_event_handler(
   _: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<UiEvent> {
+) -> Option<Event> {
   let event = match event {
     Event::Empty | Event::Key(..) => unreachable!(),
     Event::Int(value) => Event::Int(value + 1),
   };
-  Some(event.into())
+  Some(event)
 }
 
 /// Check that events are propagated as expected.
@@ -193,29 +179,7 @@ async fn event_propagation() {
   let event = Event::Int(42);
   let result = ui.handle(event).await.unwrap();
   // We expect three increments, one from each of the widgets.
-  assert_eq!(unwrap_event(result).unwrap_int(), 45);
-}
-
-#[tokio::test]
-async fn quit_event() {
-  let (mut ui, r) = Ui::new(
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let c1 = ui.add_ui_widget(
-    r,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let _ = ui.add_ui_widget(
-    c1,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-
-  let result = ui.handle(UiEvent::Quit).await;
-  let expected = UiEvent::Quit;
-  assert_eq!(result.unwrap(), expected);
+  assert_eq!(result.unwrap_int(), 45);
 }
 
 static mut HOOK_COUNT: u64 = 0;
@@ -318,7 +282,7 @@ fn checking_event_handler(
   _: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<UiEvent> {
+) -> Option<Event> {
   assert_eq!(event, Event::Key('y'));
   None
 }
@@ -345,9 +309,7 @@ async fn hook_emitted_events() {
 
   let event = Event::Key('y');
   let result = ui.handle(event).await;
-
-  let expected = UiEvent::Event(Event::Key('z'));
-  assert_eq!(result.unwrap(), expected)
+  assert_eq!(result.unwrap(), Event::Key('z'))
 }
 
 fn different_emitting_event_hook<'f>(

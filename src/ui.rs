@@ -38,7 +38,6 @@ use crate::BBox;
 use crate::Mergeable;
 use crate::Placeholder;
 use crate::Renderer;
-use crate::UiEvent;
 use crate::Widget;
 
 
@@ -634,53 +633,22 @@ where
   /// This function performs the initial determination of which widget
   /// is supposed to handle the given event and then passes it down to
   /// the actual event handler.
-  pub async fn handle<T>(&mut self, event: T) -> Option<UiEvent<E>>
+  pub async fn handle<T>(&mut self, event: T) -> Option<E>
   where
-    T: Into<UiEvent<E>>,
+    T: Into<E>,
   {
-    let ui_event = event.into();
+    let event = event.into();
 
-    let (hook_event, hooked) = if let UiEvent::Event(event) = &ui_event {
-      // Invoke the hooks before passing the event to the widgets on the
-      // "official" route.
-      (
-        self.hooker.invoke(self, None, None, Some(&event)).await,
-        true,
-      )
-    } else {
-      (None, false)
-    };
-
-    // Determine the target widget from where to start handling.
-    let idx = match ui_event {
-      // All currently defined "ordinary" events go to the currently
-      // focused widget.
-      UiEvent::Event(_) => self.focused,
-      // All others either carry an explicit target with them (e.g.,
-      // some custom event) or have no target at all (for example the
-      // Quit event).
-      _ => None,
-    };
-
+    // Invoke the hooks before passing the event to the widgets on the
+    // "official" route.
+    let hook_event = self.hooker.invoke(self, None, None, Some(&event)).await;
+    // All events go to the focused widget first.
+    let idx = self.focused;
     // Any hook emitted events are not passed to the widgets themselves,
     // but just returned.
-    let unhandled = self.handle_ui_event(idx, ui_event).await;
+    let unhandled = self.try_handle_event(idx, event).await;
 
-    if hooked {
-      // TODO: For now we assume that no unknown event was passed out.
-      let unhandled = match unhandled {
-        Some(UiEvent::Event(event)) => Some(event),
-        Some(..) => unimplemented!(),
-        None => None,
-      };
-      self
-        .hooker
-        .invoke(self, hook_event, unhandled, None)
-        .await
-        .map(UiEvent::Event)
-    } else {
-      unhandled
-    }
+    self.hooker.invoke(self, hook_event, unhandled, None).await
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
@@ -688,7 +656,7 @@ where
     &mut self,
     idx: Index,
     event: E,
-  ) -> Pin<Box<dyn Future<Output = Option<UiEvent<E>>> + '_>> {
+  ) -> Pin<Box<dyn Future<Output = Option<E>> + '_>> {
     Box::pin(async move {
       // The clone we perform here allows us to decouple the Widget from
       // the Ui, which in turn makes it possible to pass a mutable Ui
@@ -699,7 +667,7 @@ where
       let parent_idx = self.widgets[idx.idx].0.parent_idx;
 
       if let Some(event) = event {
-        self.handle_ui_event(parent_idx, event).await
+        self.try_handle_event(parent_idx, event).await
       } else {
         // The event got handled.
         None
@@ -707,22 +675,17 @@ where
     })
   }
 
-  /// Handle a `UiEvent`.
-  async fn handle_ui_event(&mut self, idx: Option<Index>, event: UiEvent<E>) -> Option<UiEvent<E>> {
-    match event {
-      UiEvent::Event(event) => {
-        if let Some(idx) = idx {
-          self.handle_event(idx, event).await
-        } else {
-          // There is no receiver for this event. That could have many
-          // reasons, for example, event propagation could have reached the
-          // root widget which does not contain a parent or we were trying
-          // to send an event to the focused widget and no widget had the
-          // focus. In any case, return the event as-is.
-          Some(UiEvent::Event(event))
-        }
-      },
-      UiEvent::Quit => Some(UiEvent::Quit),
+  /// Handle an event.
+  async fn try_handle_event(&mut self, idx: Option<Index>, event: E) -> Option<E> {
+    if let Some(idx) = idx {
+      self.handle_event(idx, event).await
+    } else {
+      // There is no receiver for this event. That could have many
+      // reasons, for example, event propagation could have reached the
+      // root widget which does not contain a parent or we were trying
+      // to send an event to the focused widget and no widget had the
+      // focus. In any case, return the event as-is.
+      Some(event)
     }
   }
 }

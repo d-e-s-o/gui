@@ -1,7 +1,7 @@
 Unreleased
 ----------
 - Removed custom event variants & infrastructure
-- Removed dedicated `UnhandledEvent` type
+- Removed `UiEvent` & `UnhandledEvent` types
 - Adjusted event handlers to return a single event only
   - Removed event chaining logic
 

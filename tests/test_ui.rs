@@ -35,12 +35,10 @@ use gui::Id;
 use gui::MutCap;
 use gui::Ui;
 
-use crate::common::unwrap_event;
 use crate::common::Event;
 use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
-use crate::common::UiEvent;
 
 
 #[test]
@@ -512,12 +510,12 @@ fn counting_handler(
   _widget: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<UiEvent> {
+) -> Option<Event> {
   let event = match event {
     Event::Empty | Event::Key(..) => unreachable!(),
     Event::Int(value) => Event::Int(value + 1),
   };
-  Some(event.into())
+  Some(event)
 }
 
 
@@ -561,7 +559,7 @@ impl CreatingWidget {
 
 #[async_trait(?Send)]
 impl Handleable<Event, Message> for CreatingWidget {
-  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<UiEvent> {
+  async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<Event> {
     counting_handler(self.id, cap, event)
   }
 }
@@ -583,7 +581,7 @@ async fn recursive_widget_creation() {
   // We expect three increments. Note that we have four widgets in
   // total, but we cannot easily have the event reach all four of them
   // because two are peers sharing a parent.
-  assert_eq!(unwrap_event(result).unwrap_int(), 3);
+  assert_eq!(result.unwrap_int(), 3);
 }
 
 
@@ -620,11 +618,7 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(
-  widget: Id,
-  cap: &mut dyn MutCap<Event, Message>,
-  event: Event,
-) -> Option<UiEvent> {
+fn create_handler(widget: Id, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<Event> {
   match event {
     Event::Key(key) if key == 'z' => {
       cap.add_widget(
@@ -634,7 +628,7 @@ fn create_handler(
       );
       None
     },
-    _ => Some(event.into()),
+    _ => Some(event),
   }
 }
 
@@ -667,13 +661,13 @@ fn recursive_operations_handler(
   widget: Id,
   cap: &mut dyn MutCap<Event, Message>,
   _event: Event,
-) -> Option<UiEvent> {
+) -> Option<Event> {
   // Check that we can use the supplied `MutCap` object to retrieve our
   // own parent's ID.
   cap.parent_id(widget);
   cap.focus(widget);
   cap.is_focused(widget);
-  Some(Event::Int(42).into())
+  Some(Event::Int(42))
 }
 
 /// Check that widget operations on the own widget work properly.
@@ -691,5 +685,5 @@ async fn recursive_widget_operations() {
   ui.focus(root);
 
   let result = ui.handle(Event::Empty).await.unwrap();
-  assert_eq!(unwrap_event(result).unwrap_int(), 42);
+  assert_eq!(result.unwrap_int(), 42);
 }
