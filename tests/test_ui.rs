@@ -25,6 +25,8 @@
 
 mod common;
 
+use std::fmt::Write;
+
 use async_trait::async_trait;
 
 use gui::Cap;
@@ -88,6 +90,27 @@ fn correct_ids() {
   assert_eq!(ui.parent_id(c1).unwrap(), root);
   assert_eq!(ui.parent_id(w3).unwrap(), c1);
   assert_eq!(ui.parent_id(w4).unwrap(), c2);
+}
+
+#[test]
+fn debug_format() {
+  let (ui, _) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+
+  let mut string = String::new();
+  write!(&mut string, "{:?}", ui).unwrap();
+
+  #[cfg(debug_assertions)]
+  {
+    assert!(string.starts_with("Ui { "), string);
+    assert!(string.ends_with(" }"));
+  }
+  #[cfg(not(debug_assertions))]
+  {
+    assert_eq!(string, "Ui");
+  }
 }
 
 #[test]
