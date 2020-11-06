@@ -1,3 +1,8 @@
+0.6.0
+-----
+- Integrated with version `0.6.0` of `gui`
+
+
 0.6.0-alpha.1
 -------------
 - Added support for generic `Message` type for `Widget` and `Handleable`
