@@ -186,9 +186,12 @@ type EventHookFn<E, M> = &'static dyn for<'f> Fn(
   Option<&'f E>,
 ) -> Pin<Box<dyn Future<Output = Option<E>> + 'f>>;
 
+mod private {
+  pub trait Sealed {}
+}
 
 /// A capability allowing for various widget related operations.
-pub trait Cap: Debug {
+pub trait Cap: Debug + private::Sealed {
   /// Retrieve a reference to a widget's data.
   fn data(&self, widget: Id) -> &dyn Any;
 
@@ -688,6 +691,13 @@ where
       Some(event)
     }
   }
+}
+
+impl<E, M> private::Sealed for Ui<E, M>
+where
+  E: 'static + Debug,
+  M: 'static + Debug,
+{
 }
 
 impl<E, M> Cap for Ui<E, M>

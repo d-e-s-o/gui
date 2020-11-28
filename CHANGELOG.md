@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Sealed `Cap` and `MutCap` traits
+
+
 0.6.0
 -----
 - Removed custom event variants & infrastructure
