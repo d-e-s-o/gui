@@ -5,7 +5,7 @@
 # https://hub.docker.com/r/library/rust/tags/
 # The recipe for this docker image can be found at:
 # https://github.com/rust-lang/docker-rust/blob/8bab191937fcf23569d3a3c31103c1c6f7f2947e/1.42.0/buster/Dockerfile
-image: "rust:1.45.0"
+image: "rust:1.46.0"
 
 stages:
   - build
