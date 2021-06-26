@@ -16,9 +16,6 @@ A generic UI library/framework.
 [workspace]
 members = ["derive"]
 
-[badges]
-gitlab = { repository = "d-e-s-o/gui", branch = "master" }
-
 [features]
 default = ["derive"]
 derive = ["gui-derive"]
