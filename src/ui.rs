@@ -1,7 +1,7 @@
 // ui.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -515,7 +515,7 @@ where
   /// Reorder the widget with the given `Index` as the last visible one.
   fn reorder<F>(&mut self, idx: Index, new_idx_fn: F)
   where
-    F: FnOnce(&Ui<E, M>, &Vec<Id>) -> usize,
+    F: FnOnce(&Ui<E, M>, &[Id]) -> usize,
   {
     if let Some(parent_idx) = self.widgets[idx.idx].0.parent_idx {
       // First retrieve the index of the widget we are interested in
