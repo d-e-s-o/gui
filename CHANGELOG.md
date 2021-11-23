@@ -1,7 +1,7 @@
 Unreleased
 ----------
 - Sealed `Cap` and `MutCap` traits
-- Bumped minimum supported Rust version to `1.43`
+- Bumped minimum supported Rust version to `1.46`
 
 
 0.6.0
