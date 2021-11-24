@@ -1,7 +1,7 @@
 // mod.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -26,6 +26,7 @@ use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt::Result;
 use std::ops::Deref;
+use std::ops::DerefMut;
 
 use async_trait::async_trait;
 
@@ -111,9 +112,16 @@ impl<T> Deref for Handler<T> {
   }
 }
 
-type EventFn = dyn Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<Event>;
-type ReactFn = dyn Fn(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
-type RespondFn = dyn Fn(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
+impl<T> DerefMut for Handler<T> {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0
+  }
+}
+
+
+type EventFn = dyn FnMut(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<Event>;
+type ReactFn = dyn FnMut(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
+type RespondFn = dyn FnMut(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
 
 type EventHandler = Handler<Box<EventFn>>;
 type ReactHandler = Handler<Box<ReactFn>>;
@@ -148,7 +156,7 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::handle`.
   pub fn event_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<Event>,
+    F: 'static + FnMut(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<Event>,
   {
     self.event_handler = Some(Handler(Box::new(handler)));
     self
@@ -157,7 +165,7 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::react`.
   pub fn react_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>,
+    F: 'static + FnMut(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>,
   {
     self.react_handler = Some(Handler(Box::new(handler)));
     self
@@ -166,7 +174,7 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::respond`.
   pub fn respond_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + Fn(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>,
+    F: 'static + FnMut(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>,
   {
     self.respond_handler = Some(Handler(Box::new(handler)));
     self
@@ -203,7 +211,7 @@ impl Handleable<Event, Message> for TestWidget {
 
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.event_handler.take() {
-      Some(handler) => {
+      Some(mut handler) => {
         let event = handler(self.id, cap, event);
         let data = self.data_mut::<TestWidgetData>(cap);
         data.event_handler = Some(handler);
@@ -216,7 +224,7 @@ impl Handleable<Event, Message> for TestWidget {
   async fn react(&self, message: Message, cap: &mut dyn MutCap<Event, Message>) -> Option<Message> {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.react_handler.take() {
-      Some(handler) => {
+      Some(mut handler) => {
         let message = handler(message, cap);
         let data = self.data_mut::<TestWidgetData>(cap);
         data.react_handler = Some(handler);
@@ -233,7 +241,7 @@ impl Handleable<Event, Message> for TestWidget {
   ) -> Option<Message> {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.respond_handler.take() {
-      Some(handler) => {
+      Some(mut handler) => {
         let result = handler(message, cap);
 
         let data = self.data_mut::<TestWidgetData>(cap);
