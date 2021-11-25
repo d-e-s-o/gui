@@ -441,11 +441,9 @@ where
     let idx = Index::new(self.widgets.len());
     let id = Id::new(idx.idx, self);
 
-    // We require some trickery here to allow for dynamic widget
-    // creation from within the constructor of another widget. In
-    // particular, we install a "dummy" widget that acts as a container
-    // to which newly created child widgets can be registered.
-    let dummy = Placeholder::new();
+    // Because we have not created the actual widget yet, just install a
+    // placeholder in its stead.
+    let dummy = Placeholder::default();
     let data = new_data();
     let data = WidgetData::new(parent_idx, data);
     self.widgets.push((data, Rc::new(dummy)));
