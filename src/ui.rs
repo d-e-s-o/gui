@@ -468,8 +468,7 @@ where
     // Replace our placeholder with the actual widget we just created.
     // Note that because we store the children separately as part of an
     // `WidgetData` object there is no need for us to do anything about
-    // them. Note furthermore that this implies that the Widget trait's
-    // `add_child` method must not have any side effects.
+    // them.
     self.widgets[idx.idx].1 = widget;
     id
   }
