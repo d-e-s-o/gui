@@ -1,7 +1,7 @@
 // test_derive.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -128,8 +128,8 @@ where
 
 impl<E, M> TestGeneric<E, M>
 where
-  E: Debug + 'static,
-  M: Debug + 'static,
+  E: Debug,
+  M: Debug,
 {
   pub fn new(id: Id) -> Self {
     Self {
@@ -169,7 +169,7 @@ where
 
 impl<E> TestGenericEvent<E>
 where
-  E: Debug + MyEvent + 'static,
+  E: Debug + MyEvent,
 {
   pub fn new(id: Id) -> Self {
     Self {
@@ -182,8 +182,7 @@ where
 #[async_trait(?Send)]
 impl<E, M> Handleable<E, M> for TestGenericEvent<E>
 where
-  E: Debug + MyEvent + 'static,
-  M: 'static,
+  E: Debug + MyEvent,
 {
   async fn handle(&self, _cap: &mut dyn MutCap<E, M>, mut event: E) -> Option<E> {
     event.modify();

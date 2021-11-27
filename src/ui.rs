@@ -75,8 +75,8 @@ impl Id {
   #[allow(unused_variables)]
   fn new<E, M>(idx: usize, ui: &Ui<E, M>) -> Id
   where
-    E: 'static + Debug,
-    M: 'static + Debug,
+    E: Debug,
+    M: Debug,
   {
     Self {
       #[cfg(debug_assertions)]
@@ -389,8 +389,8 @@ where
 
 impl<E, M> Ui<E, M>
 where
-  E: 'static + Debug,
-  M: 'static + Debug,
+  E: Debug,
+  M: Debug,
 {
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
@@ -692,15 +692,15 @@ where
 
 impl<E, M> private::Sealed for Ui<E, M>
 where
-  E: 'static + Debug,
-  M: 'static + Debug,
+  E: Debug,
+  M: Debug,
 {
 }
 
 impl<E, M> Cap for Ui<E, M>
 where
-  E: 'static + Debug,
-  M: 'static + Debug,
+  E: Debug,
+  M: Debug,
 {
   /// Retrieve a reference to a widget's data.
   fn data(&self, widget: Id) -> &dyn Any {
@@ -762,8 +762,8 @@ where
 #[async_trait(?Send)]
 impl<E, M> MutCap<E, M> for Ui<E, M>
 where
-  E: 'static + Debug,
-  M: 'static + Debug,
+  E: Debug,
+  M: Debug,
 {
   /// Retrieve a mutable reference to a widget's data.
   fn data_mut(&mut self, widget: Id) -> &mut dyn Any {
@@ -860,8 +860,8 @@ where
 
 impl<E, M> Debug for Ui<E, M>
 where
-  E: 'static + Debug,
-  M: 'static + Debug,
+  E: Debug,
+  M: Debug,
 {
   fn fmt(&self, f: &mut Formatter<'_>) -> Result {
     let mut debug = f.debug_struct("Ui");
@@ -873,8 +873,8 @@ where
 
 impl<E, M> Deref for Ui<E, M>
 where
-  E: 'static + Debug,
-  M: 'static + Debug,
+  E: Debug,
+  M: Debug,
 {
   type Target = dyn Cap;
 

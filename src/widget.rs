@@ -1,7 +1,7 @@
 // widget.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -33,11 +33,7 @@ use crate::Renderable;
 /// relationships, the `Ui` is responsible for dispatching events to
 /// widgets and rendering them. Hence, a widget usable for the `Ui`
 /// needs to implement `Handleable`, `Renderable`, and `Object`.
-pub trait Widget<E, M>: Handleable<E, M> + Renderable + Object + Debug
-where
-  E: 'static,
-  M: 'static,
-{
+pub trait Widget<E, M>: Handleable<E, M> + Renderable + Object + Debug {
   /// Get the `TypeId` of `self`.
   fn type_id(&self) -> TypeId;
 
@@ -68,11 +64,7 @@ where
   }
 }
 
-impl<E, M> dyn Widget<E, M>
-where
-  E: 'static,
-  M: 'static,
-{
+impl<E, M> dyn Widget<E, M> {
   /// Check if the widget is of type `T`.
   pub fn is<T: Widget<E, M>>(&self) -> bool {
     let t = TypeId::of::<T>();
