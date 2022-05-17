@@ -57,8 +57,6 @@ pub trait Widget<E, M>: Handleable<E, M> + Renderable + Object + Debug {
   where
     Self: Sized,
     D: 'static,
-    E: Debug,
-    M: Debug,
   {
     cap.data_mut(self.id()).downcast_mut::<D>().unwrap()
   }

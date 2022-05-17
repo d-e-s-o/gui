@@ -73,11 +73,7 @@ pub struct Id {
 
 impl Id {
   #[allow(unused_variables)]
-  fn new<E, M>(idx: usize, ui: &Ui<E, M>) -> Id
-  where
-    E: Debug,
-    M: Debug,
-  {
+  fn new<E, M>(idx: usize, ui: &Ui<E, M>) -> Id {
     Self {
       #[cfg(debug_assertions)]
       ui_id: ui.id,
@@ -97,11 +93,7 @@ impl Display for Id {
 /// An internally used trait for abstracting over the invocation of
 /// event hooks.
 #[async_trait(?Send)]
-trait Hooker<E, M>
-where
-  E: Debug,
-  M: Debug,
-{
+trait Hooker<E, M> {
   async fn invoke(
     &self,
     ui: &mut Ui<E, M>,
@@ -127,8 +119,7 @@ struct Hooked {}
 #[async_trait(?Send)]
 impl<E, M> Hooker<E, M> for Hooked
 where
-  E: Debug + Mergeable,
-  M: Debug,
+  E: Mergeable,
 {
   async fn invoke(
     &self,
@@ -157,11 +148,7 @@ where
 struct NotHooked {}
 
 #[async_trait(?Send)]
-impl<E, M> Hooker<E, M> for NotHooked
-where
-  E: Debug,
-  M: Debug,
-{
+impl<E, M> Hooker<E, M> for NotHooked {
   async fn invoke(
     &self,
     _ui: &mut Ui<E, M>,
@@ -230,11 +217,7 @@ pub trait Cap: Debug + private::Sealed {
 
 /// A mutable capability allowing for various widget related operations.
 #[async_trait(?Send)]
-pub trait MutCap<E, M>: Cap + Deref<Target = dyn Cap>
-where
-  E: Debug,
-  M: Debug,
-{
+pub trait MutCap<E, M>: Cap + Deref<Target = dyn Cap> {
   /// Retrieve a mutable reference to a widget's data.
   fn data_mut(&mut self, widget: Id) -> &mut dyn Any;
 
@@ -375,8 +358,8 @@ impl<E, M> Debug for EventHook<E, M> {
 /// A `Ui` is a container for related widgets.
 pub struct Ui<E, M>
 where
-  E: 'static + Debug,
-  M: 'static + Debug,
+  E: 'static,
+  M: 'static,
 {
   #[cfg(debug_assertions)]
   id: usize,
@@ -387,11 +370,7 @@ where
   focused: Option<Index>,
 }
 
-impl<E, M> Ui<E, M>
-where
-  E: Debug,
-  M: Debug,
-{
+impl<E, M> Ui<E, M> {
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
   #[allow(clippy::new_ret_no_self)]
@@ -690,18 +669,9 @@ where
   }
 }
 
-impl<E, M> private::Sealed for Ui<E, M>
-where
-  E: Debug,
-  M: Debug,
-{
-}
+impl<E, M> private::Sealed for Ui<E, M> {}
 
-impl<E, M> Cap for Ui<E, M>
-where
-  E: Debug,
-  M: Debug,
-{
+impl<E, M> Cap for Ui<E, M> {
   /// Retrieve a reference to a widget's data.
   fn data(&self, widget: Id) -> &dyn Any {
     let idx = self.validate(widget);
@@ -760,11 +730,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<E, M> MutCap<E, M> for Ui<E, M>
-where
-  E: Debug,
-  M: Debug,
-{
+impl<E, M> MutCap<E, M> for Ui<E, M> {
   /// Retrieve a mutable reference to a widget's data.
   fn data_mut(&mut self, widget: Id) -> &mut dyn Any {
     let idx = self.validate(widget);
@@ -858,11 +824,7 @@ where
   }
 }
 
-impl<E, M> Debug for Ui<E, M>
-where
-  E: Debug,
-  M: Debug,
-{
+impl<E, M> Debug for Ui<E, M> {
   fn fmt(&self, f: &mut Formatter<'_>) -> Result {
     let mut debug = f.debug_struct("Ui");
     #[cfg(debug_assertions)]
@@ -871,11 +833,7 @@ where
   }
 }
 
-impl<E, M> Deref for Ui<E, M>
-where
-  E: Debug,
-  M: Debug,
-{
+impl<E, M> Deref for Ui<E, M> {
   type Target = dyn Cap;
 
   fn deref(&self) -> &Self::Target {
