@@ -27,14 +27,15 @@ use crate::Object;
 use crate::Renderable;
 
 
-/// A widget as used by a `Ui`.
+/// A widget as used by a [`Ui`][crate::Ui].
 ///
-/// In addition to taking care of `Id` management and parent-child
-/// relationships, the `Ui` is responsible for dispatching events to
-/// widgets and rendering them. Hence, a widget usable for the `Ui`
-/// needs to implement `Handleable`, `Renderable`, and `Object`.
+/// In addition to taking care of [`Id`][crate::Id] management and
+/// parent-child relationships, the `Ui` is responsible for dispatching
+/// events to widgets and rendering them. Hence, a widget usable for the
+/// `Ui` needs to implement [`Handleable`], [`Renderable`], and
+/// [`Object`].
 pub trait Widget<E, M>: Handleable<E, M> + Renderable + Object + Debug {
-  /// Get the `TypeId` of `self`.
+  /// Get the [`TypeId`] of `self`.
   fn type_id(&self) -> TypeId;
 
   /// Retrieve a reference to a widget's data.

@@ -1,7 +1,7 @@
 // object.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2019 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -24,6 +24,6 @@ use crate::Id;
 
 /// An `Object` represents a first-class entity in a UI.
 pub trait Object: Debug {
-  /// Retrieve this object's `Id`.
+  /// Retrieve this object's [`Id`].
   fn id(&self) -> Id;
 }

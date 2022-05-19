@@ -32,8 +32,8 @@ use crate::Renderer;
 use crate::Widget;
 
 
-/// This class is a dummy implementation of a `Widget`. Objects of it
-/// are used internally in the `Ui` class while the actual widget is
+/// This class is a dummy implementation of a [`Widget`]. Objects of it
+/// are used internally in the [`Ui`] class while the actual widget is
 /// being created.
 #[derive(Debug, Default)]
 pub(crate) struct Placeholder;

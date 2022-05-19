@@ -1,7 +1,7 @@
 // renderer.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -24,8 +24,8 @@ use crate::Renderable;
 /// A bounding box representing the area that a widget may occupy. A
 /// bounding box always describes a rectangular area. The origin [x=0,
 /// y=0] is typically assumed to reside in the upper left corner of the
-/// screen, but it is really up to the individual `Renderer` to make do
-/// with whatever is provided.
+/// screen, but it is really up to the individual [`Renderer`] to make
+/// do with whatever is provided.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BBox {
   /// The x-coordinate of the bounding box.
@@ -54,7 +54,7 @@ pub trait Renderer {
 
   /// Render an object.
   ///
-  /// Objects are represented as `Renderable` and need to be cast into
+  /// Objects are represented as [`Renderable`] and need to be cast into
   /// the actual widget type to render by the `Renderer` itself, should
   /// that be necessary. A simplified implementation could look as
   /// follows:

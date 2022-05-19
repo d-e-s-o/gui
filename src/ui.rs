@@ -41,9 +41,9 @@ use crate::Renderer;
 use crate::Widget;
 
 
-/// An `Index` is our internal representation of an `Id`. `Id`s can
-/// belong to different `Ui` objects and a validation step converts them
-/// into an `Index`.
+/// An [`Index`] is our internal representation of an [`Id`]. `Id`s can
+/// belong to different [`Ui`] objects and a validation step converts
+/// them into an `Index`.
 #[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
 struct Index {
   idx: usize,
@@ -186,7 +186,7 @@ pub trait Cap: Debug + private::Sealed {
   /// z-order, from highest to lowest.
   fn children(&self, widget: Id) -> ChildIter<'_>;
 
-  /// Retrieve the `Id` of the root widget.
+  /// Retrieve the [`Id`] of the root widget.
   fn root_id(&self) -> Id;
 
   /// Retrieve the parent of the given widget.
@@ -196,8 +196,9 @@ pub trait Cap: Debug + private::Sealed {
   ///
   /// Note that a return value of `true` does not necessary mean that
   /// the widget is actually visible. A widget is only visible if all
-  /// its parents have the visibility flag set, too. The `is_displayed`
-  /// method can be used to check for actual visibility.
+  /// its parents have the visibility flag set, too. The
+  /// [`is_displayed`][Self::is_displayed] method can be used to check
+  /// for actual visibility.
   fn is_visible(&self, widget: Id) -> bool;
 
   /// Check whether a widget is actually being displayed.
@@ -210,7 +211,7 @@ pub trait Cap: Debug + private::Sealed {
   /// Retrieve the currently focused widget.
   fn focused(&self) -> Option<Id>;
 
-  /// Check whether the widget with the given `Id` is focused.
+  /// Check whether the widget with the given [`Id`] is focused.
   fn is_focused(&self, widget: Id) -> bool;
 }
 
@@ -342,7 +343,7 @@ impl<E, M> WidgetData<E, M> {
 }
 
 
-/// A struct wrapping an `EventHookFn` while implementing `Debug`.
+/// A struct wrapping an [`EventHookFn`] while implementing [`Debug`].
 struct EventHook<E, M>(EventHookFn<E, M>)
 where
   E: 'static,

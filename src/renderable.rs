@@ -1,7 +1,7 @@
 // renderable.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -27,15 +27,15 @@ use crate::Renderer;
 
 /// A trait representing a renderable object.
 pub trait Renderable: 'static + Debug {
-  /// Get the `TypeId` of `self`.
+  /// Get the [`TypeId`] of `self`.
   fn type_id(&self) -> TypeId;
 
   /// Render the renderable object.
   ///
-  /// This method just forwards the call to the given `Renderer`,
-  /// supplying a trait object of the actual widget. The renderer is
-  /// advised to honor the given `BBox` and is free to inquire
-  /// additional state using the supplied `Cap`.
+  /// This method should just forward the call to the given
+  /// [`Renderer`], supplying a trait object of the actual widget. The
+  /// renderer is advised to honor the given [`BBox`] and is free to
+  /// inquire additional state using the supplied [`Cap`].
   fn render(&self, cap: &dyn Cap, renderer: &dyn Renderer, bbox: BBox) -> BBox;
 }
 

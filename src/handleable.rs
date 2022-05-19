@@ -27,7 +27,7 @@ use crate::MutCap;
 /// A trait representing an object capable of handling events.
 #[async_trait(?Send)]
 pub trait Handleable<E, M>: Debug {
-  /// Handle an `Event`.
+  /// Handle an event.
   ///
   /// The widget has the option to either consume the event and return
   /// nothing, in which case no one else will get informed about it,
@@ -43,7 +43,7 @@ pub trait Handleable<E, M>: Debug {
 
   /// React to a message.
   ///
-  /// This method is the handler for the `MutCap::send` invocation.
+  /// This method is the handler for the [`MutCap::send`] invocation.
   #[allow(unused_variables)]
   async fn react(&self, message: M, cap: &mut dyn MutCap<E, M>) -> Option<M> {
     Some(message)
@@ -51,7 +51,7 @@ pub trait Handleable<E, M>: Debug {
 
   /// Respond to a message.
   ///
-  /// This is the handler for the `MutCap::call` invocation.
+  /// This is the handler for the [`MutCap::call`] invocation.
   #[allow(unused_variables)]
   async fn respond(&self, message: &mut M, cap: &mut dyn MutCap<E, M>) -> Option<M> {
     None
