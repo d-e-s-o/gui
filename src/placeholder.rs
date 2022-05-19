@@ -59,6 +59,14 @@ impl<E, M> Handleable<E, M> for Placeholder {
   async fn handle(&self, _cap: &mut dyn MutCap<E, M>, _event: E) -> Option<E> {
     unreachable!()
   }
+
+  async fn react(&self, _message: M, _cap: &mut dyn MutCap<E, M>) -> Option<M> {
+    unreachable!()
+  }
+
+  async fn respond(&self, _message: &mut M, _cap: &mut dyn MutCap<E, M>) -> Option<M> {
+    unreachable!()
+  }
 }
 
 impl<E, M> Widget<E, M> for Placeholder {
