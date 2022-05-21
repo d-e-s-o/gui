@@ -320,6 +320,11 @@ where
   /// The data associated with the widget.
   data: Box<dyn Any>,
   /// Vector of all the children that have this widget as a parent.
+  ///
+  /// Children are ordered by their z-index. The widget at index zero
+  /// has the highest z-index (i.e., covers all below), the last one the
+  /// lowest. If one of the children is the focused one, it will be at
+  /// index zero.
   // Note that unfortunately there is no straight forward way to make
   // this a Vec<Index> because we cannot use an impl trait return type
   // for the `children` method present in `Cap`.
@@ -489,7 +494,8 @@ impl<E, M> Ui<E, M> {
     }
   }
 
-  /// Reorder the widget with the given `Index` as the last visible one.
+  /// Reorder the widget with the given `Index` according to the
+  /// provided function's result.
   fn reorder<F>(&mut self, idx: Index, new_idx_fn: F)
   where
     F: FnOnce(&Ui<E, M>, &[Id]) -> usize,
@@ -520,34 +526,6 @@ impl<E, M> Ui<E, M> {
     // it unless necessary.
     if !self.is_top_most_child(idx) {
       self.reorder(idx, |_, _| 0);
-    }
-  }
-
-  /// Reorder the widget with the given `Index` as the last visible one.
-  fn reorder_as_visible(&mut self, idx: Index) {
-    // In order to appear idempotent, only reorder the given widget in
-    // the parent's list of children if it is not already visible.
-    if !self.is_visible(idx) {
-      self.reorder(idx, |ui, children| {
-        children
-          .iter()
-          .rev()
-          .position(|x| Cap::is_visible(ui, *x))
-          .map(|x| x + 1)
-          .unwrap_or_else(|| children.len())
-      })
-    }
-  }
-
-  /// Reorder the widget with the given `Index` as the first hidden one.
-  fn reorder_as_hidden(&mut self, idx: Index) {
-    if self.is_visible(idx) {
-      self.reorder(idx, |ui, children| {
-        children
-          .iter()
-          .position(|x| !Cap::is_visible(ui, *x))
-          .unwrap_or_else(|| children.len())
-      })
     }
   }
 
@@ -600,6 +578,8 @@ impl<E, M> Ui<E, M> {
       //       Rust, though. Not sure.
       let bbox = widget.render(self, renderer, bbox);
 
+      // We start rendering with the widget with the lowest z-index,
+      // i.e., the one the furthest in the background.
       for child_id in self.children(idx).rev() {
         let child_idx = self.validate(*child_id);
         let child = self.lookup(child_idx);
@@ -751,7 +731,7 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
   /// Show a widget, i.e., set its and its parents' visibility flag.
   fn show(&mut self, widget: Id) {
     let idx = self.validate(widget);
-    self.show(idx, Ui::reorder_as_visible);
+    self.show(idx, |_, _| ());
   }
 
   /// Hide a widget, i.e., unset its visibility flag.
@@ -761,7 +741,6 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
     }
 
     let idx = self.validate(widget);
-    self.reorder_as_hidden(idx);
     self.widgets[idx.idx].0.visible = false;
   }
 

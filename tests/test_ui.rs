@@ -408,8 +408,10 @@ fn focus_changes_child_order() {
   }
 }
 
+/// Check that hiding as well as showing a widget preserves its order in
+/// the parent's array of children.
 #[test]
-fn repeated_show_preserves_order() {
+fn hide_and_show_preserve_order() {
   let (mut ui, root) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -419,111 +421,38 @@ fn repeated_show_preserves_order() {
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
   );
-  let w11 = ui.add_ui_widget(
-    w1,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
   let w2 = ui.add_ui_widget(
     root,
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
   );
-  let w21 = ui.add_ui_widget(
-    w2,
+  let w3 = ui.add_ui_widget(
+    root,
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
   );
+
+  let before = ui.children(root).cloned().collect::<Vec<_>>();
 
   // By default all widgets are visible. Make sure that issuing a show
   // does not change the order of children. It should be a no-op.
-  let before = ui.children(root).cloned().collect::<Vec<_>>();
-
-  ui.show(w11);
+  ui.show(w2);
   let after = ui.children(root).cloned().collect::<Vec<_>>();
   assert_eq!(before, after);
 
-  ui.show(w21);
+  ui.show(w3);
   let after = ui.children(root).cloned().collect::<Vec<_>>();
   assert_eq!(before, after);
-}
-
-#[test]
-fn hide_changes_child_order() {
-  let (mut ui, root) = Ui::new(
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w1 = ui.add_ui_widget(
-    root,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w2 = ui.add_ui_widget(
-    root,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w3 = ui.add_ui_widget(
-    root,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w4 = ui.add_ui_widget(
-    root,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
 
   ui.hide(w2);
-  {
-    let mut it = ui.children(root);
-    assert_eq!(*it.next().unwrap(), w1);
-    assert_eq!(*it.next().unwrap(), w3);
-    assert_eq!(*it.next().unwrap(), w4);
-    assert_eq!(*it.next().unwrap(), w2);
-    assert!(it.next().is_none());
-  }
-
-  ui.hide(w3);
-  {
-    let mut it = ui.children(root);
-    assert_eq!(*it.next().unwrap(), w1);
-    assert_eq!(*it.next().unwrap(), w4);
-    assert_eq!(*it.next().unwrap(), w3);
-    assert_eq!(*it.next().unwrap(), w2);
-    assert!(it.next().is_none());
-  }
-}
-
-#[test]
-fn repeated_hide_preserves_order() {
-  let (mut ui, root) = Ui::new(
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let _ = ui.add_ui_widget(
-    root,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w2 = ui.add_ui_widget(
-    root,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
-  let w3 = ui.add_ui_widget(
-    root,
-    || TestWidgetDataBuilder::new().build(),
-    |id, _cap| Box::new(TestWidget::new(id)),
-  );
+  let after = ui.children(root).cloned().collect::<Vec<_>>();
+  assert_eq!(before, after);
 
   ui.hide(w2);
-  ui.hide(w3);
+  let after = ui.children(root).cloned().collect::<Vec<_>>();
+  assert_eq!(before, after);
 
-  let before = ui.children(root).cloned().collect::<Vec<_>>();
-  ui.hide(w2);
-
+  ui.hide(w1);
   let after = ui.children(root).cloned().collect::<Vec<_>>();
   assert_eq!(before, after);
 }

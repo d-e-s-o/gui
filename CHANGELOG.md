@@ -1,5 +1,7 @@
 Unreleased
 ----------
+- Adjusted showing and hiding of widgets to no longer change child order
+  in parent
 - Sealed `Cap` and `MutCap` traits
 - Added a step building the documentation to CI pipeline
 - Bumped minimum supported Rust version to `1.46`
