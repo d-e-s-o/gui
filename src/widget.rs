@@ -40,8 +40,10 @@ pub trait Widget<E, M>: Handleable<E, M> + Renderable + Object + Debug {
 
   /// Retrieve a reference to a widget's data.
   ///
-  /// Note: This function will panic if the data associated with the
-  ///       object is not of type `D`.
+  /// # Panics
+  ///
+  /// This function will panic if the data associated with the object is
+  /// not of type `D`.
   fn data<'c, D>(&self, cap: &'c dyn Cap) -> &'c D
   where
     Self: Sized,
@@ -52,8 +54,10 @@ pub trait Widget<E, M>: Handleable<E, M> + Renderable + Object + Debug {
 
   /// Retrieve a mutable reference to a widget's data.
   ///
-  /// Note: This function will panic if the data associated with the
-  ///       object is not of type `D`.
+  /// # Panics
+  ///
+  /// This function will panic if the data associated with the object is
+  /// not of type `D`.
   fn data_mut<'c, D>(&self, cap: &'c mut dyn MutCap<E, M>) -> &'c mut D
   where
     Self: Sized,
