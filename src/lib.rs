@@ -1,7 +1,7 @@
 // lib.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2022 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -29,6 +29,7 @@
   rust_2018_compatibility,
   rust_2018_idioms,
   trivial_numeric_casts,
+  unreachable_pub,
   unstable_features,
   unused_import_braces,
   unused_qualifications,
