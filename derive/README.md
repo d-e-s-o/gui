@@ -2,7 +2,7 @@
 [![coverage](https://gitlab.com/d-e-s-o/gui/badges/main/coverage.svg)](https://gitlab.com/d-e-s-o/gui/-/jobs/artifacts/main/file/kcov/kcov-merged/index.html?job=coverage:kcov)
 [![crates.io](https://img.shields.io/crates/v/gui-derive.svg)](https://crates.io/crates/gui-derive)
 [![Docs](https://docs.rs/gui-derive/badge.svg)](https://docs.rs/gui-derive)
-[![rustc](https://img.shields.io/badge/rustc-1.42+-blue.svg)](https://blog.rust-lang.org/2020/03/12/Rust-1.42.html)
+[![rustc](https://img.shields.io/badge/rustc-1.49+-blue.svg)](https://blog.rust-lang.org/2020/12/31/Rust-1.49.0.html)
 
 gui-derive
 ==========
