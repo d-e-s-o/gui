@@ -1,7 +1,7 @@
 // widget.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2022 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -67,7 +67,11 @@ pub trait Widget<E, M>: Handleable<E, M> + Renderable + Object + Debug {
   }
 }
 
-impl<E, M> dyn Widget<E, M> {
+impl<E, M> dyn Widget<E, M>
+where
+  E: 'static,
+  M: 'static,
+{
   /// Check if the widget is of type `T`.
   pub fn is<T: Widget<E, M>>(&self) -> bool {
     let t = TypeId::of::<T>();
