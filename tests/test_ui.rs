@@ -1,7 +1,7 @@
 // test_ui.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2022 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -544,12 +544,11 @@ struct Moveable {}
 #[gui(Event = Event)]
 struct MovingWidget {
   id: Id,
-  object: Moveable,
 }
 
 impl MovingWidget {
-  pub fn new(id: Id, object: Moveable) -> Self {
-    Self { id, object }
+  pub fn new(id: Id) -> Self {
+    Self { id }
   }
 }
 
@@ -565,7 +564,7 @@ fn moving_widget_creation() {
   let _ = ui.add_ui_widget(
     root,
     || Box::new(()),
-    |id, _cap| Box::new(MovingWidget::new(id, Moveable {})),
+    |id, _cap| Box::new(MovingWidget::new(id)),
   );
 }
 
