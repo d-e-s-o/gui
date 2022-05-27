@@ -1,7 +1,7 @@
 // ui.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2022 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -701,6 +701,7 @@ impl<E, M> Cap for Ui<E, M> {
   }
 
   /// Check whether the given widget is focused.
+  #[allow(clippy::nonminimal_bool)]
   fn is_focused(&self, widget: Id) -> bool {
     let idx = self.validate(widget);
     let result = self.focused == Some(idx);

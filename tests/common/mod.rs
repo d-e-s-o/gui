@@ -1,7 +1,7 @@
 // mod.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2022 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -205,6 +205,7 @@ impl TestWidget {
 
 #[async_trait(?Send)]
 impl Handleable<Event, Message> for TestWidget {
+  #[allow(deref_into_dyn_supertrait)]
   async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<Event> {
     // Also check that we can access the non-mutable version of the data.
     let _ = self.data::<TestWidgetData>(cap);
