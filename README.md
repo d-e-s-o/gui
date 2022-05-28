@@ -1,5 +1,5 @@
-[![pipeline](https://gitlab.com/d-e-s-o/gui/badges/main/pipeline.svg)](https://gitlab.com/d-e-s-o/gui/commits/main)
-[![coverage](https://gitlab.com/d-e-s-o/gui/badges/main/coverage.svg)](https://gitlab.com/d-e-s-o/gui/-/jobs/artifacts/main/file/kcov/kcov-merged/index.html?job=coverage:kcov)
+[![pipeline](https://github.com/d-e-s-o/gui/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/d-e-s-o/gui/actions/workflows/ci.yml)
+[![coverage](https://codecov.io/gh/d-e-s-o/gui/branch/main/graph/badge.svg)](https://codecov.io/gh/d-e-s-o/gui)
 [![crates.io](https://img.shields.io/crates/v/gui.svg)](https://crates.io/crates/gui)
 [![Docs](https://docs.rs/gui/badge.svg)](https://docs.rs/gui)
 [![rustc](https://img.shields.io/badge/rustc-1.49+-blue.svg)](https://blog.rust-lang.org/2020/12/31/Rust-1.49.0.html)
