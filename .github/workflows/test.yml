@@ -45,7 +45,7 @@ jobs:
     - name: Test and gather coverage
       run: cargo llvm-cov --lcov --output-path lcov.info
     - name: Upload code coverage results
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         files: lcov.info
   build-minimum:
