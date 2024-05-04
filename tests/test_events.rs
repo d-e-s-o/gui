@@ -1,7 +1,7 @@
 // test_events.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2020 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2024 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -324,7 +324,7 @@ fn different_emitting_event_hook<'f>(
 
 /// Check that hook emitted events are attempted to be merged.
 #[tokio::test]
-#[should_panic(expected = "`(left == right)`\n  left: `\'a\'`,\n right: `\'z\'`")]
+#[should_panic(expected = "left: 'a'\n right: 'z'")]
 async fn hook_event_merging() {
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
