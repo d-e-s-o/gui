@@ -1,7 +1,7 @@
 // placeholder.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2021 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2024 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -35,7 +35,7 @@ use crate::Widget;
 /// This class is a dummy implementation of a [`Widget`]. Objects of it
 /// are used internally in the [`Ui`] class while the actual widget is
 /// being created.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct Placeholder;
 
 impl Renderable for Placeholder {

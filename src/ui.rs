@@ -1,7 +1,7 @@
 // ui.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2022 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2024 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -428,7 +428,7 @@ impl<E, M> Ui<E, M> {
 
     // Because we have not created the actual widget yet, just install a
     // placeholder in its stead.
-    let dummy = Placeholder::default();
+    let dummy = Placeholder;
     let data = new_data();
     let data = WidgetData::new(parent_idx, data);
     self.widgets.push((data, Rc::new(dummy)));
