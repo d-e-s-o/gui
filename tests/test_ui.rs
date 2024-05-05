@@ -1,7 +1,7 @@
 // test_ui.rs
 
 // *************************************************************************
-// * Copyright (C) 2018-2022 Daniel Mueller (deso@posteo.net)              *
+// * Copyright (C) 2018-2024 Daniel Mueller (deso@posteo.net)              *
 // *                                                                       *
 // * This program is free software: you can redistribute it and/or modify  *
 // * it under the terms of the GNU General Public License as published by  *
@@ -571,7 +571,7 @@ fn moving_widget_creation() {
 
 fn create_handler(widget: Id, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<Event> {
   match event {
-    Event::Key(key) if key == 'z' => {
+    Event::Key('z') => {
       cap.add_widget(
         widget,
         Box::new(|| Box::new(())),

@@ -82,7 +82,7 @@ fn key_handler(
   to_focus: Option<Id>,
 ) -> Option<Event> {
   match event {
-    Event::Key(key) if key == 'a' => {
+    Event::Key('a') => {
       if let Some(id) = to_focus {
         cap.focus(id);
         None
