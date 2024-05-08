@@ -1,7 +1,8 @@
 [package]
 name = "gui"
 version = "0.6.0"
-edition = "2018"
+edition = "2021"
+rust-version = "1.58"
 authors = ["Daniel Mueller <deso@posteo.net>"]
 license = "GPL-3.0-or-later"
 homepage = "https://crates.io/crates/gui"

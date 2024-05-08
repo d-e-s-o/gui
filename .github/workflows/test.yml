@@ -60,7 +60,7 @@ jobs:
         with:
           # Please adjust README and rust-version field in Cargo.toml files when
           # bumping version.
-          toolchain: 1.49
+          toolchain: 1.58
       - name: Build
         run: cargo build --locked
   clippy:

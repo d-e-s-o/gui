@@ -5,7 +5,7 @@ Unreleased
 - Sealed `Cap` and `MutCap` traits
 - Added a step building the documentation to CI pipeline
 - Switched to using GitHub Actions as CI provider
-- Bumped minimum supported Rust version to `1.49`
+- Bumped minimum supported Rust version to `1.58`
 
 
 0.6.0
