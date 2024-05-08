@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [1.49.0, stable]
+        rust: [stable]
     steps:
     - uses: actions/checkout@v3
     - uses: dtolnay/rust-toolchain@master
@@ -47,6 +47,22 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         files: lcov.info
+  build-minimum:
+    name: Build using minimum versions of dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Nightly Rust
+        uses: dtolnay/rust-toolchain@nightly
+      - run: cargo +nightly -Z minimal-versions update
+      - name: Install minimum Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          # Please adjust README and rust-version field in Cargo.toml files when
+          # bumping version.
+          toolchain: 1.49
+      - name: Build
+        run: cargo build --locked
   clippy:
     name: Lint with clippy
     runs-on: ubuntu-latest
