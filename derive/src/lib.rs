@@ -98,7 +98,7 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 /// Using this macro a default implementation of the `gui::Widget`
 /// trait can be created. Note that this trait is just a unification of
-/// the `gui::Object`, `gui::Renderer`, and `gui::Handleable` traits.
+/// the `gui::Object`, `gui::Renderable`, and `gui::Handleable` traits.
 /// Note furthermore that only implementations of the former two will be
 /// auto generated. The reason for this behavior is that
 /// `gui::Handleable` most likely needs customization to accommodate for
@@ -300,13 +300,13 @@ fn check_struct_fields(fields: &Fields) -> Result<()> {
 /// Expand the struct input with the implementation of the required traits.
 fn expand_widget_traits(new: New, event: &Event, message: &Message, input: &DeriveInput) -> Tokens {
   let new_impl = expand_new_impl(new, input);
-  let renderer = expand_renderer_trait(input);
+  let renderable = expand_renderable_trait(input);
   let object = expand_object_trait(input);
   let widget = expand_widget_trait(event, message, input);
 
   quote! {
     #new_impl
-    #renderer
+    #renderable
     #object
     #widget
   }
@@ -335,8 +335,8 @@ fn expand_new_impl(new: New, input: &DeriveInput) -> Tokens {
   }
 }
 
-/// Expand an implementation for the `gui::Renderer` trait.
-fn expand_renderer_trait(input: &DeriveInput) -> Tokens {
+/// Expand an implementation for the `gui::Renderable` trait.
+fn expand_renderable_trait(input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
