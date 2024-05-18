@@ -354,6 +354,15 @@ fn expand_renderable_trait(input: &DeriveInput) -> Tokens {
       ) -> ::gui::BBox {
         renderer.render(self, cap, bbox)
       }
+
+      fn render_done(
+        &self,
+        cap: &::gui::Cap,
+        renderer: &::gui::Renderer,
+        bbox: ::gui::BBox,
+      ) {
+        renderer.render_done(self, cap, bbox)
+      }
     }
   }
 }

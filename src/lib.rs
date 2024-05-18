@@ -3,6 +3,7 @@
 
 #![allow(
   clippy::assertions_on_constants,
+  clippy::let_unit_value,
   clippy::redundant_field_names,
 )]
 #![warn(

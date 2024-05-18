@@ -569,6 +569,8 @@ impl<E, M> Ui<E, M> {
         let child = self.lookup(child_idx);
         self.render_all(child_idx, child, renderer, bbox)
       }
+
+      let () = widget.render_done(self, renderer, bbox);
     }
   }
 

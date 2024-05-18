@@ -23,6 +23,7 @@ struct CountingRenderer {
   pre_render_count: Cell<u64>,
   post_render_count: Cell<u64>,
   total_render_count: Cell<u64>,
+  total_render_done_count: Cell<u64>,
 }
 
 impl CountingRenderer {
@@ -31,6 +32,7 @@ impl CountingRenderer {
       pre_render_count: Cell::new(0),
       post_render_count: Cell::new(0),
       total_render_count: Cell::new(0),
+      total_render_done_count: Cell::new(0),
     }
   }
 }
@@ -47,11 +49,20 @@ impl Renderer for CountingRenderer {
   fn render(&self, object: &dyn Renderable, _cap: &dyn Cap, bbox: BBox) -> BBox {
     assert!(object.downcast_ref::<TestWidget>().is_some());
 
-    self.total_render_count.set(
-      self.total_render_count.get() + 1,
-    );
+    self
+      .total_render_count
+      .set(self.total_render_count.get() + 1);
 
     bbox
+  }
+
+  fn render_done(&self, object: &dyn Renderable, _cap: &dyn Cap, _bbox: BBox) {
+    assert!(object.downcast_ref::<TestWidget>().is_some());
+    assert!(self.total_render_done_count.get() < self.total_render_count.get());
+
+    self
+      .total_render_done_count
+      .set(self.total_render_done_count.get() + 1);
   }
 
   fn post_render(&self) {
@@ -83,6 +94,7 @@ fn render_is_called_for_each_widget() {
   assert_eq!(renderer.pre_render_count.get(), 1);
   assert_eq!(renderer.post_render_count.get(), 1);
   assert_eq!(renderer.total_render_count.get(), 3);
+  assert_eq!(renderer.total_render_done_count.get(), 3);
 }
 
 #[test]
@@ -114,6 +126,7 @@ fn render_honors_visibility_flag() {
   assert_eq!(renderer.pre_render_count.get(), 1);
   assert_eq!(renderer.post_render_count.get(), 1);
   assert_eq!(renderer.total_render_count.get(), 3);
+  assert_eq!(renderer.total_render_done_count.get(), 3);
 
   // Hiding `w2` should make two widgets invisible.
   ui.hide(w2);
@@ -122,6 +135,7 @@ fn render_honors_visibility_flag() {
   assert_eq!(renderer.pre_render_count.get(), 2);
   assert_eq!(renderer.post_render_count.get(), 2);
   assert_eq!(renderer.total_render_count.get(), 4);
+  assert_eq!(renderer.total_render_done_count.get(), 4);
 
   ui.show(w1);
   ui.render(&renderer);
@@ -129,6 +143,7 @@ fn render_honors_visibility_flag() {
   assert_eq!(renderer.pre_render_count.get(), 3);
   assert_eq!(renderer.post_render_count.get(), 3);
   assert_eq!(renderer.total_render_count.get(), 6);
+  assert_eq!(renderer.total_render_done_count.get(), 6);
 
   // Showing `w2` should make itself and its child visible again.
   ui.show(w2);
@@ -137,6 +152,7 @@ fn render_honors_visibility_flag() {
   assert_eq!(renderer.pre_render_count.get(), 4);
   assert_eq!(renderer.post_render_count.get(), 4);
   assert_eq!(renderer.total_render_count.get(), 10);
+  assert_eq!(renderer.total_render_done_count.get(), 10);
 }
 
 

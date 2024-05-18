@@ -20,7 +20,19 @@ pub trait Renderable: 'static + Debug {
   /// [`Renderer`], supplying a trait object of the actual widget. The
   /// renderer is advised to honor the given [`BBox`] and is free to
   /// inquire additional state using the supplied [`Cap`].
+  ///
+  /// This method is invoked before all the widget's children are
+  /// rendered ("pre-order").
   fn render(&self, cap: &dyn Cap, renderer: &dyn Renderer, bbox: BBox) -> BBox;
+
+  /// A method invoked once rendering of this widget and all its
+  /// children concluded ("post-order").
+  ///
+  /// By default, this method does nothing, but it can be useful for
+  /// rendering an overlay or for certain renderer related state
+  /// adjustments.
+  #[allow(unused_variables)]
+  fn render_done(&self, cap: &dyn Cap, renderer: &dyn Renderer, bbox: BBox) {}
 }
 
 impl dyn Renderable {

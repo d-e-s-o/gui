@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Emit `Renderable::render_done` implementation
+
+
 0.6.0
 -----
 - Integrated with version `0.6.0` of `gui`

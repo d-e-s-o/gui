@@ -85,6 +85,11 @@ pub trait Renderer {
   //       determining the object to render.
   fn render(&self, object: &dyn Renderable, cap: &dyn Cap, bbox: BBox) -> BBox;
 
+  /// A method invoked once rendering of a widget and all its children
+  /// concluded.
+  #[allow(unused_variables)]
+  fn render_done(&self, object: &dyn Renderable, cap: &dyn Cap, bbox: BBox) {}
+
   /// Perform some post-render step.
   fn post_render(&self) {}
 }

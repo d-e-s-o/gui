@@ -1,5 +1,6 @@
 Unreleased
 ----------
+- Added `Renderer::render_done` method
 - Adjusted showing and hiding of widgets to no longer change child order
   in parent
 - Sealed `Cap` and `MutCap` traits
