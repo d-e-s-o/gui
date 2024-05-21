@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.1
+-----
 - Added `Renderer::render_done` method
 - Adjusted showing and hiding of widgets to no longer change child order
   in parent
