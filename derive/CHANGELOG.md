@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.1
+-----
 - Emit `Renderable::render_done` implementation
 
 
