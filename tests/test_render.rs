@@ -1,6 +1,8 @@
 // Copyright (C) 2018-2024 Daniel Mueller (deso@posteo.net)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#![allow(clippy::let_unit_value)]
+
 mod common;
 
 use std::cell::Cell;
@@ -173,19 +175,9 @@ impl BBoxRenderer {
   }
 }
 
-impl Renderer for BBoxRenderer {
-  fn renderable_area(&self) -> BBox {
-    BBox {
-      x: 0,
-      y: 10,
-      w: 100,
-      h: 40,
-    }
-  }
-
-  fn render(&self, object: &dyn Renderable, _cap: &dyn Cap, mut bbox: BBox) -> BBox {
+impl BBoxRenderer {
+  fn check_bbox(&self, widget: &TestWidget, bbox: BBox) {
     let mut expected = self.renderable_area();
-    let widget = object.downcast_ref::<TestWidget>().unwrap();
 
     if widget.id() == unsafe { *CONTAINER.as_ref().unwrap() } {
       expected.w -= 10;
@@ -197,6 +189,22 @@ impl Renderer for BBoxRenderer {
     if bbox == expected {
       self.valid_bbox_count.set(self.valid_bbox_count.get() + 1);
     }
+  }
+}
+
+impl Renderer for BBoxRenderer {
+  fn renderable_area(&self) -> BBox {
+    BBox {
+      x: 0,
+      y: 10,
+      w: 100,
+      h: 40,
+    }
+  }
+
+  fn render(&self, object: &dyn Renderable, _cap: &dyn Cap, mut bbox: BBox) -> BBox {
+    let widget = object.downcast_ref::<TestWidget>().unwrap();
+    let () = self.check_bbox(widget, bbox);
 
     if widget.id() == unsafe { *ROOT.as_ref().unwrap() } {
       bbox.w -= 10
@@ -204,6 +212,11 @@ impl Renderer for BBoxRenderer {
       bbox.h -= 10
     }
     bbox
+  }
+
+  fn render_done(&self, object: &dyn Renderable, _cap: &dyn Cap, bbox: BBox) {
+    let widget = object.downcast_ref::<TestWidget>().unwrap();
+    let () = self.check_bbox(widget, bbox);
   }
 }
 
@@ -234,5 +247,5 @@ fn bounding_box_is_properly_sized() {
 
   ui.render(&renderer);
 
-  assert_eq!(renderer.valid_bbox_count.get(), 3)
+  assert_eq!(renderer.valid_bbox_count.get(), 6)
 }

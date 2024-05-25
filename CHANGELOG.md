@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Made sure to pass out `BBox` to `Renderer::render_done` method
+
+
 0.6.1
 -----
 - Added `Renderer::render_done` method
