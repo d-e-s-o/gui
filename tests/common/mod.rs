@@ -164,7 +164,7 @@ impl TestWidgetDataBuilder {
     self
   }
 
-  /// Build the `TestWidget` object.
+  /// Build the `TestWidgetData` object.
   pub fn build(self) -> Box<dyn Any> {
     let data = TestWidgetData {
       event_handler: self.event_handler,

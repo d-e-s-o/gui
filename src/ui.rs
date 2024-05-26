@@ -562,12 +562,14 @@ impl<E, M> Ui<E, M> {
       //       Rust, though. Not sure.
       let inner_bbox = widget.render(self, renderer, bbox);
 
-      // We start rendering with the widget with the lowest z-index,
-      // i.e., the one the furthest in the background.
-      for child_id in self.children(idx).rev() {
-        let child_idx = self.validate(*child_id);
-        let child = self.lookup(child_idx);
-        self.render_all(child_idx, child, renderer, inner_bbox)
+      if inner_bbox.w != 0 && inner_bbox.h != 0 {
+        // We start rendering with the widget with the lowest z-index,
+        // i.e., the one the furthest in the background.
+        for child_id in self.children(idx).rev() {
+          let child_idx = self.validate(*child_id);
+          let child = self.lookup(child_idx);
+          self.render_all(child_idx, child, renderer, inner_bbox)
+        }
       }
 
       let () = widget.render_done(self, renderer, bbox);

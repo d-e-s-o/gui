@@ -5,6 +5,7 @@
 
 mod common;
 
+use std::any::TypeId;
 use std::cell::Cell;
 
 use gui::BBox;
@@ -15,7 +16,11 @@ use gui::Object;
 use gui::Renderable;
 use gui::Renderer;
 use gui::Ui;
+use gui::Widget;
+use gui_derive::Handleable;
 
+use crate::common::Event;
+use crate::common::Message;
 use crate::common::TestWidget;
 use crate::common::TestWidgetDataBuilder;
 
@@ -41,16 +46,19 @@ impl CountingRenderer {
 
 impl Renderer for CountingRenderer {
   fn renderable_area(&self) -> BBox {
-    BBox::default()
+    BBox {
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+    }
   }
 
   fn pre_render(&self) {
     self.pre_render_count.set(self.pre_render_count.get() + 1);
   }
 
-  fn render(&self, object: &dyn Renderable, _cap: &dyn Cap, bbox: BBox) -> BBox {
-    assert!(object.downcast_ref::<TestWidget>().is_some());
-
+  fn render(&self, _object: &dyn Renderable, _cap: &dyn Cap, bbox: BBox) -> BBox {
     self
       .total_render_count
       .set(self.total_render_count.get() + 1);
@@ -58,8 +66,7 @@ impl Renderer for CountingRenderer {
     bbox
   }
 
-  fn render_done(&self, object: &dyn Renderable, _cap: &dyn Cap, _bbox: BBox) {
-    assert!(object.downcast_ref::<TestWidget>().is_some());
+  fn render_done(&self, _object: &dyn Renderable, _cap: &dyn Cap, _bbox: BBox) {
     assert!(self.total_render_done_count.get() < self.total_render_count.get());
 
     self
@@ -155,6 +162,74 @@ fn render_honors_visibility_flag() {
   assert_eq!(renderer.post_render_count.get(), 4);
   assert_eq!(renderer.total_render_count.get(), 10);
   assert_eq!(renderer.total_render_done_count.get(), 10);
+}
+
+
+#[derive(Debug, Handleable)]
+#[gui(Event = Event)]
+struct TestNoBBoxWidget {
+  id: Id,
+}
+
+impl Renderable for TestNoBBoxWidget {
+  fn type_id(&self) -> TypeId {
+    TypeId::of::<TestNoBBoxWidget>()
+  }
+
+  fn render(&self, cap: &dyn Cap, renderer: &dyn Renderer, bbox: BBox) -> BBox {
+    let bbox = BBox {
+      x: bbox.x,
+      y: bbox.y,
+      w: 0,
+      h: bbox.h,
+    };
+    renderer.render(self, cap, bbox)
+  }
+
+  fn render_done(&self, cap: &dyn Cap, renderer: &dyn Renderer, bbox: BBox) {
+    renderer.render_done(self, cap, bbox)
+  }
+}
+
+impl Object for TestNoBBoxWidget {
+  fn id(&self) -> Id {
+    self.id
+  }
+}
+
+impl Widget<Event, Message> for TestNoBBoxWidget {
+  fn type_id(&self) -> TypeId {
+    TypeId::of::<TestNoBBoxWidget>()
+  }
+}
+
+
+/// Check that a widget won't receive a [`Renderable::render`] call if
+/// its parent reported an empty `BBox`.
+#[test]
+fn render_is_omitted_for_empty_bbox() {
+  let renderer = CountingRenderer::new();
+  let (mut ui, root) = Ui::new(
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let no_bbox = ui.add_ui_widget(
+    root,
+    || Box::new(()),
+    |id, _cap| Box::new(TestNoBBoxWidget { id }),
+  );
+  let _ = ui.add_ui_widget(
+    no_bbox,
+    || TestWidgetDataBuilder::new().build(),
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+
+  ui.render(&renderer);
+
+  assert_eq!(renderer.pre_render_count.get(), 1);
+  assert_eq!(renderer.post_render_count.get(), 1);
+  assert_eq!(renderer.total_render_count.get(), 2);
+  assert_eq!(renderer.total_render_done_count.get(), 2);
 }
 
 
