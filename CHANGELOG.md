@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.2
+-----
 - Stop rendering widgets when `BBox` is empty
 - Made sure to pass out `BBox` to `Renderer::render_done` method
 

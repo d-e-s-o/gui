@@ -1,6 +1,6 @@
 [package]
 name = "gui"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 rust-version = "1.58"
 authors = ["Daniel Mueller <deso@posteo.net>"]
@@ -25,7 +25,7 @@ derive = ["gui-derive"]
 version = "0.1.41"
 
 [dependencies.gui-derive]
-version = "0.6.1"
+version = "0.6.2"
 optional = true
 path = "derive"
 
