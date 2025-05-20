@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2024 Daniel Mueller <deso@posteo.net>
+// Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #![warn(
@@ -158,17 +158,13 @@ fn expand_widget(input: TokenStream) -> Result<TokenStream> {
 
 /// Parse the macro's attributes.
 fn parse_attributes(attributes: &[Attribute]) -> Result<(New, Event, Message)> {
-  let (new, event, message) = attributes
-    .iter()
-    .map(|attr| parse_attribute(attr))
-    .fold(Ok((None, None, None)), |result1, result2| {
-      match (result1, result2) {
-        (Ok((new1, event1, message1)), Ok((new2, event2, message2))) => {
-          Ok((new2.or(new1), event2.or(event1), message2.or(message1)))
-        },
-        (Err(x), _) | (_, Err(x)) => Err(x),
-      }
-    })?;
+  let (new, event, message) = attributes.iter().map(parse_attribute).try_fold(
+    (None, None, None),
+    |(new1, event1, message1), result2| {
+      let (new2, event2, message2) = result2?;
+      Result::Ok((new2.or(new1), event2.or(event1), message2.or(message1)))
+    },
+  )?;
 
   // If no attribute is given we do not create a default implementation
   // of new().
@@ -280,9 +276,9 @@ fn expand_widget_input(
 // are working on tokens without context (a user could have a field of
 // type Id but that could map to ::foo::Id and not ::gui::Id).
 fn check_struct_fields(fields: &Fields) -> Result<()> {
-  let id = ("id", "::gui::Id");
+  let checks = [("id", "::gui::Id")];
 
-  for (req_field, req_type) in &[id] {
+  for (req_field, req_type) in &checks {
     let _ = fields
       .iter()
       .find(|field| {
