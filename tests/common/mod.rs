@@ -1,10 +1,6 @@
 // Copyright (C) 2018-2024 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#![allow(
-  clippy::redundant_field_names,
-)]
-
 use std::any::Any;
 use std::fmt::Debug;
 use std::fmt::Formatter;

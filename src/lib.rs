@@ -1,25 +1,5 @@
-// Copyright (C) 2018-2024 Daniel Mueller <deso@posteo.net>
+// Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
-
-#![allow(
-  clippy::assertions_on_constants,
-  clippy::let_unit_value,
-  clippy::redundant_field_names,
-)]
-#![warn(
-  future_incompatible,
-  missing_copy_implementations,
-  missing_debug_implementations,
-  missing_docs,
-  rust_2018_compatibility,
-  rust_2018_idioms,
-  trivial_numeric_casts,
-  unreachable_pub,
-  unstable_features,
-  unused_import_braces,
-  unused_qualifications,
-  unused_results,
-)]
 
 //! A crate containing the basic infrastructure for user interfaces. It
 //! strives for being completely agnostic of the underlying system and

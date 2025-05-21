@@ -16,6 +16,9 @@ Custom derive macros for the gui crate.
 [lib]
 proc-macro = true
 
+[lints]
+workspace = true
+
 [dependencies.proc-macro2]
 version = "1.0"
 

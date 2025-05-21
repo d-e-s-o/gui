@@ -1,12 +1,6 @@
 // Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#![allow(
-  clippy::cognitive_complexity,
-  clippy::needless_pass_by_value,
-  clippy::redundant_field_names,
-)]
-
 mod common;
 
 use std::fmt::Write;

@@ -1,9 +1,7 @@
 // Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#![allow(
-  clippy::redundant_field_names,
-)]
+//! Tests for the derive functionality.
 
 use std::any::TypeId;
 use std::fmt::Debug;
@@ -73,7 +71,7 @@ where
 
 #[derive(Debug, Handleable)]
 #[gui(Event = Event)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct TestHandleable {
   id: Id,
 }

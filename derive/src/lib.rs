@@ -1,27 +1,12 @@
 // Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#![warn(
-  future_incompatible,
-  missing_copy_implementations,
-  missing_debug_implementations,
-  missing_docs,
-  rust_2018_compatibility,
-  rust_2018_idioms,
-  trivial_casts,
-  trivial_numeric_casts,
-  unsafe_code,
-  unstable_features,
-  unused_import_braces,
-  unused_qualifications,
-  unused_results,
-)]
-
 //! A crate providing custom derive functionality for the `gui` crate.
 
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
+use std::result;
 
 use proc_macro::LexError;
 use proc_macro::TokenStream;
@@ -49,7 +34,7 @@ use syn::WhereClause;
 use syn::WherePredicate;
 
 
-/// A type indicating whether or not to create a default implementation of Type::new().
+/// A type indicating whether or not to create a default implementation of `Type::new()`.
 type New = Option<()>;
 /// An event type to parametrize a widget with.
 type Event = Option<Type>;
@@ -67,8 +52,8 @@ enum Error {
 impl Display for Error {
   fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
     match *self {
-      Error::Error(ref e) => write!(f, "{}", e),
-      Error::LexError(ref e) => write!(f, "{:?}", e),
+      Error::Error(ref e) => write!(f, "{e}"),
+      Error::LexError(ref e) => write!(f, "{e:?}"),
     }
   }
 }
@@ -91,7 +76,7 @@ impl From<LexError> for Error {
   }
 }
 
-type Result<T> = std::result::Result<T, Error>;
+type Result<T> = result::Result<T, Error>;
 
 
 /// Custom derive functionality for the `gui::Widget` trait.
@@ -171,7 +156,7 @@ fn parse_attributes(attributes: &[Attribute]) -> Result<(New, Event, Message)> {
   Ok((new, event, message))
 }
 
-/// Parse a single item in a #[gui(list...)] attribute list.
+/// Parse a single item in a `#[gui(list...)]` attribute list.
 fn parse_gui_attribute(item: Attr) -> Result<(New, Event, Message)> {
   match item {
     Attr::Ident(ref ident) if ident == "default_new" => {
@@ -206,7 +191,7 @@ fn parse_gui_attributes(list: AttrList) -> Result<(New, Event, Message)> {
 }
 
 
-/// An attribute list representing an syn::Attribute::tts.
+/// An attribute list representing a `syn::Attribute::tts`.
 struct AttrList(Punctuated<Attr, Comma>);
 
 impl Parse for AttrList {
@@ -220,7 +205,6 @@ impl Parse for AttrList {
 }
 
 
-#[allow(clippy::large_enum_variant)]
 enum Attr {
   Ident(Ident),
   Binding(Binding),
@@ -240,12 +224,12 @@ impl Parse for Attr {
 }
 
 
-/// Parse a single attribute, e.g., #[Event = MyEvent].
+/// Parse a single attribute, e.g., `#[Event = MyEvent]`.
 fn parse_attribute(attribute: &Attribute) -> Result<(New, Event, Message)> {
   if attribute.path.is_ident("gui") {
     let tokens = attribute.tokens.clone();
     let attr = parse2::<AttrList>(tokens).map_err(|err| {
-      format!("unable to parse attributes: {:?}", err)
+      format!("unable to parse attributes: {err:?}")
     })?;
 
     parse_gui_attributes(attr)
@@ -288,7 +272,7 @@ fn check_struct_fields(fields: &Fields) -> Result<()> {
           false
         }
       })
-      .ok_or_else(|| Error::from(format!("struct field {}: {} not found", req_field, req_type)))?;
+      .ok_or_else(|| Error::from(format!("struct field {req_field}: {req_type} not found")))?;
   }
   Ok(())
 }
@@ -309,7 +293,7 @@ fn expand_widget_traits(new: New, event: &Event, message: &Message, input: &Deri
 }
 
 
-/// Expand an implementation of Type::new() for the struct.
+/// Expand an implementation of `Type::new()` for the struct.
 fn expand_new_impl(new: New, input: &DeriveInput) -> Tokens {
   let name = &input.ident;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
