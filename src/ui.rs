@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2024 Daniel Mueller <deso@posteo.net>
+// Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::any::Any;
@@ -547,11 +547,12 @@ impl<E, M> Ui<E, M> {
     // relationships into account in case widgets cover each other.
     let idx = self.validate(self.root_id());
     let root = self.lookup(idx);
+
+    let () = renderer.pre_render();
     let bbox = renderer.renderable_area();
 
-    renderer.pre_render();
     self.render_all(idx, root, renderer, bbox);
-    renderer.post_render();
+    let () = renderer.post_render();
   }
 
   /// Recursively render the given widget and its children.

@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2024 Daniel Mueller <deso@posteo.net>
+// Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use crate::Cap;
@@ -27,10 +27,15 @@ pub struct BBox {
 pub trait Renderer {
   /// Retrieve the bounding box of the renderable area (typically the
   /// screen).
+  ///
   /// Note that the units to be used are not specified. That is, the
   /// result could be in pixels, characters (in case of a terminal), or
   /// just arbitrary numbers (if virtual coordinates are being used), as
   /// long as this `Renderer` knows how to interpret them.
+  ///
+  /// Note furthermore that the library guarantees that this method is
+  /// only ever invoked after [`Self::pre_render`] and before
+  /// [`Self::post_render`].
   fn renderable_area(&self) -> BBox;
 
   /// Perform some pre-render step.

@@ -1,3 +1,9 @@
+Unreleased
+----------
+- Made sure to call `Renderer::renderable_area` only between pre and
+  post render
+
+
 0.6.2
 -----
 - Stop rendering widgets when `BBox` is empty

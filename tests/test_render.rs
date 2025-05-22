@@ -46,6 +46,13 @@ impl CountingRenderer {
 
 impl Renderer for CountingRenderer {
   fn renderable_area(&self) -> BBox {
+    // Make sure that this method is only ever called between pre and
+    // post render.
+    assert_eq!(
+      self.pre_render_count.get(),
+      self.post_render_count.get() + 1
+    );
+
     BBox {
       x: 0,
       y: 0,
