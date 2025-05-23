@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Switched to using Rust edition 2021
+
+
 0.6.1
 -----
 - Emit `Renderable::render_done` implementation

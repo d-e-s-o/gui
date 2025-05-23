@@ -328,8 +328,8 @@ fn expand_renderable_trait(input: &DeriveInput) -> Tokens {
 
       fn render(
         &self,
-        cap: &::gui::Cap,
-        renderer: &::gui::Renderer,
+        cap: &dyn ::gui::Cap,
+        renderer: &dyn ::gui::Renderer,
         bbox: ::gui::BBox,
       ) -> ::gui::BBox {
         renderer.render(self, cap, bbox)
@@ -337,8 +337,8 @@ fn expand_renderable_trait(input: &DeriveInput) -> Tokens {
 
       fn render_done(
         &self,
-        cap: &::gui::Cap,
-        renderer: &::gui::Renderer,
+        cap: &dyn ::gui::Cap,
+        renderer: &dyn ::gui::Renderer,
         bbox: ::gui::BBox,
       ) {
         renderer.render_done(self, cap, bbox)
