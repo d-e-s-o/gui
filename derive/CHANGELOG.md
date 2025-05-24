@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.3
+-----
 - Switched to using Rust edition 2021
 
 
