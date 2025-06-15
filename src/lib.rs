@@ -23,8 +23,11 @@ pub use self::renderable::Renderable;
 pub use self::renderer::BBox;
 pub use self::renderer::Renderer;
 pub use self::ui::Cap;
+pub use self::ui::EventHookFn;
 pub use self::ui::Id;
 pub use self::ui::MutCap;
+pub use self::ui::NewDataFn;
+pub use self::ui::NewWidgetFn;
 pub use self::ui::Ui;
 pub use self::widget::Widget;
 

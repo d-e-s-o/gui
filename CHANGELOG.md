@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Exported three function type aliases used by `CapMut` trait
+
+
 0.6.3
 -----
 - Made sure to call `Renderer::renderable_area` only between pre and

@@ -149,9 +149,9 @@ impl<E, M> Hooker<E, M> for NotHooked {
 /// An iterator over the children of a widget.
 pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
-type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
-type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
-type EventHookFn<E, M> = &'static dyn for<'f> Fn(
+pub type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
+pub type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
+pub type EventHookFn<E, M> = &'static dyn for<'f> Fn(
   &'f dyn Widget<E, M>,
   &'f mut dyn MutCap<E, M>,
   Option<&'f E>,
