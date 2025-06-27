@@ -110,6 +110,14 @@ where
   }
 }
 
+
+/// A type used for invoking actual event hooks.
+///
+/// This type really only exists to circumvent the requirement that all
+/// event types implement `Mergeable`. Because an object of this type is
+/// only instantiated as part of event hook installation, we only
+/// require the `Mergeable` implementation if event hooks are actually
+/// used.
 struct Hooked {}
 
 #[async_trait(?Send)]
@@ -161,9 +169,9 @@ impl<E, M> Hooker<E, M> for NotHooked {
 /// An iterator over the children of a widget.
 pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
-/// The prototype of a function for creation new widget data.
+/// The prototype of a function for creating new widget data.
 pub type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
-/// The prototype of a function for creation a new widget.
+/// The prototype of a function for creating a new widget.
 pub type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
 /// The prototype of an event hook function.
 pub type EventHookFn<E, M> = &'static dyn for<'f> Fn(
@@ -353,19 +361,25 @@ where
   E: 'static,
   M: 'static,
 {
+  /// The UI's identifier.
+  ///
+  /// This member is used only for debugging matters.
   #[cfg(debug_assertions)]
   id: usize,
-  #[allow(clippy::type_complexity)]
+  /// The list of widgets along their associated data.
   widgets: Vec<(WidgetData<E, M>, Rc<dyn Widget<E, M>>)>,
+  /// An object dispatching events to hooks.
   hooker: &'static dyn Hooker<E, M>,
+  /// A list of widget indices that have installed an event hook
+  /// handler.
   hooked: Rc<Vec<Index>>,
+  /// The index of the currently focused widget, if any.
   focused: Option<Index>,
 }
 
 impl<E, M> Ui<E, M> {
   /// Create a new `Ui` instance containing one widget that acts as the
   /// root widget.
-  #[allow(clippy::new_ret_no_self)]
   pub fn new<D, W>(new_data: D, new_root_widget: W) -> (Self, Id)
   where
     D: FnOnce() -> Box<dyn Any>,
