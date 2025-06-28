@@ -31,6 +31,7 @@ unused = "warn"
 [workspace.lints.clippy]
 collapsible-else-if = "allow"
 collapsible-if = "allow"
+diverging-sub-expression = "allow"
 let-and-return = "allow"
 let-unit-value = "allow"
 module-inception = "allow"
@@ -63,3 +64,6 @@ path = "derive"
 version = "1.0"
 default-features = false
 features = ["macros", "rt"]
+
+[lints]
+workspace = true

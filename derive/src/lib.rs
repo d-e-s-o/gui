@@ -205,6 +205,7 @@ impl Parse for AttrList {
 }
 
 
+#[allow(clippy::large_enum_variant)]
 enum Attr {
   Ident(Ident),
   Binding(Binding),

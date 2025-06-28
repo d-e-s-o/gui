@@ -114,10 +114,10 @@ where
   ) -> Option<E> {
     let mut result = None;
 
-    for idx in ui.hooked.clone().as_ref() {
+    for idx in Rc::clone(&ui.hooked).as_ref() {
       match &ui.widgets[idx.idx].0.event_hook {
         Some(hook_fn) => {
-          let widget = ui.widgets[idx.idx].1.clone();
+          let widget = Rc::clone(&ui.widgets[idx.idx].1);
           let event = hook_fn.0(widget.as_ref(), ui, event).await;
 
           result = merge(result, event);
@@ -149,8 +149,11 @@ impl<E, M> Hooker<E, M> for NotHooked {
 /// An iterator over the children of a widget.
 pub(crate) type ChildIter<'widget> = Iter<'widget, Id>;
 
+/// The prototype of a function for creation new widget data.
 pub type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
+/// The prototype of a function for creation a new widget.
 pub type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
+/// The prototype of an event hook function.
 pub type EventHookFn<E, M> = &'static dyn for<'f> Fn(
   &'f dyn Widget<E, M>,
   &'f mut dyn MutCap<E, M>,
@@ -611,7 +614,7 @@ impl<E, M> Ui<E, M> {
       // the Ui, which in turn makes it possible to pass a mutable Ui
       // reference (in the form of a MutCap) to an immutable widget. It is
       // nothing more but a reference count bump, though.
-      let widget = self.widgets[idx.idx].1.clone();
+      let widget = Rc::clone(&self.widgets[idx.idx].1);
       let event = widget.handle(self, event).await;
       let parent_idx = self.widgets[idx.idx].0.parent_idx;
 
@@ -779,7 +782,7 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
   /// Send the provided message to the given widget.
   async fn send(&mut self, widget: Id, message: M) -> Option<M> {
     let idx = self.validate(widget);
-    let widget = self.widgets[idx.idx].1.clone();
+    let widget = Rc::clone(&self.widgets[idx.idx].1);
 
     widget.react(message, self).await
   }
@@ -788,7 +791,7 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
   /// transferring ownership of the message.
   async fn call(&mut self, widget: Id, message: &mut M) -> Option<M> {
     let idx = self.validate(widget);
-    let widget = self.widgets[idx.idx].1.clone();
+    let widget = Rc::clone(&self.widgets[idx.idx].1);
 
     widget.respond(message, self).await
   }

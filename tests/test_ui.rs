@@ -1,6 +1,8 @@
 // Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+//! Tests for the UI.
+
 mod common;
 
 use std::fmt::Write;
@@ -78,7 +80,7 @@ fn debug_format() {
   );
 
   let mut string = String::new();
-  write!(&mut string, "{:?}", ui).unwrap();
+  write!(&mut string, "{ui:?}").unwrap();
 
   #[cfg(debug_assertions)]
   {

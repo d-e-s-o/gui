@@ -1,5 +1,7 @@
-// Copyright (C) 2020-2024 Daniel Mueller <deso@posteo.net>
+// Copyright (C) 2020-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
+
+//! Tests for message handling/passing functionality.
 
 mod common;
 
@@ -57,6 +59,7 @@ async fn repeated_send_receive() {
   assert_eq!(result, Some(Message::new(5)));
 }
 
+/// A test widget forward messages to another one.
 // Unfortunately making our TestWidget work with async handlers is
 // rather involved. It starts with all the boxing that is required, and
 // ends with the fact that we never got lifetimes checking out once a
@@ -70,6 +73,7 @@ pub struct ForwardingWidget {
 }
 
 impl ForwardingWidget {
+  /// Create a new `ForwardingWidget`.
   pub fn new(id: Id, next: Id) -> Self {
     Self { id, next }
   }

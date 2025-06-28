@@ -1,6 +1,8 @@
 // Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+//! Tests for the rendering functionality.
+
 #![allow(static_mut_refs)]
 
 mod common;
