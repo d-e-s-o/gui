@@ -5,7 +5,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::fmt::Result;
+use std::fmt::Result as FmtResult;
 use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
@@ -25,6 +25,18 @@ use crate::Renderer;
 use crate::Widget;
 
 
+/// A type providing a derive for `Debug` for types that
+/// otherwise don't.
+#[derive(Clone, Copy)]
+struct D<T>(T);
+
+impl<T> Debug for D<T> {
+  fn fmt(&self, fmt: &mut Formatter<'_>) -> FmtResult {
+    write!(fmt, "{:p}", &self.0)
+  }
+}
+
+
 /// An [`Index`] is our internal representation of an [`Id`]. `Id`s can
 /// belong to different [`Ui`] objects and a validation step converts
 /// them into an `Index`.
@@ -41,7 +53,7 @@ impl Index {
 
 impl Display for Index {
   /// Format the `Index` into the given formatter.
-  fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+  fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
     write!(f, "{}", self.idx)
   }
 }
@@ -68,7 +80,7 @@ impl Id {
 
 impl Display for Id {
   /// Format the `Id` into the given formatter.
-  fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+  fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
     write!(f, "{}", self.idx)
   }
 }
@@ -317,7 +329,7 @@ where
   // for the `children` method present in `Cap`.
   children: Vec<Id>,
   /// An optional event hook that may be registered for the widget.
-  event_hook: Option<EventHook<E, M>>,
+  event_hook: Option<D<EventHookFn<E, M>>>,
   /// Flag indicating the widget's visibility state.
   visible: bool,
 }
@@ -331,19 +343,6 @@ impl<E, M> WidgetData<E, M> {
       event_hook: None,
       visible: true,
     }
-  }
-}
-
-
-/// A struct wrapping an [`EventHookFn`] while implementing [`Debug`].
-struct EventHook<E, M>(EventHookFn<E, M>)
-where
-  E: 'static,
-  M: 'static;
-
-impl<E, M> Debug for EventHook<E, M> {
-  fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-    write!(f, "{:p}", self.0)
   }
 }
 
@@ -775,7 +774,7 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
     };
 
     let prev_hook = data.event_hook.take();
-    data.event_hook = hook_fn.map(|x| EventHook(x));
+    data.event_hook = hook_fn.map(|x| D(x));
     prev_hook.map(|x| x.0)
   }
 
@@ -798,7 +797,7 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
 }
 
 impl<E, M> Debug for Ui<E, M> {
-  fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+  fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
     let mut debug = f.debug_struct("Ui");
     #[cfg(debug_assertions)]
     let _ = debug.field("id", &self.id);
