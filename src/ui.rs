@@ -7,6 +7,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 use std::future::Future;
+use std::mem::replace;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -135,14 +136,27 @@ where
     let mut result = None;
 
     for idx in Rc::clone(&ui.hooked).as_ref() {
-      match &ui.widgets[idx.idx].0.event_hook {
-        Some(hook_fn) => {
-          let widget = Rc::clone(&ui.widgets[idx.idx].1);
-          let event = hook_fn.0(widget.as_ref(), ui, event).await;
+      let data = &mut ui.widgets[idx.idx];
+      match data.0.event_hook {
+        EventHook::Invoked(D(hook_fn)) => {
+          let widget = Rc::clone(&data.1);
+          let event = hook_fn(widget.as_ref(), ui, event).await;
 
           result = merge(result, event);
         },
-        None => debug_assert!(false, "Widget registered as hooked but no hook func found"),
+        EventHook::Installed(D(hook_fn)) => {
+          data.0.event_hook = EventHook::Invoked(D(hook_fn));
+
+          if event.is_some() {
+            let widget = Rc::clone(&data.1);
+            let event = hook_fn(widget.as_ref(), ui, event).await;
+
+            result = merge(result, event);
+          }
+        },
+        EventHook::None => {
+          debug_assert!(false, "Widget registered as hooked but no hook func found")
+        },
       };
     }
     merge(merge(pre_hook_event, unhandled), result)
@@ -269,7 +283,10 @@ pub trait MutCap<E, M>: Cap + Deref<Target = dyn Cap> {
   /// to handle it "officially" through the `Handleable::handle` method
   /// (pre-hook).
   /// Furthermore, after widgets handled the event, the hook will be
-  /// invoked again, this time without an actual event (post-hook).
+  /// invoked again, this time without an actual event (post-hook). Note
+  /// that if a hook handler is installed from within an event handler,
+  /// no post-hook will be invoked for the event being currently
+  /// handled, because no pre-hook was invoked for it either.
   ///
   /// Event hook handlers are allowed to emit an event on their own,
   /// just as "normal" event handlers. The events of all hooks get
@@ -313,6 +330,42 @@ fn get_next_ui_id() -> usize {
 }
 
 
+#[derive(Debug)]
+enum EventHook<E, M>
+where
+  E: 'static,
+  M: 'static,
+{
+  /// No event hook is present.
+  None,
+  /// An event hook handler has been installed, but not yet invoked.
+  ///
+  /// This variant is used to prevent delivery of post-hook events when
+  /// the handler function itself got installed as part of the event
+  /// handling process, meaning the pre-hook was never invoked.
+  Installed(D<EventHookFn<E, M>>),
+  /// An event hook handler is present and has already been invoked.
+  Invoked(D<EventHookFn<E, M>>),
+}
+
+impl<E, M> EventHook<E, M>
+where
+  E: 'static,
+  M: 'static,
+{
+  fn is_none(&self) -> bool {
+    matches!(self, Self::None)
+  }
+
+  fn into_hook_fn(self) -> Option<EventHookFn<E, M>> {
+    match self {
+      Self::Installed(D(hook_fn)) | Self::Invoked(D(hook_fn)) => Some(hook_fn),
+      Self::None => None,
+    }
+  }
+}
+
+
 /// This type contains data that is common to all widgets.
 #[derive(Debug)]
 struct WidgetData<E, M>
@@ -337,7 +390,7 @@ where
   // for the `children` method present in `Cap`.
   children: Vec<Id>,
   /// An optional event hook that may be registered for the widget.
-  event_hook: Option<D<EventHookFn<E, M>>>,
+  event_hook: EventHook<E, M>,
   /// Flag indicating the widget's visibility state.
   visible: bool,
 }
@@ -348,7 +401,7 @@ impl<E, M> WidgetData<E, M> {
       parent_idx,
       data,
       children: Default::default(),
-      event_hook: None,
+      event_hook: EventHook::None,
       visible: true,
     }
   }
@@ -772,7 +825,7 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
     let data = &mut self.widgets[idx.idx].0;
     let result = self.hooked.binary_search(&idx);
 
-    debug_assert_eq!(result.is_ok(), data.event_hook.is_some());
+    debug_assert_eq!(result.is_ok(), !data.event_hook.is_none());
 
     match hook_fn {
       Some(_) => {
@@ -787,9 +840,12 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
       },
     };
 
-    let prev_hook = data.event_hook.take();
-    data.event_hook = hook_fn.map(|x| D(x));
-    prev_hook.map(|x| x.0)
+    let event_hook = if let Some(hook_fn) = hook_fn {
+      EventHook::Installed(D(hook_fn))
+    } else {
+      EventHook::None
+    };
+    replace(&mut data.event_hook, event_hook).into_hook_fn()
   }
 
   /// Send the provided message to the given widget.

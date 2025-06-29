@@ -9,6 +9,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use gui::Cap;
+use gui::EventHookFn;
 use gui::Id;
 use gui::MutCap;
 use gui::Ui;
@@ -409,4 +410,55 @@ async fn hook_can_send_message() {
   let result = ui.handle(Event::Int(3)).await;
   assert_eq!(result, None);
   assert_eq!(unsafe { RECEIVED_VALUE }, 6);
+}
+
+
+/// Check that hook installation from an event handler only affects
+/// subsequent events, but won't trigger the post-event hook for the
+/// currently handled event.
+#[tokio::test]
+async fn hook_installation_event_handling() {
+  static mut COUNTING_HOOK_COUNT: u64 = 0;
+
+  fn counting_event_hook<'f>(
+    _widget: &'f dyn Widget<Event, Message>,
+    _cap: &'f mut dyn MutCap<Event, Message>,
+    _event: Option<&'f Event>,
+  ) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
+    unsafe { COUNTING_HOOK_COUNT += 1 };
+    Box::pin(async { None })
+  }
+
+  fn setup_ui(hook_fn: EventHookFn<Event, Message>) -> Ui<Event, Message> {
+    let mut installed = false;
+    let (mut ui, root_id) = Ui::new(
+      || {
+        TestWidgetDataBuilder::new()
+          .event_handler(move |id, cap, _| {
+            if !installed {
+              let _prev_hook = cap.hook_events(id, Some(hook_fn));
+              installed = true;
+            }
+            None
+          })
+          .build()
+      },
+      |id, _cap| Box::new(TestWidget::new(id)),
+    );
+
+    let () = ui.focus(root_id);
+    ui
+  }
+
+  let event = Event::Key(' ');
+  let mut ui = setup_ui(&counting_event_hook);
+
+  // The first event will install the hook, but the hook function should
+  // not get called on the post-hook path.
+  let _result = ui.handle(event).await;
+  assert_eq!(unsafe { COUNTING_HOOK_COUNT }, 0);
+
+  // The second event should be seen on the pre- and post-hook path.
+  let _result = ui.handle(event).await;
+  assert_eq!(unsafe { COUNTING_HOOK_COUNT }, 2);
 }
