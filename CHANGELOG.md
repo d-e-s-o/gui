@@ -1,3 +1,9 @@
+Unreleased
+----------
+- Fixed event hook invocation behavior for handlers installed from
+  within an active event handler
+
+
 0.6.4
 -----
 - Exported three function type aliases used by `CapMut` trait
