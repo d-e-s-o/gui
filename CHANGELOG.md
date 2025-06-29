@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.5
+-----
 - Fixed event hook invocation behavior for handlers installed from
   within an active event handler
 

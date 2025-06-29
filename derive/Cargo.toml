@@ -1,6 +1,6 @@
 [package]
 name = "gui-derive"
-version = "0.6.4"
+version = "0.6.5"
 edition = "2021"
 authors = ["Daniel Mueller <deso@posteo.net>"]
 license = "GPL-3.0-or-later"
