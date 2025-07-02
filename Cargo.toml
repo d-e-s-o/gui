@@ -8,6 +8,7 @@ license = "GPL-3.0-or-later"
 homepage = "https://crates.io/crates/gui"
 repository = "https://github.com/d-e-s-o/gui.git"
 readme = "README.md"
+documentation = "https://docs.rs/gui"
 categories = ["gui", "command-line-utilities", "command-line-interface", "rendering"]
 keywords = ["gui", "ui"]
 description = """
