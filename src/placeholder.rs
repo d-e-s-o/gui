@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2024 Daniel Mueller <deso@posteo.net>
+// Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::any::TypeId;
@@ -13,6 +13,8 @@ use crate::MutCap;
 use crate::Object;
 use crate::Renderable;
 use crate::Renderer;
+#[cfg(doc)]
+use crate::Ui;
 use crate::Widget;
 
 

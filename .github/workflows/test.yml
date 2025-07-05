@@ -81,4 +81,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo doc --no-deps
+      - run: cargo doc --workspace --no-deps --document-private-items
