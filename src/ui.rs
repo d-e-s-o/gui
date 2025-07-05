@@ -655,18 +655,21 @@ impl<E, M> Ui<E, M> {
   where
     T: Into<E>,
   {
+    async fn handle_impl<E, M>(ui: &mut Ui<E, M>, event: E) -> Option<E> {
+      // Invoke the hooks before passing the event to the widgets on the
+      // "official" route.
+      let hook_event = ui.hooker.invoke(ui, None, None, Some(&event)).await;
+      // All events go to the focused widget first.
+      let idx = ui.focused;
+      // Any hook emitted events are not passed to the widgets themselves,
+      // but just returned.
+      let unhandled = ui.try_handle_event(idx, event).await;
+
+      ui.hooker.invoke(ui, hook_event, unhandled, None).await
+    }
+
     let event = event.into();
-
-    // Invoke the hooks before passing the event to the widgets on the
-    // "official" route.
-    let hook_event = self.hooker.invoke(self, None, None, Some(&event)).await;
-    // All events go to the focused widget first.
-    let idx = self.focused;
-    // Any hook emitted events are not passed to the widgets themselves,
-    // but just returned.
-    let unhandled = self.try_handle_event(idx, event).await;
-
-    self.hooker.invoke(self, hook_event, unhandled, None).await
+    handle_impl(self, event).await
   }
 
   /// Bubble up an event until it is handled by some `Widget`.
