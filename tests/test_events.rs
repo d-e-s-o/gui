@@ -23,18 +23,10 @@ use crate::common::TestWidgetDataBuilder;
 #[tokio::test]
 async fn events_bubble_up_when_unhandled() {
   let new_data = || TestWidgetDataBuilder::new().build();
-  let (mut ui, r) = Ui::new(new_data, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let c1 = ui.add_ui_widget(r, new_data, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let c2 = ui.add_ui_widget(c1, new_data, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w1 = ui.add_ui_widget(c2, new_data, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, r) = Ui::new(new_data, |id, _cap| Box::new(TestWidget::new(id)));
+  let c1 = ui.add_ui_widget(r, new_data, |id, _cap| Box::new(TestWidget::new(id)));
+  let c2 = ui.add_ui_widget(c1, new_data, |id, _cap| Box::new(TestWidget::new(id)));
+  let w1 = ui.add_ui_widget(c2, new_data, |id, _cap| Box::new(TestWidget::new(id)));
 
   let event = Event::Key(' ');
   ui.focus(w1);
@@ -48,12 +40,8 @@ async fn events_bubble_up_when_unhandled() {
 #[tokio::test]
 async fn targeted_event_returned_on_no_focus() {
   let new_data = || TestWidgetDataBuilder::new().build();
-  let (mut ui, r) = Ui::new(new_data, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
-  let w = ui.add_ui_widget(r, new_data, |id, _cap| {
-    Box::new(TestWidget::new(id))
-  });
+  let (mut ui, r) = Ui::new(new_data, |id, _cap| Box::new(TestWidget::new(id)));
+  let w = ui.add_ui_widget(r, new_data, |id, _cap| Box::new(TestWidget::new(id)));
 
   let event = Event::Key('y');
   ui.focus(w);
@@ -169,28 +157,6 @@ async fn event_propagation() {
   assert_eq!(result.unwrap_int(), 45);
 }
 
-static mut HOOK_COUNT: u64 = 0;
-
-fn count_event_hook<'f>(
-  widget: &'f dyn Widget<Event, Message>,
-  _cap: &'f mut dyn MutCap<Event, Message>,
-  event: Option<&'f Event>,
-) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
-  Box::pin(async move {
-    assert!(widget.downcast_ref::<TestWidget>().is_some());
-    let is_pre_hook = event.is_some();
-    // For each event we should always increment our count twice: once for
-    // the pre-hook and once for the post-hook. That means that when the
-    // count is an integer multiple of two, we should be in a pre-hook.
-    assert!((unsafe { HOOK_COUNT } % 2 == 0) == is_pre_hook);
-
-    unsafe {
-      HOOK_COUNT += 1;
-    }
-    None
-  })
-}
-
 /// Check that `MutCap::hook_events` behaves as expected.
 #[test]
 fn hook_events_return_value() {
@@ -206,16 +172,38 @@ fn hook_events_return_value() {
 
   assert!(ui.hook_events(w, None).is_none());
   assert!(ui.hook_events(r, None).is_none());
-  assert!(ui.hook_events(w, Some(&count_event_hook)).is_none());
+  assert!(ui.hook_events(w, Some(&emitting_event_hook)).is_none());
   assert!(ui.hook_events(r, None).is_none());
-  assert!(ui.hook_events(r, Some(&count_event_hook)).is_none());
-  assert!(ui.hook_events(w, Some(&count_event_hook)).is_some());
-  assert!(ui.hook_events(r, Some(&count_event_hook)).is_some());
+  assert!(ui.hook_events(r, Some(&emitting_event_hook)).is_none());
+  assert!(ui.hook_events(w, Some(&emitting_event_hook)).is_some());
+  assert!(ui.hook_events(r, Some(&emitting_event_hook)).is_some());
   assert!(ui.hook_events(w, None).is_some());
 }
 
 #[tokio::test]
 async fn hook_events_handler() {
+  static mut HOOK_COUNT: u64 = 0;
+
+  fn count_event_hook<'f>(
+    widget: &'f dyn Widget<Event, Message>,
+    _cap: &'f mut dyn MutCap<Event, Message>,
+    event: Option<&'f Event>,
+  ) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
+    Box::pin(async move {
+      assert!(widget.downcast_ref::<TestWidget>().is_some());
+      let is_pre_hook = event.is_some();
+      // For each event we should always increment our count twice: once for
+      // the pre-hook and once for the post-hook. That means that when the
+      // count is an integer multiple of two, we should be in a pre-hook.
+      assert!((unsafe { HOOK_COUNT } % 2 == 0) == is_pre_hook);
+
+      unsafe {
+        HOOK_COUNT += 1;
+      }
+      None
+    })
+  }
+
   let (mut ui, r) = Ui::new(
     || TestWidgetDataBuilder::new().build(),
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -304,9 +292,7 @@ fn different_emitting_event_hook<'f>(
   _cap: &'f mut dyn MutCap<Event, Message>,
   _event: Option<&'f Event>,
 ) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
-  Box::pin(async {
-    Some(Event::Key('a'))
-  })
+  Box::pin(async { Some(Event::Key('a')) })
 }
 
 /// Check that hook emitted events are attempted to be merged.
@@ -346,25 +332,25 @@ async fn hook_event_merging() {
 }
 
 
-fn send_message_hook<'f>(
-  _: &'f dyn Widget<Event, Message>,
-  cap: &'f mut dyn MutCap<Event, Message>,
-  event: Option<&'f Event>,
-) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
-  Box::pin(async move {
-    if let Some(event) = event {
-      let root = cap.root_id();
-      cap.send(root, Message::new(event.unwrap_int() * 2)).await;
-    }
-    None
-  })
-}
-
-static mut RECEIVED_VALUE: u64 = 42;
-
 /// Check that we can send a message from a hook.
 #[tokio::test]
 async fn hook_can_send_message() {
+  static mut RECEIVED_VALUE: u64 = 42;
+
+  fn send_message_hook<'f>(
+    _widget: &'f dyn Widget<Event, Message>,
+    cap: &'f mut dyn MutCap<Event, Message>,
+    event: Option<&'f Event>,
+  ) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
+    Box::pin(async move {
+      if let Some(event) = event {
+        let root = cap.root_id();
+        cap.send(root, Message::new(event.unwrap_int() * 2)).await;
+      }
+      None
+    })
+  }
+
   let (mut ui, r) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
