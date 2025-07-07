@@ -101,16 +101,16 @@ impl<T> DerefMut for Handler<T> {
 }
 
 
-type EventFn = dyn for<'f> FnMut(
+type EventFn = dyn for<'f> Fn(
   Id,
   &'f mut dyn MutCap<Event, Message>,
   Event,
 ) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>>;
-type ReactFn = dyn for<'f> FnMut(
+type ReactFn = dyn for<'f> Fn(
   Message,
   &'f mut dyn MutCap<Event, Message>,
 ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>;
-type RespondFn = dyn for<'f> FnMut(
+type RespondFn = dyn for<'f> Fn(
   &'f mut Message,
   &'f mut dyn MutCap<Event, Message>,
 ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>;
@@ -149,7 +149,7 @@ impl TestWidgetDataBuilder {
   pub fn event_handler<F>(mut self, handler: F) -> Self
   where
     F: 'static
-      + for<'f> FnMut(
+      + for<'f> Fn(
         Id,
         &'f mut dyn MutCap<Event, Message>,
         Event,
@@ -163,7 +163,7 @@ impl TestWidgetDataBuilder {
   pub fn react_handler<F>(mut self, handler: F) -> Self
   where
     F: 'static
-      + for<'f> FnMut(
+      + for<'f> Fn(
         Message,
         &'f mut dyn MutCap<Event, Message>,
       ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>,
@@ -176,7 +176,7 @@ impl TestWidgetDataBuilder {
   pub fn respond_handler<F>(mut self, handler: F) -> Self
   where
     F: 'static
-      + for<'f> FnMut(
+      + for<'f> Fn(
         &'f mut Message,
         &'f mut dyn MutCap<Event, Message>,
       ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>,
@@ -216,7 +216,7 @@ impl Handleable<Event, Message> for TestWidget {
 
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.event_handler.take() {
-      Some(mut handler) => {
+      Some(handler) => {
         let event = handler(self.id, cap, event).await;
         let data = self.data_mut::<TestWidgetData>(cap);
         data.event_handler = Some(handler);
@@ -229,7 +229,7 @@ impl Handleable<Event, Message> for TestWidget {
   async fn react(&self, message: Message, cap: &mut dyn MutCap<Event, Message>) -> Option<Message> {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.react_handler.take() {
-      Some(mut handler) => {
+      Some(handler) => {
         let message = handler(message, cap).await;
         let data = self.data_mut::<TestWidgetData>(cap);
         data.react_handler = Some(handler);
@@ -246,7 +246,7 @@ impl Handleable<Event, Message> for TestWidget {
   ) -> Option<Message> {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.respond_handler.take() {
-      Some(mut handler) => {
+      Some(handler) => {
         let result = handler(message, cap).await;
 
         let data = self.data_mut::<TestWidgetData>(cap);
