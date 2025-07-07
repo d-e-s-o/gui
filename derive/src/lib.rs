@@ -619,7 +619,6 @@ mod tests {
   #[test]
   fn default_new_and_event_with_ignore() {
     let tokens = quote! {
-      #[allow(an_attribute_to_be_ignored)]
       #[gui(default_new, Event = ())]
       struct Baz { }
     };

@@ -185,7 +185,6 @@ impl TestWidget {
 
 #[async_trait(?Send)]
 impl Handleable<Event, Message> for TestWidget {
-  #[allow(deref_into_dyn_supertrait)]
   async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<Event> {
     // Also check that we can access the non-mutable version of the data.
     let _ = self.data::<TestWidgetData>(cap);
