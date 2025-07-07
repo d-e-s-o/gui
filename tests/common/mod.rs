@@ -1,12 +1,14 @@
-// Copyright (C) 2018-2024 Daniel Mueller <deso@posteo.net>
+// Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::any::Any;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt::Result;
+use std::future::Future;
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::pin::Pin;
 
 use async_trait::async_trait;
 
@@ -99,9 +101,19 @@ impl<T> DerefMut for Handler<T> {
 }
 
 
-type EventFn = dyn FnMut(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<Event>;
-type ReactFn = dyn FnMut(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
-type RespondFn = dyn FnMut(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>;
+type EventFn = dyn for<'f> FnMut(
+  Id,
+  &'f mut dyn MutCap<Event, Message>,
+  Event,
+) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>>;
+type ReactFn = dyn for<'f> FnMut(
+  Message,
+  &'f mut dyn MutCap<Event, Message>,
+) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>;
+type RespondFn = dyn for<'f> FnMut(
+  &'f mut Message,
+  &'f mut dyn MutCap<Event, Message>,
+) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>;
 
 type EventHandler = Handler<Box<EventFn>>;
 type ReactHandler = Handler<Box<ReactFn>>;
@@ -136,7 +148,12 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::handle`.
   pub fn event_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + FnMut(Id, &mut dyn MutCap<Event, Message>, Event) -> Option<Event>,
+    F: 'static
+      + for<'f> FnMut(
+        Id,
+        &'f mut dyn MutCap<Event, Message>,
+        Event,
+      ) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>>,
   {
     self.event_handler = Some(Handler(Box::new(handler)));
     self
@@ -145,7 +162,11 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::react`.
   pub fn react_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + FnMut(Message, &mut dyn MutCap<Event, Message>) -> Option<Message>,
+    F: 'static
+      + for<'f> FnMut(
+        Message,
+        &'f mut dyn MutCap<Event, Message>,
+      ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>,
   {
     self.react_handler = Some(Handler(Box::new(handler)));
     self
@@ -154,7 +175,11 @@ impl TestWidgetDataBuilder {
   /// Set a handler for `Handleable::respond`.
   pub fn respond_handler<F>(mut self, handler: F) -> Self
   where
-    F: 'static + FnMut(&mut Message, &mut dyn MutCap<Event, Message>) -> Option<Message>,
+    F: 'static
+      + for<'f> FnMut(
+        &'f mut Message,
+        &'f mut dyn MutCap<Event, Message>,
+      ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>,
   {
     self.respond_handler = Some(Handler(Box::new(handler)));
     self
@@ -192,7 +217,7 @@ impl Handleable<Event, Message> for TestWidget {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.event_handler.take() {
       Some(mut handler) => {
-        let event = handler(self.id, cap, event);
+        let event = handler(self.id, cap, event).await;
         let data = self.data_mut::<TestWidgetData>(cap);
         data.event_handler = Some(handler);
         event
@@ -205,7 +230,7 @@ impl Handleable<Event, Message> for TestWidget {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.react_handler.take() {
       Some(mut handler) => {
-        let message = handler(message, cap);
+        let message = handler(message, cap).await;
         let data = self.data_mut::<TestWidgetData>(cap);
         data.react_handler = Some(handler);
         message
@@ -222,7 +247,7 @@ impl Handleable<Event, Message> for TestWidget {
     let data = self.data_mut::<TestWidgetData>(cap);
     match data.respond_handler.take() {
       Some(mut handler) => {
-        let result = handler(message, cap);
+        let result = handler(message, cap).await;
 
         let data = self.data_mut::<TestWidgetData>(cap);
         data.respond_handler = Some(handler);

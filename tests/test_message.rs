@@ -5,6 +5,9 @@
 
 mod common;
 
+use std::future::Future;
+use std::pin::Pin;
+
 use async_trait::async_trait;
 
 use gui::derive::Widget;
@@ -31,8 +34,11 @@ async fn no_handler() {
   assert_eq!(result, None);
 }
 
-fn increment_message(message: Message, _cap: &mut dyn MutCap<Event, Message>) -> Option<Message> {
-  Some(Message::new(message.value + 1))
+fn increment_message(
+  message: Message,
+  _cap: &mut dyn MutCap<Event, Message>,
+) -> Pin<Box<dyn Future<Output = Option<Message>> + '_>> {
+  Box::pin(async move { Some(Message::new(message.value + 1)) })
 }
 
 /// Try repeatedly sending a message and checking the response.
@@ -105,10 +111,12 @@ async fn forward_message() {
     || {
       TestWidgetDataBuilder::new()
         .react_handler(|m, _| {
-          unsafe {
-            FINAL_FORWARDED_VALUE = m.value;
-          }
-          None
+          Box::pin(async move {
+            unsafe {
+              FINAL_FORWARDED_VALUE = m.value;
+            }
+            None
+          })
         })
         .build()
     },
@@ -137,8 +145,10 @@ async fn call_message() {
     || {
       TestWidgetDataBuilder::new()
         .respond_handler(|m, _| {
-          m.value *= 2;
-          None
+          Box::pin(async move {
+            m.value *= 2;
+            None
+          })
         })
         .build()
     },

@@ -7,6 +7,8 @@ mod common;
 
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 
 use gui::Cap;
 use gui::EventHookFn;
@@ -51,22 +53,24 @@ async fn targeted_event_returned_on_no_focus() {
   assert_eq!(result.unwrap(), event);
 }
 
-fn key_handler(
-  cap: &mut dyn MutCap<Event, Message>,
+fn key_handler<'f>(
+  cap: &'f mut dyn MutCap<Event, Message>,
   event: Event,
   to_focus: Option<Id>,
-) -> Option<Event> {
-  match event {
-    Event::Key('a') => {
-      if let Some(id) = to_focus {
-        cap.focus(id);
-        None
-      } else {
-        Some(event)
-      }
-    },
-    _ => Some(event),
-  }
+) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>> {
+  Box::pin(async move {
+    match event {
+      Event::Key('a') => {
+        if let Some(id) = to_focus {
+          cap.focus(id);
+          None
+        } else {
+          Some(event)
+        }
+      },
+      _ => Some(event),
+    }
+  })
 }
 
 #[tokio::test]
@@ -109,12 +113,14 @@ fn incrementing_event_handler(
   _: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<Event> {
-  let event = match event {
-    Event::Empty | Event::Key(..) => unreachable!(),
-    Event::Int(value) => Event::Int(value + 1),
-  };
-  Some(event)
+) -> Pin<Box<dyn Future<Output = Option<Event>> + '_>> {
+  Box::pin(async move {
+    let event = match event {
+      Event::Empty | Event::Key(..) => unreachable!(),
+      Event::Int(value) => Event::Int(value + 1),
+    };
+    Some(event)
+  })
 }
 
 /// Check that events are propagated as expected.
@@ -257,9 +263,11 @@ fn checking_event_handler(
   _: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<Event> {
-  assert_eq!(event, Event::Key('y'));
-  None
+) -> Pin<Box<dyn Future<Output = Option<Event>> + '_>> {
+  Box::pin(async move {
+    assert_eq!(event, Event::Key('y'));
+    None
+  })
 }
 
 /// Test that hook emitted events are not seen by widgets.
@@ -355,10 +363,12 @@ async fn hook_can_send_message() {
     || {
       TestWidgetDataBuilder::new()
         .react_handler(|m, _| {
-          unsafe {
-            RECEIVED_VALUE = m.value;
-          }
-          None
+          Box::pin(async move {
+            unsafe {
+              RECEIVED_VALUE = m.value;
+            }
+            None
+          })
         })
         .build()
     },
@@ -368,7 +378,7 @@ async fn hook_can_send_message() {
     r,
     || {
       TestWidgetDataBuilder::new()
-        .event_handler(move |_, _, _| None)
+        .event_handler(move |_, _, _| Box::pin(async { None }))
         .build()
     },
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -377,7 +387,7 @@ async fn hook_can_send_message() {
     c1,
     || {
       TestWidgetDataBuilder::new()
-        .event_handler(move |_, _, _| None)
+        .event_handler(move |_, _, _| Box::pin(async { None }))
         .build()
     },
     |id, _cap| Box::new(TestWidget::new(id)),
@@ -416,16 +426,19 @@ async fn hook_installation_event_handling() {
   }
 
   fn setup_ui(hook_fn: EventHookFn<Event, Message>) -> Ui<Event, Message> {
-    let mut installed = false;
+    static INSTALLED: AtomicBool = AtomicBool::new(false);
+
     let (mut ui, root_id) = Ui::new(
       || {
         TestWidgetDataBuilder::new()
           .event_handler(move |id, cap, _| {
-            if !installed {
-              let _prev_hook = cap.hook_events(id, Some(hook_fn));
-              installed = true;
-            }
-            None
+            Box::pin(async move {
+              if !INSTALLED.load(Ordering::Relaxed) {
+                let _prev_hook = cap.hook_events(id, Some(hook_fn));
+                INSTALLED.store(true, Ordering::Relaxed);
+              }
+              None
+            })
           })
           .build()
       },

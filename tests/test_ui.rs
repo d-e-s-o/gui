@@ -6,12 +6,14 @@
 mod common;
 
 use std::fmt::Write;
+use std::future::Future;
+use std::pin::Pin;
 
 use async_trait::async_trait;
 
-use gui::Cap;
 use gui::derive::Handleable;
 use gui::derive::Widget;
+use gui::Cap;
 use gui::Handleable;
 use gui::Id;
 use gui::MutCap;
@@ -442,12 +444,14 @@ fn counting_handler(
   _widget: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
-) -> Option<Event> {
-  let event = match event {
-    Event::Empty | Event::Key(..) => unreachable!(),
-    Event::Int(value) => Event::Int(value + 1),
-  };
-  Some(event)
+) -> Pin<Box<dyn Future<Output = Option<Event>> + '_>> {
+  Box::pin(async move {
+    let event = match event {
+      Event::Empty | Event::Key(..) => unreachable!(),
+      Event::Int(value) => Event::Int(value + 1),
+    };
+    Some(event)
+  })
 }
 
 
@@ -492,7 +496,7 @@ impl CreatingWidget {
 #[async_trait(?Send)]
 impl Handleable<Event, Message> for CreatingWidget {
   async fn handle(&self, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<Event> {
-    counting_handler(self.id, cap, event)
+    counting_handler(self.id, cap, event).await
   }
 }
 
@@ -546,18 +550,24 @@ fn moving_widget_creation() {
 }
 
 
-fn create_handler(widget: Id, cap: &mut dyn MutCap<Event, Message>, event: Event) -> Option<Event> {
-  match event {
-    Event::Key('z') => {
-      cap.add_widget(
-        widget,
-        Box::new(|| Box::new(())),
-        Box::new(|id, _cap| Box::new(TestWidget::new(id))),
-      );
-      None
-    },
-    _ => Some(event),
-  }
+fn create_handler(
+  widget: Id,
+  cap: &mut dyn MutCap<Event, Message>,
+  event: Event,
+) -> Pin<Box<dyn Future<Output = Option<Event>> + '_>> {
+  Box::pin(async move {
+    match event {
+      Event::Key('z') => {
+        cap.add_widget(
+          widget,
+          Box::new(|| Box::new(())),
+          Box::new(|id, _cap| Box::new(TestWidget::new(id))),
+        );
+        None
+      },
+      _ => Some(event),
+    }
+  })
 }
 
 
@@ -589,13 +599,15 @@ fn recursive_operations_handler(
   widget: Id,
   cap: &mut dyn MutCap<Event, Message>,
   _event: Event,
-) -> Option<Event> {
-  // Check that we can use the supplied `MutCap` object to retrieve our
-  // own parent's ID.
-  cap.parent_id(widget);
-  cap.focus(widget);
-  cap.is_focused(widget);
-  Some(Event::Int(42))
+) -> Pin<Box<dyn Future<Output = Option<Event>> + '_>> {
+  Box::pin(async move {
+    // Check that we can use the supplied `MutCap` object to retrieve our
+    // own parent's ID.
+    cap.parent_id(widget);
+    cap.focus(widget);
+    cap.is_focused(widget);
+    Some(Event::Int(42))
+  })
 }
 
 /// Check that widget operations on the own widget work properly.
