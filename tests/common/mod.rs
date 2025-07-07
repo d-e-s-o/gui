@@ -9,6 +9,7 @@ use std::future::Future;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::pin::Pin;
+use std::rc::Rc;
 
 use async_trait::async_trait;
 
@@ -115,9 +116,9 @@ type RespondFn = dyn for<'f> Fn(
   &'f mut dyn MutCap<Event, Message>,
 ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>;
 
-type EventHandler = Handler<Box<EventFn>>;
-type ReactHandler = Handler<Box<ReactFn>>;
-type RespondHandler = Handler<Box<RespondFn>>;
+type EventHandler = Handler<Rc<EventFn>>;
+type ReactHandler = Handler<Rc<ReactFn>>;
+type RespondHandler = Handler<Rc<RespondFn>>;
 
 
 #[derive(Debug)]
@@ -155,7 +156,7 @@ impl TestWidgetDataBuilder {
         Event,
       ) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>>,
   {
-    self.event_handler = Some(Handler(Box::new(handler)));
+    self.event_handler = Some(Handler(Rc::new(handler)));
     self
   }
 
@@ -168,7 +169,7 @@ impl TestWidgetDataBuilder {
         &'f mut dyn MutCap<Event, Message>,
       ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>,
   {
-    self.react_handler = Some(Handler(Box::new(handler)));
+    self.react_handler = Some(Handler(Rc::new(handler)));
     self
   }
 
@@ -181,7 +182,7 @@ impl TestWidgetDataBuilder {
         &'f mut dyn MutCap<Event, Message>,
       ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>,
   {
-    self.respond_handler = Some(Handler(Box::new(handler)));
+    self.respond_handler = Some(Handler(Rc::new(handler)));
     self
   }
 
@@ -215,12 +216,10 @@ impl Handleable<Event, Message> for TestWidget {
     let _ = self.data::<TestWidgetData>(cap);
 
     let data = self.data_mut::<TestWidgetData>(cap);
-    match data.event_handler.take() {
+    match &data.event_handler {
       Some(handler) => {
-        let event = handler(self.id, cap, event).await;
-        let data = self.data_mut::<TestWidgetData>(cap);
-        data.event_handler = Some(handler);
-        event
+        let handler = Rc::clone(handler);
+        handler(self.id, cap, event).await
       },
       None => Some(event),
     }
@@ -228,12 +227,10 @@ impl Handleable<Event, Message> for TestWidget {
 
   async fn react(&self, message: Message, cap: &mut dyn MutCap<Event, Message>) -> Option<Message> {
     let data = self.data_mut::<TestWidgetData>(cap);
-    match data.react_handler.take() {
+    match &data.react_handler {
       Some(handler) => {
-        let message = handler(message, cap).await;
-        let data = self.data_mut::<TestWidgetData>(cap);
-        data.react_handler = Some(handler);
-        message
+        let handler = Rc::clone(handler);
+        handler(message, cap).await
       },
       None => None,
     }
@@ -245,13 +242,10 @@ impl Handleable<Event, Message> for TestWidget {
     cap: &mut dyn MutCap<Event, Message>,
   ) -> Option<Message> {
     let data = self.data_mut::<TestWidgetData>(cap);
-    match data.respond_handler.take() {
+    match &data.respond_handler {
       Some(handler) => {
-        let result = handler(message, cap).await;
-
-        let data = self.data_mut::<TestWidgetData>(cap);
-        data.respond_handler = Some(handler);
-        result
+        let handler = Rc::clone(handler);
+        handler(message, cap).await
       },
       None => None,
     }
