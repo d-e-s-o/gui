@@ -35,6 +35,7 @@ async fn no_handler() {
 }
 
 fn increment_message(
+  _id: Id,
   message: Message,
   _cap: &mut dyn MutCap<Event, Message>,
 ) -> Pin<Box<dyn Future<Output = Option<Message>> + '_>> {
@@ -110,10 +111,10 @@ async fn forward_message() {
   let (mut ui, root) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
-        .react_handler(|m, _| {
+        .react_handler(|_id, msg, _cap| {
           Box::pin(async move {
             unsafe {
-              FINAL_FORWARDED_VALUE = m.value;
+              FINAL_FORWARDED_VALUE = msg.value;
             }
             None
           })
@@ -144,9 +145,9 @@ async fn call_message() {
   let (mut ui, root) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
-        .respond_handler(|m, _| {
+        .respond_handler(|_id, msg, _cap| {
           Box::pin(async move {
-            m.value *= 2;
+            msg.value *= 2;
             None
           })
         })

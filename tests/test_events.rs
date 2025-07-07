@@ -362,10 +362,10 @@ async fn hook_can_send_message() {
   let (mut ui, r) = Ui::new(
     || {
       TestWidgetDataBuilder::new()
-        .react_handler(|m, _| {
+        .react_handler(|_id, msg, _cap| {
           Box::pin(async move {
             unsafe {
-              RECEIVED_VALUE = m.value;
+              RECEIVED_VALUE = msg.value;
             }
             None
           })

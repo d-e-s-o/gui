@@ -108,10 +108,12 @@ type EventFn = dyn for<'f> Fn(
   Event,
 ) -> Pin<Box<dyn Future<Output = Option<Event>> + 'f>>;
 type ReactFn = dyn for<'f> Fn(
+  Id,
   Message,
   &'f mut dyn MutCap<Event, Message>,
 ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>;
 type RespondFn = dyn for<'f> Fn(
+  Id,
   &'f mut Message,
   &'f mut dyn MutCap<Event, Message>,
 ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>;
@@ -165,6 +167,7 @@ impl TestWidgetDataBuilder {
   where
     F: 'static
       + for<'f> Fn(
+        Id,
         Message,
         &'f mut dyn MutCap<Event, Message>,
       ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>,
@@ -178,6 +181,7 @@ impl TestWidgetDataBuilder {
   where
     F: 'static
       + for<'f> Fn(
+        Id,
         &'f mut Message,
         &'f mut dyn MutCap<Event, Message>,
       ) -> Pin<Box<dyn Future<Output = Option<Message>> + 'f>>,
@@ -230,7 +234,7 @@ impl Handleable<Event, Message> for TestWidget {
     match &data.react_handler {
       Some(handler) => {
         let handler = Rc::clone(handler);
-        handler(message, cap).await
+        handler(self.id, message, cap).await
       },
       None => None,
     }
@@ -245,7 +249,7 @@ impl Handleable<Event, Message> for TestWidget {
     match &data.respond_handler {
       Some(handler) => {
         let handler = Rc::clone(handler);
-        handler(message, cap).await
+        handler(self.id, message, cap).await
       },
       None => None,
     }
