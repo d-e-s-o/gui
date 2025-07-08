@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.6.6
+-----
 - Added `MutCap::rehandle` method for triggering re-handling of an
   event by a given widget
 
