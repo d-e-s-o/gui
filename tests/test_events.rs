@@ -110,7 +110,7 @@ async fn event_handling_with_focus() {
 }
 
 fn incrementing_event_handler(
-  _: Id,
+  _widget: Id,
   _cap: &mut dyn MutCap<Event, Message>,
   event: Event,
 ) -> Pin<Box<dyn Future<Output = Option<Event>> + '_>> {
@@ -161,6 +161,138 @@ async fn event_propagation() {
   let result = ui.handle(event).await.unwrap();
   // We expect three increments, one from each of the widgets.
   assert_eq!(result.unwrap_int(), 45);
+}
+
+/// Make sure that we can "rehandle" an event and check propagation.
+#[tokio::test]
+async fn rehandle_from_event_handler() {
+  let (mut ui, r) = Ui::new(
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(move |_id, cap, event| {
+          Box::pin(async move {
+            match event {
+              Event::Empty | Event::Key(..) => unreachable!(),
+              Event::Int(value) if value < 5 => cap.rehandle(cap.focused().unwrap(), event).await,
+              Event::Int(value) => Some(Event::Int(value + 1)),
+            }
+          })
+        })
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let c1 = ui.add_ui_widget(
+    r,
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(incrementing_event_handler)
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+  let w1 = ui.add_ui_widget(
+    c1,
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(incrementing_event_handler)
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+
+  let () = ui.focus(w1);
+
+  let event = Event::Int(0);
+  let result = ui.handle(event).await.unwrap();
+  // We expect three increments from each of `w1` and `c1` and another
+  // one from the root widget `r`.
+  assert_eq!(result.unwrap_int(), 7);
+}
+
+/// Test that we can "rehandle" an event from a message handler.
+#[tokio::test]
+async fn rehandle_from_message_handler() {
+  let (mut ui, r) = Ui::new(
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(move |widget, cap, event| {
+          Box::pin(async move {
+            match event {
+              Event::Empty | Event::Key(..) => unreachable!(),
+              Event::Int(value) if value < 5 => {
+                // Send a message to ourselves, which will recursively
+                // handle the event but with an increased value.
+                let msg = cap.send(widget, Message::new(value)).await.unwrap();
+                Some(Event::Int(msg.value))
+              },
+              Event::Int(..) => Some(event),
+            }
+          })
+        })
+        .react_handler(move |widget, msg, cap| {
+          Box::pin(async move {
+            let event = cap
+              .rehandle(widget, Event::Int(msg.value + 1))
+              .await
+              .unwrap();
+            Some(Message {
+              value: event.unwrap_int(),
+            })
+          })
+        })
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+
+  let () = ui.focus(r);
+
+  let event = Event::Int(0);
+  let result = ui.handle(event).await.unwrap();
+  assert_eq!(result.unwrap_int(), 5);
+}
+
+/// Test that we can "rehandle" an event from an event hook.
+#[tokio::test]
+async fn rehandle_from_event_hook() {
+  let (mut ui, r) = Ui::new(
+    || {
+      TestWidgetDataBuilder::new()
+        .event_handler(move |_id, _cap, event| {
+          Box::pin(async move {
+            match event {
+              Event::Empty => None,
+              Event::Key(..) => unreachable!(),
+              Event::Int(value) => Some(Event::Int(value + 1)),
+            }
+          })
+        })
+        .build()
+    },
+    |id, _cap| Box::new(TestWidget::new(id)),
+  );
+
+  let () = ui.focus(r);
+  let _hook = ui.hook_events(
+    r,
+    Some(&|widget, cap, event| {
+      Box::pin(async move {
+        if let Some(event) = event {
+          match event {
+            Event::Empty => cap.rehandle(widget.id(), Event::Int(0)).await,
+            Event::Key(..) | Event::Int(..) => unreachable!(),
+          }
+        } else {
+          None
+        }
+      })
+    }),
+  );
+
+  let event = Event::Empty;
+  let result = ui.handle(event).await.unwrap();
+  assert_eq!(result.unwrap_int(), 1);
 }
 
 /// Check that `MutCap::hook_events` behaves as expected.

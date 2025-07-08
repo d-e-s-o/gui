@@ -20,6 +20,8 @@ use std::sync::atomic::Ordering;
 use async_trait::async_trait;
 
 use crate::BBox;
+#[cfg(doc)]
+use crate::Handleable;
 use crate::Mergeable;
 use crate::Placeholder;
 use crate::Renderer;
@@ -188,11 +190,12 @@ pub type NewDataFn = dyn FnOnce() -> Box<dyn Any>;
 /// The prototype of a function for creating a new widget.
 pub type NewWidgetFn<E, M> = dyn FnOnce(Id, &mut dyn MutCap<E, M>) -> Box<dyn Widget<E, M>>;
 /// The prototype of an event hook function.
-pub type EventHookFn<E, M> = &'static dyn for<'f> Fn(
-  &'f dyn Widget<E, M>,
-  &'f mut dyn MutCap<E, M>,
-  Option<&'f E>,
-) -> Pin<Box<dyn Future<Output = Option<E>> + 'f>>;
+pub type EventHookFn<E, M> =
+  &'static dyn for<'f> Fn(
+    &'f dyn Widget<E, M>,
+    &'f mut dyn MutCap<E, M>,
+    Option<&'f E>,
+  ) -> Pin<Box<dyn Future<Output = Option<E>> + 'f>>;
 
 mod private {
   pub trait Sealed {}
@@ -278,10 +281,10 @@ pub trait MutCap<E, M>: Cap + Deref<Target = dyn Cap> {
   ///
   /// The event hook handler is a call back function that is invoked for
   /// all events originating outside of the UI, i.e., those that come in
-  /// through the `Ui::handle` method. For such events, the event hook
+  /// through the [`Ui::handle`] method. For such events, the event hook
   /// handler gets to inspect the event before any widget gets a chance
-  /// to handle it "officially" through the `Handleable::handle` method
-  /// (pre-hook).
+  /// to handle it "officially" through the [`Handleable::handle`]
+  /// method (pre-hook).
   /// Furthermore, after widgets handled the event, the hook will be
   /// invoked again, this time without an actual event (post-hook). Note
   /// that if a hook handler is installed from within an event handler,
@@ -319,6 +322,19 @@ pub trait MutCap<E, M>: Cap + Deref<Target = dyn Cap> {
   /// Send the provided message to the given widget, without
   /// transferring ownership of the message.
   async fn call(&mut self, widget: Id, message: &mut M) -> Option<M>;
+
+  /// Force re-handling of an event starting with the provided widget.
+  ///
+  /// Re-handling can be useful in a certain limited set of
+  /// circumstances, such as when the event is to be delayed or when an
+  /// event emits another event that is intended for the newly changes
+  /// focused widget.
+  ///
+  /// Note that event rehandling does not trigger event hooks again.
+  /// Hooks will already have been invoked for the original event. If
+  /// you need the event to pass through hooks again, you will have to
+  /// pass it to [`Ui::handle`] instead.
+  async fn rehandle(&mut self, widget: Id, event: E) -> Option<E>;
 }
 
 
@@ -649,8 +665,11 @@ impl<E, M> Ui<E, M> {
   /// Handle an event.
   ///
   /// This function performs the initial determination of which widget
-  /// is supposed to handle the given event and then passes it down to
-  /// the actual event handler.
+  /// is supposed to handle the given event and then passes it to the
+  /// actual [event handler][Handleable::handle] of said widget.
+  /// Handling then further progresses up the widget hierarchy (i.e.,
+  /// the widget's parent, its parent, etc.) as long as `Some` event is
+  /// being returned.
   pub async fn handle<T>(&mut self, event: T) -> Option<E>
   where
     T: Into<E>,
@@ -866,6 +885,11 @@ impl<E, M> MutCap<E, M> for Ui<E, M> {
     let widget = Rc::clone(&self.widgets[idx.idx].1);
 
     widget.respond(message, self).await
+  }
+
+  async fn rehandle(&mut self, widget: Id, event: E) -> Option<E> {
+    let idx = self.validate(widget);
+    self.handle_event(idx, event).await
   }
 }
 

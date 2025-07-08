@@ -1,3 +1,9 @@
+Unreleased
+----------
+- Added `MutCap::rehandle` method for triggering re-handling of an
+  event by a given widget
+
+
 0.6.5
 -----
 - Fixed event hook invocation behavior for handlers installed from
@@ -6,7 +12,7 @@
 
 0.6.4
 -----
-- Exported three function type aliases used by `CapMut` trait
+- Exported three function type aliases used by `MutCap` trait
 
 
 0.6.3
