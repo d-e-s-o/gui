@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Bumped `syn` dependency to `2.0`
+
+
 0.6.3
 -----
 - Switched to using Rust edition 2021

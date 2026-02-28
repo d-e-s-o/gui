@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2025 Daniel Mueller <deso@posteo.net>
+// Copyright (C) 2018-2026 Daniel Mueller <deso@posteo.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //! A crate providing custom derive functionality for the `gui` crate.
@@ -15,13 +15,11 @@ use proc_macro2::Span;
 use proc_macro2::TokenStream as Tokens;
 use quote::quote;
 use syn::Attribute;
-use syn::Binding;
 use syn::Data;
 use syn::DeriveInput;
 use syn::Fields;
 use syn::GenericParam;
 use syn::Generics;
-use syn::parenthesized;
 use syn::parse::Parse;
 use syn::parse::ParseStream;
 use syn::parse2;
@@ -162,11 +160,11 @@ fn parse_gui_attribute(item: Attr) -> Result<(New, Event, Message)> {
     Attr::Ident(ref ident) if ident == "default_new" => {
       Ok((Some(()), None, None))
     },
-    Attr::Binding(binding) => {
-      if binding.ident == "Event" {
-        Ok((None, Some(binding.ty), None))
-      } else if binding.ident == "Message" {
-        Ok((None, None, Some(binding.ty)))
+    Attr::Binding(ident, ty) => {
+      if ident == "Event" {
+        Ok((None, Some(ty), None))
+      } else if ident == "Message" {
+        Ok((None, None, Some(ty)))
       } else {
         Err(Error::from("encountered unknown binding attribute"))
       }
@@ -196,10 +194,7 @@ struct AttrList(Punctuated<Attr, Comma>);
 
 impl Parse for AttrList {
   fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-    let content;
-    let _ = parenthesized!(content in input);
-    let list = content.parse_terminated(Attr::parse)?;
-
+    let list = Punctuated::parse_terminated(input)?;
     Ok(Self(list))
   }
 }
@@ -208,7 +203,7 @@ impl Parse for AttrList {
 #[allow(clippy::large_enum_variant)]
 enum Attr {
   Ident(Ident),
-  Binding(Binding),
+  Binding(Ident, Type),
 }
 
 impl Parse for Attr {
@@ -216,8 +211,10 @@ impl Parse for Attr {
     // We need to peek at the second token coming up next first, because
     // attempting to parse it would advance the position in the buffer.
     if input.peek2(Eq) {
-      let bind = input.parse::<Binding>()?;
-      Ok(Attr::Binding(bind))
+      let ident = input.parse::<Ident>()?;
+      let _eq = input.parse::<Eq>()?;
+      let ty = input.parse::<Type>()?;
+      Ok(Attr::Binding(ident, ty))
     } else {
       input.parse::<Ident>().map(Attr::Ident)
     }
@@ -227,11 +224,10 @@ impl Parse for Attr {
 
 /// Parse a single attribute, e.g., `#[Event = MyEvent]`.
 fn parse_attribute(attribute: &Attribute) -> Result<(New, Event, Message)> {
-  if attribute.path.is_ident("gui") {
-    let tokens = attribute.tokens.clone();
-    let attr = parse2::<AttrList>(tokens).map_err(|err| {
-      format!("unable to parse attributes: {err:?}")
-    })?;
+  if attribute.path().is_ident("gui") {
+    let attr = attribute
+      .parse_args::<AttrList>()
+      .map_err(|err| format!("unable to parse attributes: {err:?}"))?;
 
     parse_gui_attributes(attr)
   } else {
