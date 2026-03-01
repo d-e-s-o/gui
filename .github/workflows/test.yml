@@ -28,7 +28,7 @@ jobs:
       matrix:
         rust: [stable]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
@@ -39,7 +39,7 @@ jobs:
     name: Test and coverage
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
     - name: Test and gather coverage
@@ -54,7 +54,7 @@ jobs:
     name: Build using minimum versions of dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nightly Rust
         uses: dtolnay/rust-toolchain@nightly
       - run: cargo +nightly -Z minimal-versions update
@@ -70,7 +70,7 @@ jobs:
     name: Lint with clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo clippy --workspace --no-deps --all-targets --all-features --tests -- -A unknown_lints -D warnings
   rustdoc:
@@ -79,6 +79,6 @@ jobs:
     env:
       RUSTDOCFLAGS: '-D warnings'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo doc --workspace --no-deps --document-private-items
