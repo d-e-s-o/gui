@@ -1,4 +1,4 @@
-# Copyright (C) 2022-2025 Daniel Mueller <deso@posteo.net>
+# Copyright (C) 2022-2026 Daniel Mueller <deso@posteo.net>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 name: Test
@@ -17,7 +17,7 @@ env:
   # arrangement. See
   # https://doc.rust-lang.org/cargo/reference/environment-variables.html
   # https://doc.rust-lang.org/rustc/codegen-options/index.html#debuginfo
-  RUSTFLAGS: '-C debuginfo=0'
+  RUSTFLAGS: '-D warnings -C debuginfo=0'
 
 jobs:
   build:
