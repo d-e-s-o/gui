@@ -1,20 +1,3 @@
-[package]
-name = "gui"
-version = "0.6.6"
-edition = "2021"
-rust-version = "1.58"
-authors = ["Daniel Mueller <deso@posteo.net>"]
-license = "GPL-3.0-or-later"
-homepage = "https://crates.io/crates/gui"
-repository = "https://github.com/d-e-s-o/gui.git"
-readme = "README.md"
-documentation = "https://docs.rs/gui"
-categories = ["gui", "command-line-utilities", "command-line-interface", "rendering"]
-keywords = ["gui", "ui"]
-description = """
-A generic UI library/framework.
-"""
-
 [workspace]
 members = ["derive"]
 
@@ -48,6 +31,23 @@ redundant-closure-for-method-calls = "warn"
 unchecked-time-subtraction = "warn"
 uninlined-format-args = "warn"
 wildcard-imports = "warn"
+
+[package]
+name = "gui"
+version = "0.6.6"
+edition = "2021"
+rust-version = "1.58"
+authors = ["Daniel Mueller <deso@posteo.net>"]
+license = "GPL-3.0-or-later"
+homepage = "https://crates.io/crates/gui"
+repository = "https://github.com/d-e-s-o/gui.git"
+readme = "README.md"
+documentation = "https://docs.rs/gui"
+categories = ["gui", "command-line-utilities", "command-line-interface", "rendering"]
+keywords = ["gui", "ui"]
+description = """
+A generic UI library/framework.
+"""
 
 [features]
 default = ["derive"]
