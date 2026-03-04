@@ -2,7 +2,7 @@
 [![coverage](https://codecov.io/gh/d-e-s-o/gui/branch/main/graph/badge.svg)](https://codecov.io/gh/d-e-s-o/gui)
 [![crates.io](https://img.shields.io/crates/v/gui.svg)](https://crates.io/crates/gui)
 [![Docs](https://docs.rs/gui/badge.svg)](https://docs.rs/gui)
-[![rustc](https://img.shields.io/badge/rustc-1.58+-blue.svg)](https://blog.rust-lang.org/2022/01/13/Rust-1.58.0.html)
+[![rustc](https://img.shields.io/badge/rustc-1.64+-blue.svg)](https://blog.rust-lang.org/2022/09/22/Rust-1.64.0/)
 
 gui
 ===

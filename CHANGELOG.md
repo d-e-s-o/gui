@@ -1,3 +1,8 @@
+Unreleased
+----------
+- Bumped minimum supported Rust version to `1.64`
+
+
 0.6.6
 -----
 - Added `MutCap::rehandle` method for triggering re-handling of an

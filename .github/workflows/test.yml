@@ -61,9 +61,9 @@ jobs:
       - name: Install minimum Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          # Please adjust README and rust-version field in Cargo.toml files when
-          # bumping version.
-          toolchain: 1.58
+          # Please adjust README, .clippy.toml, and rust-version field
+          # in Cargo.toml when bumping version.
+          toolchain: 1.64
       - name: Build
         run: cargo build --locked
   clippy:
