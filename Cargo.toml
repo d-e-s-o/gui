@@ -1,5 +1,16 @@
 [workspace]
-members = ["derive"]
+members = [
+  ".",
+  "derive"
+]
+
+[workspace.package]
+authors = ["Daniel Mueller <deso@posteo.net>"]
+version = "0.6.6"
+edition = "2021"
+rust-version = "1.64"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/d-e-s-o/gui.git"
 
 [workspace.lints.rust]
 deprecated-safe = "warn"
@@ -34,13 +45,13 @@ wildcard-imports = "warn"
 
 [package]
 name = "gui"
-version = "0.6.6"
-edition = "2021"
-rust-version = "1.64"
-authors = ["Daniel Mueller <deso@posteo.net>"]
-license = "GPL-3.0-or-later"
-homepage = "https://crates.io/crates/gui"
-repository = "https://github.com/d-e-s-o/gui.git"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage = "https://github.com/d-e-s-o/gui"
+repository.workspace = true
 readme = "README.md"
 documentation = "https://docs.rs/gui"
 categories = ["gui", "command-line-utilities", "command-line-interface", "rendering"]

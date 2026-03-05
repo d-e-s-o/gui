@@ -1,11 +1,12 @@
 [package]
 name = "gui-derive"
-version = "0.6.6"
-edition = "2021"
-authors = ["Daniel Mueller <deso@posteo.net>"]
-license = "GPL-3.0-or-later"
-homepage = "https://crates.io/crates/gui-derive"
-repository = "https://github.com/d-e-s-o/gui.git"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage = "https://github.com/d-e-s-o/gui/tree/main/derive"
+repository.workspace = true
 readme = "README.md"
 documentation = "https://docs.rs/gui-derive"
 categories = ["gui", "command-line-utilities", "command-line-interface", "rendering"]
