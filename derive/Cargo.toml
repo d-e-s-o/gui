@@ -36,7 +36,6 @@ features = ["clone-impls", "derive", "extra-traits", "parsing", "printing"]
 version = "0.1.41"
 
 [dev-dependencies.gui]
-version = "0.6.4"
 path = ".."
 
 [dev-dependencies.tokio]
